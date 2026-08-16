@@ -1,0 +1,3 @@
+{
+	"extends": "@zero-lag/config/tsconfig.base.json"
+}

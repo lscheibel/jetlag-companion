@@ -1,0 +1,22 @@
+{
+	"name": "@zero-lag/e2e",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test:e2e": "playwright test",
+		"check-types": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.62.1",
+		"@types/node": "^22.20.1",
+		"@zero-lag/area-packs": "*",
+		"@zero-lag/config": "*",
+		"@zero-lag/geo": "*",
+		"@zero-lag/rules": "*",
+		"@zero-lag/schema": "*",
+		"pg": "^8.22.0",
+		"@types/pg": "^8.20.0",
+		"typescript": "^6.0.3"
+	}
+}

@@ -1,6 +1,6 @@
 # Hide & Seek Companion App — Build Plan
 
-A milestone-based plan for a companion app to *Jet Lag: The Game — Hide + Seek*. Milestones are ordered so that each one is independently reviewable and, from Phase 1 onward, each leaves the app more playable than it was before.
+A milestone-based plan for a companion app to _Jet Lag: The Game — Hide + Seek_. Milestones are ordered so that each one is independently reviewable and, from Phase 1 onward, each leaves the app more playable than it was before.
 
 ---
 
@@ -30,20 +30,23 @@ Each milestone below has: **Goal** · **Features** · **Reviewable when** · **D
 
 **Goal:** Multiple devices can be in the same game object, stay there, and agree on what happened — and every decision that later milestones inherit is settled and proven by working code.
 
-M0 is deliberately the heaviest planning milestone in the project. Everything under *Contracts* is expensive to change once features are built on top of it. The guardrail that keeps this from becoming a three-month architecture phase with nothing playable: **M0 defines contracts and builds one vertical slice that exercises each — not full implementations.** One question type, no builder, no UI beyond a debug harness.
+M0 is deliberately the heaviest planning milestone in the project. Everything under _Contracts_ is expensive to change once features are built on top of it. The guardrail that keeps this from becoming a three-month architecture phase with nothing playable: **M0 defines contracts and builds one vertical slice that exercises each — not full implementations.** One question type, no builder, no UI beyond a debug harness.
+
+Specified in full in [m0-spec.md](m0-spec.md).
 
 **Contracts**
 
 1. **Sync.** Zero (`zero-cache` + Postgres) for game state, with server-authoritative custom mutators. Ephemeral data — live position, heading, battery, online-ness — travels on a separate channel and is never written to Postgres. Zero has no presence layer by design; this split is the intended usage, not a workaround.
 2. **Event log.** Typed, versioned, append-only. Every mutator writes both the state rows the UI queries **and** an event row, in one transaction. No mutator writes state without emitting an event.
-3. **Time.** Every event carries the client's submit time, the server's receive time, the per-connection clock offset, and a client-generated idempotency key. An answer submitted offline is evaluated against what the client knew when it was submitted; the server decides ordering and never re-evaluates, or answer-time truth quietly stops being true for anyone who went through a tunnel.
+3. **Time.** Answers are authored by players and recorded as given; the server never validates or recomputes one. Events carry the server's receive time, the client's submit time for display, and — on answers — the elapsed time measured on the answering device, which is what a deadline actually cares about and is immune to clock drift. Device clocks are never compared to each other. Ordering is a per-game sequence number, not a timestamp.
 4. **Conflict resolution.** First to the server wins, implemented as a rejecting mutator; the rejection returns a structured error that the superseded client renders as a dismissible notice. The discard is not an event.
-5. **Constraint engine.** `applyConstraint(area, constraint) → area`, with the search area defined as a pure left fold over an ordered list of constraints. A constraint is a first-class record with a source — derived from an answer, or authored by hand — and an enabled flag. It is *not* owned by the question that produced it. That one distinction is what makes hand-drawn constraints, disabled constraints, corrected answers and bulk invalidation the same operation rather than four features. Radar implemented as the proof; every other question type is a later addition against the same interface.
+5. **Constraint engine.** `applyConstraint(area, constraint) → area`, with the search area defined as a pure left fold over an ordered list of constraints. A constraint is a first-class record with a source — derived from an answer, or authored by hand — and an enabled flag. It is _not_ owned by the question that produced it. That one distinction is what makes hand-drawn constraints, disabled constraints, corrected answers and bulk invalidation the same operation rather than four features. Radar implemented as the proof; every other question type is a later addition against the same interface.
 6. **Area pack format.** Content-hashed and versioned, carrying the station and line inventory plus the polygons derived from it.
 7. **Platform adapter.** One interface for location, notifications, wake-lock, haptics and battery, with a web implementation behind it. Enforced by a lint rule banning direct use of the underlying browser APIs anywhere else, so that a later Capacitor build is a second implementation rather than a rewrite. An unenforced adapter rots into a wrapper that half the app bypasses.
-8. **Roles and tokens.** Tokens carry player identity only; role is resolved by joining player → team → role, so that lobby team switches and round-to-round role swaps take effect immediately without token juggling.
+8. **Rounds, roles and tokens.** A game is a series of rounds and **role is a property of a round, not of a team**, since hiders and seekers swap between them. Tokens carry player identity only; role is resolved by joining player → team → round → role, so that lobby team switches and round-to-round swaps take effect immediately without token juggling.
 
 **Features**
+
 - Create game / join by short code or QR
 - Lightweight identity: display name + device, no account required
 - Host role, host transfer
@@ -67,9 +70,10 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** A group can configure itself into the exact team structure it wants.
 
 **Features**
+
 - **Ownership reminder:** before a game can be created, the host confirms they own a copy of the official game, with a link to buy it and attribution to its creators. Shown once per host, re-affirmed on major version updates.
 - Team creation: name, color, emoji picker
-- Roles: *n* seeker teams × *m* hider teams, several players per team
+- Roles: _n_ seeker teams × _m_ hider teams, several players per team
 - Move between teams, kick, rename, host transfer
 - Lobby overview showing every team and its members
 
@@ -82,6 +86,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** The core "where is everyone" surface, with the asymmetry the game needs.
 
 **Features**
+
 - Base map, own position with accuracy radius, follow/recenter, heading
 - Teammate positions
 - **Visibility matrix:** hiders see all seeker teams and all other hiders; each seeker team sees only itself
@@ -99,6 +104,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** Both roles get the geometry tools they'd otherwise open Google Maps for.
 
 **Features**
+
 - 3D buildings, tilt and rotate
 - **Distance measurement** (multi-point path, total + segment readout), available to hiders and seekers
 - Radius / circle tool around any point
@@ -113,7 +119,8 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** A host can define a real, playable map in a couple of minutes, at any scale.
 
 **Features**
-- **Two polygons, two jobs.** The *game boundary* is where players may travel, and is what M16's leave-area alerts fire against. The *valid hiding area* is the union of enabled station radii clipped to that boundary, and is the seed of every deduction fold in M13. The hiding area is normally the smaller of the two, and the area pack's station inventory is only a candidate list — what this builder outputs is what the game actually uses
+
+- **One area, and it constrains hiding rather than travel.** The valid hiding area is the union of enabled station radii, and is the seed of every deduction fold in M13. It is not a fence: seekers move through it and outside it as their search requires, and hiders move freely during the hiding phase. What it constrains is where a hiding _spot_ may be — and once the hiding phase ends, which zone its hider stays inside (M5). The area pack's station inventory is only a candidate list; what this builder outputs is what the game actually uses
 - **Berlin as the seed dataset**, with the builder designed so adding areas is data, not code
 - **Scale presets:** single Bezirk / district · city · metropolitan region · state · ticket-validity area (Deutschlandticket, Euroticket) — each with sensible default radii and question distances
 - Area selection by administrative boundary as well as by drawn shape
@@ -132,18 +139,21 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** A round can begin, run, pause and end.
 
 **Features**
+
 - **House rules:** host-authored free-text rules ("no image searching train stations"), attached to the game and readable at any time
 - **Ready check:** every team explicitly marks ready
 - **Area comfort confirmation:** at ready check, each team confirms they're comfortable playing in the defined area, with a way to raise a concern to the host instead
 - Rules acknowledgement as part of readiness
-- Hiding phase countdown, visible to all
+- **Rounds are the unit of play, and roles belong to a round.** A game is a series of them, with hider and seeker teams swapping between rounds. A round runs _hiding phase → seeking phase → ended_, and questions, answers and constraints all belong to a round rather than to the game
+- **Hiding phase:** a host-set countdown, visible to all, during which the hiders travel to wherever they intend to hide. They move freely and without restriction for its whole duration. Seekers are travelling too, and pass through non-hiding areas on the way; none of that is a special case
 - **Hider commits a hiding zone** — not a spot. Warning (not a block) if the chosen zone isn't a valid one. The exact spot within it stays undeclared.
+- **Once the hiding phase ends, a hider stays inside their committed zone.** If their position leaves it, their own device says so — _"looks like you left your hiding zone"_ — and that is the entire feature. The notice is local, never sent anywhere, never recorded, and no other player is told. It is a helpful nudge to someone who wandered, not a report
 - Round timer, pause/resume with a reason, manual end
 - Mark hider found, optional photo, recorded hiding time per hider team
 
 **Reviewable when:** A full round is played end to end with paper cards and paper questions — setup, ready check, hide, seek, found — and the recorded time matches a stopwatch.
 
-**Deferred:** Hider-side help with *where* to hide — suggesting candidate spots inside the committed zone from POI and building data. Genuinely useful, not needed to play, and much cheaper once M18 has the footprint data.
+**Deferred:** Hider-side help with _where_ to hide — suggesting candidate spots inside the committed zone from POI and building data. Genuinely useful, not needed to play, and much cheaper once M18 has the footprint data.
 
 ---
 
@@ -154,9 +164,10 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** The question catalog lives in the app and is fully configurable.
 
 **Features**
+
 - Predefined question catalog by type (matching, measuring, thermometer, radar, photo, tentacles) with per-question rules text
 - **Constraint definition per question type** — the geometry an answer cuts from the search area, and the equivalent point test that decides whether a given position satisfies it. Written once against M0's engine and used from both directions: M8 evaluates the point test, M13 folds the geometry
-- **Question builder:** enable/disable individual questions *or* entire types
+- **Question builder:** enable/disable individual questions _or_ entire types
 - Per-question flag: whether the question may target **more than one hider team** — off for most questions, on only where it makes sense
 - Per-question flag: whether **"not possible to answer"** is a legal response, following the rulebook
 - Scale-aware distance defaults from the M4 preset, with per-question override
@@ -170,9 +181,10 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** The question loop works for multiple seeker teams and multiple hider teams in parallel.
 
 **Features**
+
 - **Targeting:** a seeker team asks one hider team by default; only questions flagged multi-target in M6 can go to several or all
 - Seeker: pick question, choose targets, see rules and card cost, ask, see pending state and answer deadline per target
-- **Questions that run over an interval.** A thermometer is not asked at a moment in time. Starting one records the seeker team's position and tells the hider "Team X started a 0.5 km thermometer" — and that is *all* it is until the team ends it somewhere else. Only on ending does it become a real question, carrying two positions, reaching the hider and producing a constraint. A started-but-unended thermometer is game state with no answer, no card draw and no effect on the deduction map. The running team gets an advisory readout of how far they have travelled against the distance they declared — a nudge, never a gate on ending it
+- **Questions that run over an interval.** A thermometer is not asked at a moment in time. Starting one records the seeker team's position and tells the hider "Team X started a 0.5 km thermometer" — and that is _all_ it is until the team ends it somewhere else. Only on ending does it become a real question, carrying two positions, reaching the hider and producing a constraint. A started-but-unended thermometer is game state with no answer, no card draw and no effect on the deduction map. The running team gets an advisory readout of how far they have travelled against the distance they declared — a nudge, never a gate on ending it
 - Hider: push + haptic on arrival, question rules on screen, countdown, answer
 - **Answer options:** the structured answer (yes/no, value, photo), plus **"not possible to answer"** where the question permits it
 - **Notes and threads on everything:** every question and every answer carries a free-text note, and each question is a thread both sides can keep talking in
@@ -188,11 +200,12 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** Make answering fast and accurate without ever taking the decision away from the hider.
 
 **Features**
+
 - Location questions are evaluated against **the live position of the player who is answering** — not the committed zone, not a team centroid
 - The committed zone is used only by questions that ask about the zone itself
 - **Recomputed continuously until the hider submits** — correctness is evaluated at answer time
 - Radar / matching / measuring geometry; tentacles resolved against a POI lookup
-- Thermometer: the two reference points are the seeker team's position when the thermometer *started* and their position when it *ended*; what the hider compares between them is their own position at answer time. All three are recorded, since M13 needs the seeker pair to construct the bisector. No suggestion exists before the thermometer is ended, because until then there is no question
+- Thermometer: the two reference points are the seeker team's position when the thermometer _started_ and their position when it _ended_; what the hider compares between them is their own position at answer time. All three are recorded, since M13 needs the seeker pair to construct the bisector. No suggestion exists before the thermometer is ended, because until then there is no question
 - Suggestions run the same constraint definitions M13 folds with, evaluated as a point test against the answering player's live position. One definition, two usages — so a hider's suggestion and a seeker's eliminated region cannot disagree
 - Every suggestion shows its inputs and their freshness: "based on Team Red's position, 12 s old, ±30 m"
 - Suggestions are computed per hider for multi-target questions
@@ -207,6 +220,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** Photo answers that are convenient to produce and safe to share.
 
 **Features**
+
 - **Two paths in:** capture in-app, or upload a photo taken on any camera
 - **The server strips all location and identifying metadata on ingest**, and the original is never served to any client
 - Redaction tool for censoring identifying text before or after upload
@@ -221,6 +235,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** The deck moves into the app without becoming an enforcement engine.
 
 **Features**
+
 - Full card catalog; **deck builder** with enable/disable per card and per type, and adjustable counts
 - Draws granted per question type, offered automatically, adjustable by hand
 - Every hider team targeted by a question draws for it independently
@@ -236,6 +251,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** Curses are castable, targetable and legible to both sides.
 
 **Features**
+
 - Curse catalog with cost, effect text and duration
 - Cast at one seeker team, several, or all
 - Cost payment guided step by step; warn if unpaid, don't block
@@ -251,6 +267,7 @@ Target for the end of this phase: a real game can be played with the app for set
 **Goal:** Rounds end cleanly and stack into a series.
 
 **Features**
+
 - Detection and alert when a seeker team enters a committed hiding zone (hider movement freeze)
 - **Hiding spot declaration:** optional and suggested once seekers enter the zone, required only at round end — always a suggestion the hider confirms or corrects
 - Proximity notice to the hider as seekers close in
@@ -270,16 +287,18 @@ Target for the end of this phase: a real game can be played with the app for set
 The search area is a pure left fold of M0's constraint engine over an ordered, editable constraint list, seeded with M4's valid hiding area and scoped to one (seeker team, hider team) pair. Most of what follows falls out of that shape: the fold is incremental, since each new constraint is one operation applied to the previous snapshot; it is cacheable by area-pack version plus the ordered constraint ids; and it is trivially reversible, since disabling a constraint just means folding without it.
 
 **Features**
+
 - Each answer contributes a geometric constraint; the surviving search area is highlighted and eliminated area is shaded
 - **Hider team selector:** the map shows one hider team's search area at a time, each pairing having its own fold
 - Live **share of the hiding area eliminated**, and how much the most recent constraint contributed
 - "Not possible to answer" responses treated as constraints in their own right where the question makes that meaningful
 - **The constraint list is editable, always.** Any constraint can be disabled and re-enabled from a list; a hider correcting an answer (M7) updates its constraint in place. A suggestion is never a verdict, and this is the screen where that promise is easiest to quietly break
-- Pre-ask preview: for each candidate question and target set, how much of the *current* area it would likely remove
+- Pre-ask preview: for each candidate question and target set, how much of the _current_ area it would likely remove
 
 **Reviewable when:** After six answered questions across two hiders, each surviving area matches a hand calculation done on paper by a reviewer. Disabling the third constraint and re-enabling it returns the map to byte-identical geometry.
 
 **Deferred, but the architecture assumes them from M0:**
+
 - **Hand-authored constraints.** A seeker team draws its own radius, polygon or pie sector and folds it in like any other constraint. The use cases are the deductions the app cannot make: identifying a building from a photo answer, ruling out a park by eye, marking a direction someone is fairly sure of. These are simply constraints with a manual source — which is the whole reason the fold consumes a constraint list rather than the answer log.
 - **"We are searching this zone."** One tap that disables every existing constraint and adds a radius constraint around a chosen transit stop. Entirely a macro over the two primitives above, and worth having because it marks the moment the earlier constraints stop being trustworthy: a hider may move freely within their zone until seekers actually enter it, so a thermometer that split that zone an hour ago says nothing about where they are standing now.
 
@@ -288,6 +307,7 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Goal:** The artifact people share afterwards, and the thing friends watch during.
 
 **Features**
+
 - Live spectator link with configurable fog: full knowledge, seeker view, or time-delayed
 - Post-game replay: scrubbable timeline of all movement, questions, answers, notes, photos, curses and found events
 - Playback speed, isolate a team, jump to any event
@@ -300,6 +320,7 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Goal:** The app survives a real day out.
 
 **Features**
+
 - Offline queueing across every action, with clear pending/synced state and clear superseded state
 - Map tiles and area data pre-cached at setup for the whole game area, against a per-preset zoom and size budget agreed back in M4 — a single Bezirk and a nationwide map cannot share one caching policy
 - Background location and reliable push notifications for questions, answers, curses and deadlines. **Neither is deliverable in a browser**: geolocation stops when the screen locks and web push is best-effort at both ends, so this item is what a Capacitor build exists for. Until it lands, the honest fallback is foreground-only tracking, a wake-lock during active rounds, and M2's staleness UI telling the truth about the gap
@@ -313,9 +334,9 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Goal:** Nobody has a bad time.
 
 **Features**
+
 - Share live location with a non-playing contact
 - SOS / "I need to stop" that pauses the game and notifies the host
-- Alerts when leaving the agreed game area
 - Quiet hours and no-go area reminders
 - Accessibility pass; localisation groundwork
 
@@ -324,6 +345,7 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Goal:** Make people want to play the next round.
 
 **Features**
+
 - Distance travelled, search area eliminated per question, question efficiency ranking, answer latency, curse impact
 - Movement heatmaps
 - Shareable recap card
@@ -333,15 +355,19 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 # Phase 4 — Expansion
 
 ## M18 — Zone builder power tools
+
 Custom Overpass queries with saved snippets and templates · inclusion and exclusion polygons · GeoJSON/KML import · water and no-go masking · POI-based zones · building footprints for judging what's actually enterable.
 
 ## M19 — Beyond Berlin
+
 Area catalog with per-area defaults · offline area packs · community-shared map presets with browsing and ratings · cross-border areas for ticket-scale games.
 
 ## M20 — Transit departures
+
 Next departures at nearby stops · line status · lightweight journey aid · curse interactions with transit rules.
 
 ## M21 — Custom content
+
 User-authored questions and curses · custom decks and rule packs, shareable by code · practice/tutorial mode and a solo demo game.
 
 ---

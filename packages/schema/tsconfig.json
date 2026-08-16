@@ -1,0 +1,7 @@
+{
+	"extends": "@zero-lag/config/tsconfig.base.json",
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM"]
+	},
+	"include": ["src/**/*.ts", "drizzle.config.ts", "drizzle-zero.config.ts"]
+}

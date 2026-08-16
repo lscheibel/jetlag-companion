@@ -1,0 +1,22 @@
+{
+	"name": "@zero-lag/area-packs",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./fixtures/*": "./src/fixtures/*.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@zero-lag/geo": "*"
+	},
+	"devDependencies": {
+		"@zero-lag/config": "*",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10"
+	}
+}

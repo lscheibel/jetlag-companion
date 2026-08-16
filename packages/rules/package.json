@@ -1,0 +1,22 @@
+{
+	"name": "@zero-lag/rules",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@zero-lag/geo": "*"
+	},
+	"devDependencies": {
+		"@zero-lag/config": "*",
+		"fast-check": "^4.9.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10"
+	}
+}

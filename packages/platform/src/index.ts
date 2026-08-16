@@ -1,0 +1,91 @@
+import type { BatteryState, PositionSnapshot } from "@zero-lag/schema";
+
+/**
+ * One interface, one web implementation, one lint rule. m0-spec §10.
+ *
+ * Background location and reliable push are not deliverable in a browser at
+ * all, and are the reason a Capacitor build will eventually exist. Keeping them
+ * behind this interface is what makes that build a second implementation rather
+ * than a rewrite.
+ */
+
+export type Capability =
+	| { readonly available: true }
+	| {
+			readonly available: false;
+			readonly reason:
+				| "unsupported"
+				| "denied"
+				| "insecure_context"
+				| "unavailable";
+	  };
+
+export const AVAILABLE: Capability = { available: true };
+
+export type Unsubscribe = () => void;
+export type Release = () => Promise<void>;
+
+export type LocationOpts = {
+	readonly enableHighAccuracy?: boolean;
+	readonly timeoutMs?: number;
+	readonly maximumAgeMs?: number;
+};
+
+export type LocalNotification = {
+	readonly title: string;
+	readonly body?: string;
+	readonly tag?: string;
+	readonly silent?: boolean;
+};
+
+export type PermissionOutcome = "granted" | "denied" | "default";
+
+export interface PlatformAdapter {
+	readonly location: {
+		capability(): Capability;
+		getCurrent(opts?: LocationOpts): Promise<PositionSnapshot>;
+		watch(
+			cb: (fix: PositionSnapshot) => void,
+			opts?: LocationOpts,
+		): Unsubscribe;
+	};
+	readonly notifications: {
+		capability(): Capability;
+		requestPermission(): Promise<PermissionOutcome>;
+		show(notification: LocalNotification): Promise<void>;
+	};
+	readonly wakeLock: {
+		capability(): Capability;
+		acquire(): Promise<Release>;
+	};
+	readonly haptics: {
+		capability(): Capability;
+		vibrate(pattern: number[]): void;
+	};
+	readonly battery: {
+		capability(): Capability;
+		read(): Promise<BatteryState | null>;
+	};
+}
+
+/**
+ * The honest answer when there is no fix.
+ *
+ * `source: 'unavailable'` is first-class: a hider with location services off
+ * must be able to answer, and the record should say plainly that there was no
+ * fix rather than omit the field. When `source` is `'unavailable'` the
+ * coordinates carry no meaning — read them through `fixToLngLat`, which returns
+ * null, rather than off the object.
+ */
+export function unavailableFix(capturedAt = Date.now()): PositionSnapshot {
+	return {
+		lng: 0,
+		lat: 0,
+		accuracyMeters: 0,
+		headingDeg: null,
+		speedMps: null,
+		capturedAt,
+		source: "unavailable",
+		receivedAt: null,
+	};
+}

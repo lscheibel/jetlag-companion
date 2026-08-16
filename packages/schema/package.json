@@ -1,0 +1,39 @@
+{
+	"name": "@zero-lag/schema",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./drizzle": "./src/drizzle/index.ts",
+		"./zero": "./src/zero/schema.ts",
+		"./queries": "./src/zero/queries.ts",
+		"./mutators": "./src/zero/mutators.ts",
+		"./db": "./src/db.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests",
+		"db:push": "drizzle-kit push",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:migrate:deploy": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"@rocicorp/zero": "^1.9.0",
+		"@zero-lag/env": "*",
+		"@zero-lag/geo": "*",
+		"@zero-lag/rules": "*",
+		"drizzle-orm": "^0.45.2",
+		"pg": "^8.22.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@types/pg": "^8.20.0",
+		"@zero-lag/config": "*",
+		"drizzle-kit": "^0.31.10",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10"
+	}
+}

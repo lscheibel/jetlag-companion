@@ -1,0 +1,25 @@
+{
+	"name": "@zero-lag/geo",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@turf/simplify": "^7.4.0",
+		"polygon-clipping": "^0.15.7",
+		"proj4": "^2.21.0"
+	},
+	"devDependencies": {
+		"@types/proj4": "^2.19.0",
+		"@zero-lag/config": "*",
+		"fast-check": "^4.9.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10"
+	}
+}

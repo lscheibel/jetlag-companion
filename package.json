@@ -1,0 +1,53 @@
+{
+	"name": "zero-lag",
+	"private": true,
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"e2e"
+	],
+	"type": "module",
+	"scripts": {
+		"dev": "turbo run dev",
+		"build": "turbo run build",
+		"check-types": "turbo run check-types",
+		"dev:web": "turbo run dev -F web --",
+		"dev:server": "turbo run dev -F server --",
+		"db:push": "turbo run db:push -F @zero-lag/schema --",
+		"db:studio": "turbo run db:studio -F @zero-lag/schema --",
+		"db:generate": "turbo run db:generate -F @zero-lag/schema --",
+		"db:migrate": "turbo run db:migrate -F @zero-lag/schema --",
+		"db:start": "docker compose -f infra/docker/docker-compose.yml up -d postgres",
+		"db:watch": "docker compose -f infra/docker/docker-compose.yml up postgres",
+		"db:stop": "docker compose -f infra/docker/docker-compose.yml stop postgres",
+		"db:down": "docker compose -f infra/docker/docker-compose.yml down postgres",
+		"docker:build": "docker compose -f infra/docker/docker-compose.yml build",
+		"docker:up": "docker compose -f infra/docker/docker-compose.yml up -d --build",
+		"docker:down": "docker compose -f infra/docker/docker-compose.yml down",
+		"docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+		"check": "biome check --write .",
+		"zero:start": "docker compose -f infra/docker/docker-compose.yml up -d postgres zero-cache",
+		"test": "turbo run test",
+		"test:e2e": "npm run test:e2e --workspace @zero-lag/e2e"
+	},
+	"dependencies": {
+		"@zero-lag/env": "*",
+		"dotenv": "^17.4.2",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@types/node": "^22.20.1",
+		"@zero-lag/config": "*",
+		"turbo": "^2.10.7",
+		"typescript": "^6.0.3"
+	},
+	"packageManager": "npm@11.16.0",
+	"allowScripts": {
+		"esbuild": true,
+		"sharp": true,
+		"fsevents": true,
+		"protobufjs": true,
+		"@rocicorp/zero-sqlite3": true
+	}
+}

@@ -1,0 +1,115 @@
+name: zero-lag
+
+# Build contexts are the repo root, two levels up from this file.
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: zero-lag-postgres
+    # wal_level=logical is not optional: it is how zero-cache builds its SQLite
+    # replica. Without it, zero-cache starts and then never syncs anything.
+    command: postgres -c wal_level=logical
+    environment:
+      POSTGRES_DB: zero-lag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  zero-cache:
+    image: rocicorp/zero:1.9.0
+    container_name: zero-lag-zero-cache
+    # Single node — replication-manager and view-syncer in one process. That is
+    # correct for this workload and will stay correct: a busy game is twenty
+    # players. m0-spec §3.
+    environment:
+      # Direct connection, never through pgbouncer.
+      ZERO_UPSTREAM_DB: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/zero-lag
+      ZERO_REPLICA_FILE: /data/replica.db
+      # Defaults to the server in this compose file. Point APP_ORIGIN at
+      # http://host.docker.internal:3000 when running the app on the host.
+      ZERO_QUERY_URL: ${APP_ORIGIN:-http://server:3000}/api/zero/query
+      ZERO_MUTATE_URL: ${APP_ORIGIN:-http://server:3000}/api/zero/mutate
+      # No ZERO_AUTH_SECRET: zero-cache does not validate our tokens. It forwards
+      # the client's `Authorization: Bearer` header to the query and mutate
+      # endpoints, and those verify it and build the context. m0-spec §4.
+      ZERO_ADMIN_PASSWORD: ${ZERO_ADMIN_PASSWORD:-dev-admin-change-me}
+      ZERO_PORT: "4848"
+      ZERO_LOG_LEVEL: ${ZERO_LOG_LEVEL:-info}
+    ports:
+      - "4848:4848"
+    volumes:
+      - zero_replica:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4848/').then(() => process.exit(0)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      # Initial sync can take minutes on a cold replica. m0-spec §3.
+      start_period: 600s
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ../..
+      dockerfile: apps/server/Dockerfile
+    init: true
+    ports:
+      - "3000:3000"
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/zero-lag
+      GAME_TOKEN_SECRET: ${GAME_TOKEN_SECRET:-dev-secret-change-me}
+      ZERO_CACHE_URL: http://zero-cache:4848
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SERVER_URL: ${PUBLIC_SERVER_URL:-http://localhost:3000}
+        VITE_ZERO_CACHE_URL: ${PUBLIC_ZERO_CACHE_URL:-http://localhost:4848}
+    init: true
+    ports:
+      - "3001:3001"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  zero_replica:
