@@ -8,7 +8,7 @@ A milestone-based plan for a companion app to _Jet Lag: The Game — Hide + Seek
 
 These apply to every milestone and should be part of every review.
 
-1. **Companion, not competitor.** The app reproduces the rules and cards it needs to be useful, and pairs that with a clear ownership reminder and attribution to the official game.
+1. **Companion, not competitor.** The app reproduces the rules and cards it needs to be useful, and credits the official game it accompanies.
 2. **Good faith is assumed.** No anti-cheat, no lockouts, no adversarial modelling. The app warns, reminds and suggests — players decide. Everyone in a game is a friend: role-based visibility is a server-side filter that keeps the game fun, not a security boundary, and no effort is spent defending against a player who opens dev tools. The blast radius of a bad actor is exactly one game — the one they were invited to.
 3. **Suggestions, never verdicts.** Every computed value is advisory and overridable. GPS can be wrong, absent, or lying, and the app must stay fully usable when it is.
 4. **Answer-time truth.** All location-dependent facts are evaluated at the moment of answering, not asking. Computed suggestions recompute live until the hider submits.
@@ -69,12 +69,13 @@ Target for the end of this phase: a real game can be played with the app for set
 
 **Goal:** A group can configure itself into the exact team structure it wants.
 
+Specified in full in [m1-spec.md](m1-spec.md).
+
 **Features**
 
-- **Ownership reminder:** before a game can be created, the host confirms they own a copy of the official game, with a link to buy it and attribution to its creators. Shown once per host, re-affirmed on major version updates.
 - Team creation: name, color, emoji picker
 - Roles: _n_ seeker teams × _m_ hider teams, several players per team
-- Move between teams, kick, rename, host transfer
+- Move between teams, kick, rename, and host as a role any player can take
 - Lobby overview showing every team and its members
 
 **Reviewable when:** Five phones join; the host builds 2 hider teams and 3 seeker teams with distinct colors and emoji; a player switches teams and everyone sees it immediately.
@@ -89,7 +90,7 @@ Target for the end of this phase: a real game can be played with the app for set
 
 - Base map, own position with accuracy radius, follow/recenter, heading
 - Teammate positions
-- **Visibility matrix:** hiders see all seeker teams and all other hiders; each seeker team sees only itself
+- **Visibility matrix, and it is only ever about position:** everyone can always see who is in the game and which team they are on. Hiders see the _positions_ of all seeker teams and all other hiders; a seeker team sees only its own
 - Hider positions are recorded server-side (for answer suggestions and replay) and are never exposed to seekers during play
 - Hider toggle to hide/show their own map view (for self-imposed blindness)
 - Staleness rather than confidence: "last seen 3 min ago", greyed markers, accuracy circles
@@ -390,4 +391,3 @@ User-authored questions and curses · custom decks and rule packs, shareable by 
 - Any security boundary between players within a single game — visibility rules exist to preserve the game, not to withstand a determined player with dev tools open
 - Automatically answering questions on the hider's behalf
 - Blocking any action on the grounds that it breaks a rule
-- Being a substitute for owning the official game — the reminder in M1 and visible attribution are permanent, not a launch formality

@@ -442,10 +442,19 @@ type PresenceEntry = {
 
 `ping`/`pong` is liveness only; it carries no timing payload.
 
-**Visibility is applied server-side, per subscriber**, at the moment of fan-out:
+**Visibility is applied server-side, per subscriber**, at the moment of fan-out — and it filters _fields_, not entries.
 
-- a **hider** receives every seeker team and every other hider team
-- a **seeker** receives only their own team
+> **Everyone in a game can always see everyone else. What is secret is where they are.**
+
+Every subscriber receives a `PresenceEntry` for every player in the game, always: identity, team, and online-ness are how a lobby works and how the two sides talk to each other during a round. Seekers know perfectly well who is hiding, and interact with them constantly. The two location-bearing fields — `fix` and `battery` — are the ones that get nulled:
+
+- a **hider** receives positions for every seeker team and every other hider team
+- a **seeker** receives positions for their own team only, and for nobody else — not the hiders, and not the other seeker teams
+- a player **on no team yet** receives every entry, and no positions but their own
+
+`battery` follows `fix` rather than identity because it is a teammate-and-hider affordance (build plan, M2) and because a seeker team's battery curve is information about a seeker team.
+
+An earlier draft of this section filtered whole entries, which is a stricter rule that is also the wrong one: it hid the roster, so a lobby of five phones showed one. M1 corrects it (m1-spec §9).
 
 Filtering happens on the server not because a seeker would inspect the frames, but because the alternative — sending everything and hiding it in the client — makes an accidental leak a one-line UI mistake instead of an impossible one.
 
