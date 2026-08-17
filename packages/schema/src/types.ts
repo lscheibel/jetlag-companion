@@ -123,12 +123,20 @@ export class MutationRejectedError extends Error {
 export const EVENT_TYPES = [
 	"game.created",
 	"game.stateChanged",
-	"host.transferred",
+	/**
+	 * Host is a hat rather than a rank: any player can claim or release it and
+	 * more than one can wear it, so there is nothing to transfer. m1-spec §6.
+	 * This replaces `host.transferred`, which M0 declared and never emitted —
+	 * so no version bump is owed to anyone.
+	 */
+	"host.changed",
 	"player.joined",
 	"player.renamed",
 	"player.left",
+	"player.removed",
 	"team.created",
 	"team.updated",
+	"team.deleted",
 	"team.memberJoined",
 	"team.memberLeft",
 	"round.created",
@@ -147,7 +155,16 @@ export const EVENT_TYPES = [
 export type EventType = (typeof EVENT_TYPES)[number];
 
 export type GameStatus = "draft" | "lobby" | "running" | "finished";
-export type RoundStatus = "hiding" | "seeking" | "ended";
+
+/**
+ * `pending` is a round that exists but has not begun. Round 1 is created with
+ * the game so the lobby has somewhere to assign roles, which is what keeps role
+ * a property of a round rather than of a team. m1-spec §3.
+ *
+ * A role existing is not the same as a round running: anything that lets a team
+ * *act* on its role gates on `hiding | seeking`, never on "a role is set".
+ */
+export type RoundStatus = "pending" | "hiding" | "seeking" | "ended";
 export type TeamRole = "seeker" | "hider";
 export type QuestionType = "radar";
 export type QuestionStatus = "started" | "pending" | "answered" | "cancelled";

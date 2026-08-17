@@ -96,12 +96,26 @@ function closeRoomIfEmpty(gameId: string, room: Room): void {
 }
 
 /**
- * Visibility is applied here, per subscriber, at the moment of fan-out.
+ * Visibility is applied here, per subscriber, at the moment of fan-out — and it
+ * filters **fields, not entries**. m0-spec §8, corrected by m1-spec §9.
  *
- * Not because a seeker would inspect the frames — the good-actor assumption
- * holds — but because the alternative, sending everything and hiding it in the
- * client, makes an accidental leak a one-line UI mistake instead of an
- * impossible one. m0-spec §8.
+ * > Everyone in a game can always see everyone else. What is secret is where
+ * > they are.
+ *
+ * Seekers know perfectly well who is hiding: they ask them questions, read their
+ * answers, and eventually go and find them. Hiding identity was never the game.
+ * An earlier version of this function dropped whole entries, which hid the
+ * roster — a lobby of five phones showed one, and a player with no team yet saw
+ * nobody at all.
+ *
+ * There is no round-state precondition, because there is no moment at which a
+ * seeker may see a hider's coordinates. The rule is the same in the lobby as in
+ * a running round.
+ *
+ * Filtering happens here rather than in the client not because a seeker would
+ * inspect the frames — the good-actor assumption holds — but because the
+ * alternative makes an accidental leak a one-line UI mistake instead of an
+ * impossible one.
  */
 function visibleTo(
 	connection: Connection,
@@ -109,21 +123,29 @@ function visibleTo(
 ): PresenceEntry[] {
 	const visible: PresenceEntry[] = [];
 	for (const entry of entries) {
-		if (entry.playerId === connection.playerId) {
+		if (carriesPosition(connection, entry)) {
 			visible.push(entry);
 			continue;
 		}
-		// A hider sees every seeker team and every other hider team.
-		if (connection.role === "hider") {
-			visible.push(entry);
-			continue;
-		}
-		// A seeker — and anyone with no role yet — sees only their own team.
-		if (connection.teamId !== null && entry.teamId === connection.teamId) {
-			visible.push(entry);
-		}
+		// Identity, team, role and online-ness always travel. `battery` follows
+		// `fix` rather than identity, because how a seeker team's phones are
+		// holding up is information about a seeker team.
+		visible.push({ ...entry, fix: null, battery: null });
 	}
 	return visible;
+}
+
+function carriesPosition(
+	connection: Connection,
+	entry: PresenceEntry,
+): boolean {
+	if (entry.playerId === connection.playerId) return true;
+	// A hider sees every position in the game — every seeker team and every
+	// other hider team.
+	if (connection.role === "hider") return true;
+	// A seeker, and anyone with no role yet, sees their own team and nobody
+	// else: not the hiders, and not the other seeker teams.
+	return connection.teamId !== null && entry.teamId === connection.teamId;
 }
 
 /**
@@ -187,13 +209,20 @@ async function resolveRole(
 	const teamId = memberships[0]?.teamId ?? null;
 	if (!teamId) return { teamId: null, role: null };
 
+	/**
+	 * `pending` counts. A lobby that has assigned roles has hiders and seekers in
+	 * it, and §9's filter has no round-state precondition — so this must agree
+	 * with `useMyRole`, which takes the highest-ordinal round that has not ended.
+	 * Gating on "a round is running" belongs on the things a team can *do* with a
+	 * role, not on who may see a position. m1-spec §3.
+	 */
 	const [round] = await db
 		.select({ id: drizzleSchema.round.id })
 		.from(drizzleSchema.round)
 		.where(
 			and(
 				eq(drizzleSchema.round.gameId, gameId),
-				inArray(drizzleSchema.round.status, ["hiding", "seeking"]),
+				inArray(drizzleSchema.round.status, ["pending", "hiding", "seeking"]),
 			),
 		)
 		.orderBy(desc(drizzleSchema.round.ordinal))
@@ -240,8 +269,22 @@ export function attachEphemeralChannel(server: Server, path: string): void {
 	wss.on("connection", (socket) => {
 		let connection: Connection | null = null;
 
+		/**
+		 * One socket's messages are handled one at a time, in the order they
+		 * arrived.
+		 *
+		 * `handleMessage` awaits — `hello` in particular verifies a token and
+		 * reads the database — and firing each one straight into the event loop
+		 * lets a later message overtake an earlier one. What that costs is
+		 * specific: a client that says `hello` and then immediately says where it
+		 * is has its position dropped, because the `hello` has not finished
+		 * registering the connection yet. A frame order the wire guarantees is
+		 * not one this side gets to reorder.
+		 */
+		let queue: Promise<void> = Promise.resolve();
 		socket.on("message", (raw) => {
-			void handleMessage(raw.toString());
+			const text = raw.toString();
+			queue = queue.then(() => handleMessage(text)).catch(() => {});
 		});
 
 		socket.on("close", () => {

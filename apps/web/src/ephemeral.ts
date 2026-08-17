@@ -44,6 +44,20 @@ export class EphemeralChannel {
 	};
 	#lastSentAt = 0;
 	#lastSent: ClientFix | null = null;
+	/**
+	 * Where this device is *now*, whether or not the socket was open when it
+	 * found out.
+	 *
+	 * This is state, not a queue. At most one fix is held, always the newest, and
+	 * a newer one replaces it rather than joining it — so "nothing here is
+	 * retried and nothing here is queued" still holds. It exists because a
+	 * stationary phone gets one `watchPosition` callback and no more: without it,
+	 * a device whose socket happened to still be connecting at that instant
+	 * reports no position for as long as it stands still, which on a station
+	 * platform is the whole of the hiding phase.
+	 */
+	#current: ClientFix | null = null;
+	#currentBattery: BatteryState | null = null;
 	#reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	#closed = false;
 
@@ -73,6 +87,9 @@ export class EphemeralChannel {
 		socket.addEventListener("open", () => {
 			socket.send(JSON.stringify({ t: "hello", token: this.#token }));
 			this.#patch({ connected: true });
+			// Re-announce where we are, because the room has just learned we exist
+			// and otherwise would not find out until this phone moved.
+			this.#announce();
 		});
 
 		socket.addEventListener("message", (raw) => {
@@ -108,6 +125,9 @@ export class EphemeralChannel {
 	 * it means nothing has changed enough to be worth a frame.
 	 */
 	sendPosition(fix: ClientFix): boolean {
+		// Recorded before the socket is consulted: this is where the device is,
+		// and that stays true whether or not it could be said out loud.
+		this.#current = fix;
 		if (!this.#socket || this.#socket.readyState !== WebSocket.OPEN) {
 			return false;
 		}
@@ -122,6 +142,7 @@ export class EphemeralChannel {
 	}
 
 	sendBattery(battery: BatteryState): void {
+		this.#currentBattery = battery;
 		if (this.#socket?.readyState !== WebSocket.OPEN) return;
 		this.#socket.send(
 			JSON.stringify({
@@ -130,6 +151,31 @@ export class EphemeralChannel {
 				charging: battery.charging,
 			}),
 		);
+	}
+
+	/**
+	 * Say where we are, now that somebody is listening. Bypasses the movement and
+	 * interval heuristics, which exist to keep a *moving* phone from chattering
+	 * and would otherwise suppress the one frame a newly-joined room needs.
+	 */
+	#announce(): void {
+		const socket = this.#socket;
+		if (socket?.readyState !== WebSocket.OPEN) return;
+
+		if (this.#current) {
+			socket.send(JSON.stringify({ t: "pos", fix: this.#current }));
+			this.#lastSent = this.#current;
+			this.#lastSentAt = Date.now();
+		}
+		if (this.#currentBattery) {
+			socket.send(
+				JSON.stringify({
+					t: "batt",
+					level: this.#currentBattery.level,
+					charging: this.#currentBattery.charging,
+				}),
+			);
+		}
 	}
 
 	#worthSending(fix: ClientFix, now: number): boolean {

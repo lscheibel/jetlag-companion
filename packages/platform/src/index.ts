@@ -66,6 +66,18 @@ export interface PlatformAdapter {
 		capability(): Capability;
 		read(): Promise<BatteryState | null>;
 	};
+	/**
+	 * Sharing a join link. m1-spec §8.
+	 *
+	 * `write` reports whether it worked rather than throwing, because the browser
+	 * can refuse and a "Copied" label that lies is worse than one that admits it
+	 * did not. A Capacitor build reaches the system clipboard instead, which is
+	 * exactly the substitution this interface exists for.
+	 */
+	readonly clipboard: {
+		capability(): Capability;
+		write(text: string): Promise<boolean>;
+	};
 }
 
 /**

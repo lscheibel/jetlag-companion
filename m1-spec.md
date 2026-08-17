@@ -362,8 +362,17 @@ Tests 7 and 8 together are the regression guard for §9 — one proves the roste
 7. **Presence filters fields, not entries.** Everyone sees everyone; only `fix` and `battery` are scoped, and the scoping has no round-state precondition (§9). This amends m0-spec §8.
 8. **Sharing the game is not a host action** (§8), and the QR is rendered on-device.
 9. **Teams are ordered by `createdAt`**, so a rename does not reorder the lobby (§2).
+10. **The palette is Okabe–Ito**, seven chromatic swatches plus a neutral (§4). Chosen because it stays distinguishable under deuteranopia, protanopia and tritanopia rather than because it is pretty, and acceptable at that size only because `TeamBadge` never lets colour carry meaning alone.
+
+### Settled during implementation
+
+Three things the spec assumed and the code did not have. All three were M0's, and all three were invisible until an M1 test asked for them.
+
+1. **A screen that can write needs the `game` row synced.** Every mutator calls `appendEvent`, which allocates `seq` from `game.eventSeq` — so the `/g/:code` layout subscribes to `queries.game()` for every screen beneath it. Without that, a lobby's first optimistic write refuses itself with `game_state_invalid` and the cause reads as a permissions problem.
+2. **One socket's messages are handled in the order they arrived.** `handleMessage` awaits, and firing each frame straight into the event loop let a `pos` overtake the `hello` that registers its connection — so the position was dropped, silently, exactly once per session. m0-spec §8's ordering guarantee was a property of the wire that this side was not preserving.
+3. **A stationary phone still has a position.** `watchPosition` may fire once and never again, so the live channel is now seeded by a one-shot read and re-announces on connect. A device standing still on a platform reported no position at all — during the hiding phase, when standing still is the entire plan.
 
 ### Still open
 
-- **The colour palette and the emoji list.** Eight swatches and a curated emoji set, both needing actual content chosen for glare and for colour-vision deficiency. A ten-minute job that wants a real look at a phone outdoors rather than a hex list picked in an editor.
 - **Whether `player.isHost` should gate M5's round controls too.** M1 has no action that starts or ends anything, so the question does not arise yet. The likely answer is yes for starting a round and no for pausing one — a team that needs to stop should not have to find the host — but that belongs in M5 with the rest of the lifecycle.
+- **Leaving a game with no signal.** `player.leave` waits for the server before the session is cleared, because you have not left a lobby that does not know you have. Underground that leaves the button reading _"Leaving…"_ until the signal returns, which is honest but not obviously good. M2 owns what an offline-first screen does with a write it cannot complete.

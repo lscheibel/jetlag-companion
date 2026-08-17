@@ -12,8 +12,11 @@ import {
 	createTeam,
 	joinGame,
 	joinTeam,
+	openDebug,
 	openPhone,
 	type Phone,
+	presenceOf,
+	sawPresence,
 	waitForSync,
 } from "./harness";
 
@@ -22,6 +25,11 @@ import {
  *
  * Every "Reviewable when" in the build plan becomes a spec, and a milestone is
  * done when its spec passes. These seven are M0's.
+ *
+ * M1 moved the harness from `/game` to `/g/:code/debug` (m1-spec §8) and
+ * corrected the presence filter to withhold positions rather than whole players
+ * (m1-spec §9). Both show up here: the phones open the debug route explicitly,
+ * and test 6 asserts on coordinates, which is what it always meant.
  */
 
 test.afterAll(async () => {
@@ -85,6 +93,8 @@ test("2. a force-quit phone rejoins and converges with no host action", async ({
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
+	await openDebug(ana, code);
+	await openDebug(ben, code);
 
 	await createTeam(ana, "Hiders");
 	await expect(ben.page.getByTestId("team-Hiders")).toBeVisible();
@@ -103,7 +113,7 @@ test("2. a force-quit phone rejoins and converges with no host action", async ({
 	// offline needs the service worker's precache, which the dev server does not
 	// install; what this test is about is convergence after being away, so the
 	// relaunch happens first and the tunnel second.
-	await revivedPage.goto("/game");
+	await revivedPage.goto(`/g/${code}/debug`);
 	await expect(revivedPage.getByTestId("connection-state")).toHaveText(
 		"connected",
 		{ timeout: 45_000 },
@@ -136,7 +146,10 @@ test("3. an offline answer that loses the race gets exactly one discard notice",
 	const code = await createGame(ana);
 	await joinGame(ben, code);
 	await joinGame(cara, code);
-	for (const phone of [ana, ben, cara]) await waitForSync(phone);
+	for (const phone of [ana, ben, cara]) {
+		await waitForSync(phone);
+		await openDebug(phone, code);
+	}
 
 	await setUpRound(ana, [ben, cara]);
 	await ana.page.getByTestId("ask-radar-1000").click();
@@ -206,6 +219,8 @@ test("4. re-submitting your own answer is a silent success", async ({
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
+	await openDebug(ana, code);
+	await openDebug(ben, code);
 
 	await setUpRound(ana, [ben]);
 	await ana.page.getByTestId("ask-radar-1000").click();
@@ -234,6 +249,8 @@ test("5. the folded search area is byte-identical on client and server", async (
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
+	await openDebug(ana, code);
+	await openDebug(ben, code);
 
 	await setUpRound(ana, [ben]);
 	await ana.page.getByTestId("ask-radar-3000").click();
@@ -268,6 +285,8 @@ test("6. a seeker is never sent hider coordinates on the ephemeral channel", asy
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
+	await openDebug(ana, code);
+	await openDebug(ben, code);
 	await setUpRound(ana, [ben]);
 
 	// Give the fan-out several cycles with both phones reporting position.
@@ -283,25 +302,19 @@ test("6. a seeker is never sent hider coordinates on the ephemeral channel", asy
 	 * Asserted on the socket frames rather than on the UI. Not because a friend
 	 * would open dev tools, but because this is the only test that fails loudly
 	 * when someone widens a fan-out filter by accident three milestones from now.
+	 *
+	 * It is about **coordinates**, which is what it always meant. Ana does see
+	 * Ben — she has to, she asks him questions — and what she never receives is
+	 * where he is. m1-spec §9.
 	 */
-	const leaked = ana.frames
-		.filter((frame) => frame.includes('"presence"'))
-		.flatMap((frame) => {
-			const parsed: unknown = JSON.parse(frame);
-			if (
-				typeof parsed !== "object" ||
-				parsed === null ||
-				!("entries" in parsed)
-			) {
-				return [];
-			}
-			const entries = (parsed as { entries: { displayName: string }[] })
-				.entries;
-			return entries.filter((entry) => entry.displayName === "Ben");
-		});
+	const ben_asSeenByAna = presenceOf(ana, "Ben");
 
-	expect(leaked).toHaveLength(0);
-	expect(ana.frames.some((frame) => frame.includes('"presence"'))).toBe(true);
+	expect(sawPresence(ana)).toBe(true);
+	expect(ben_asSeenByAna.length).toBeGreaterThan(0);
+	expect(ben_asSeenByAna.filter((entry) => entry.fix !== null)).toHaveLength(0);
+	expect(
+		ben_asSeenByAna.filter((entry) => entry.battery !== null),
+	).toHaveLength(0);
 
 	await ana.close();
 	await ben.close();
@@ -317,6 +330,8 @@ test("7. an offline stretch flushes a complete track with real capture times", a
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
+	await openDebug(ana, code);
+	await openDebug(ben, code);
 	await setUpRound(ana, [ben]);
 
 	const gameId = await gameIdForCode(code);

@@ -5,11 +5,21 @@ n seeker teams against m hider teams, one to three players per team.
 
 - [build-plan.md](build-plan.md) — what gets built, milestone by milestone
 - [m0-spec.md](m0-spec.md) — the contracts every later milestone inherits
+- [m1-spec.md](m1-spec.md) — teams and the lobby
 
-**Status: M0.** What exists is a debug harness that makes each contract in the
-spec real in code — sync topology, the event log, first-to-the-server-wins,
-the constraint engine with radar as its proof, the platform adapter, and the
-area pack format. There is no map screen and only one question type, on purpose.
+**Status: M1.** M0's contracts are real in code — sync topology, the event log,
+first-to-the-server-wins, the constraint engine with radar as its proof, the
+platform adapter, the area pack format — and M1 spends them on the first screen
+a player actually sees: create or join a game, build the teams you want, take
+the sides you want. There is no map screen and only one question type, on
+purpose.
+
+```
+/                 create a game, or join by typing a code
+/j/:code          join by link or QR
+/g/:code          the lobby
+/g/:code/debug    the M0 harness, kept
+```
 
 ## Layout
 

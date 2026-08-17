@@ -37,9 +37,11 @@ export const queries = defineQueries({
 			zql.team
 				.where("gameId", gameId)
 				.related("members", (member) => member.related("player"))
-				// Teams have no creation order of their own, and an arbitrary one makes
-				// "the first team" mean different things on different devices.
-				.orderBy("name", "asc")
+				// Deterministic on every device, which is what M0 wanted from ordering
+				// by name — and stable under a rename, which is what M0 did not get.
+				// A team editing its own name should not shuffle the lobby under
+				// somebody's thumb. m1-spec §2.
+				.orderBy("createdAt", "asc")
 		);
 	}),
 

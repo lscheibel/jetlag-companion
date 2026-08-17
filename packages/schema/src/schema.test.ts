@@ -1,6 +1,7 @@
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { drizzleSchema } from "./drizzle";
+import { EVENT_TYPES, type RoundStatus } from "./types";
 import { schema } from "./zero/schema";
 
 /**
@@ -68,5 +69,49 @@ describe("first to the server wins", () => {
 		expect(
 			unique?.config.columns.map((c) => ("name" in c ? c.name : c)),
 		).toEqual(["questionId"]);
+	});
+});
+
+describe("one player, one team", () => {
+	/**
+	 * Not a data-integrity nicety — this index *is* the invariant. A `player` row
+	 * belongs to exactly one game, so uniqueness on `playerId` says "one team per
+	 * player per game" without a composite key. m1-spec §5.
+	 */
+	it("is backed by a unique index on teamMember.playerId", () => {
+		const teamMember = getTableConfig(drizzleSchema.teamMember);
+		const unique = teamMember.indexes.find((index) => index.config.unique);
+		expect(
+			unique?.config.columns.map((c) => ("name" in c ? c.name : c)),
+		).toEqual(["playerId"]);
+	});
+});
+
+describe("the M1 vocabulary", () => {
+	it("declares the events M1 emits", () => {
+		expect(EVENT_TYPES).toContain("host.changed");
+		expect(EVENT_TYPES).toContain("player.removed");
+		expect(EVENT_TYPES).toContain("team.deleted");
+	});
+
+	/**
+	 * M0 declared it and never emitted it, which is why replacing it with
+	 * `host.changed` costs nothing and owes nobody a version bump. m1-spec §2.
+	 */
+	it("no longer declares host.transferred", () => {
+		expect(EVENT_TYPES).not.toContain("host.transferred");
+	});
+
+	it("has a round status for a round that exists but has not begun", () => {
+		const pending: RoundStatus = "pending";
+		expect(pending).toBe("pending");
+	});
+
+	it("carries the departure and host columns on player", () => {
+		const player = getTableConfig(drizzleSchema.player);
+		const columns = player.columns.map((column) => column.name);
+		expect(columns).toEqual(
+			expect.arrayContaining(["isHost", "leftAt", "removedByPlayerId"]),
+		);
 	});
 });

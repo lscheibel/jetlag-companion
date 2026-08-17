@@ -17,19 +17,41 @@ export function Rounds() {
 	const [hiderTeamId, setHiderTeamId] = useState<string | null>(null);
 
 	const hider = teams.find((team) => team.id === hiderTeamId) ?? teams[0];
+	/**
+	 * Round 1 exists from game creation with `status: "pending"`, so starting a
+	 * round is assign-then-begin rather than create. m1-spec §3. `round.create`
+	 * stays for the rounds M5 adds after this one.
+	 */
+	const pending = rounds.find((round) => round.status === "pending");
 
 	function createRound() {
 		if (!hider || teams.length < 2) return;
+		const roles = teams.map((team) => ({
+			teamId: team.id,
+			role: team.id === hider.id ? ("hider" as const) : ("seeker" as const),
+		}));
+		const eventId = crypto.randomUUID();
+
+		if (pending) {
+			void zero.mutate(
+				mutators.round.assignRoles({ eventId, roundId: pending.id, roles }),
+			);
+			void zero.mutate(
+				mutators.round.startHiding({
+					eventId: crypto.randomUUID(),
+					roundId: pending.id,
+				}),
+			);
+			return;
+		}
+
 		void zero.mutate(
 			mutators.round.create({
-				eventId: crypto.randomUUID(),
+				eventId,
 				roundId: crypto.randomUUID(),
 				ordinal: rounds.length + 1,
 				hidingDurationMs: HIDING_DURATION_MS,
-				roles: teams.map((team) => ({
-					teamId: team.id,
-					role: team.id === hider.id ? ("hider" as const) : ("seeker" as const),
-				})),
+				roles,
 			}),
 		);
 	}
@@ -56,7 +78,7 @@ export function Rounds() {
 					onClick={createRound}
 					type="button"
 				>
-					Start round {rounds.length + 1}
+					Start round {pending?.ordinal ?? rounds.length + 1}
 				</button>
 			</div>
 

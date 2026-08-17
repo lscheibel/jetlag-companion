@@ -1,10 +1,8 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
 import { mutators, queries } from "@zero-lag/schema";
 import { useState } from "react";
+import { suggestIdentity } from "../lobby/palette";
 import { Panel } from "./panel";
-
-const COLORS = ["#e11d48", "#2563eb", "#16a34a", "#d97706"];
-const EMOJI = ["🦊", "🐙", "🦉", "🐝"];
 
 interface RosterProps {
 	playerId: string;
@@ -18,14 +16,12 @@ export function Roster({ playerId, myTeamId }: RosterProps) {
 	const [name, setName] = useState("");
 
 	function createTeam() {
-		const index = teams.length % COLORS.length;
 		void zero.mutate(
 			mutators.team.create({
 				eventId: crypto.randomUUID(),
 				teamId: crypto.randomUUID(),
 				name,
-				color: COLORS[index] ?? "#666666",
-				emoji: EMOJI[index] ?? "🎯",
+				...suggestIdentity(teams),
 			}),
 		);
 		setName("");

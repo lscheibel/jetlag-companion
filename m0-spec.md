@@ -464,6 +464,11 @@ The same fix has two fates, and conflating them is a mistake worth naming.
 
 **Presence is lossy on purpose.** A `pos` broadcast that cannot be delivered right now is worthless in five seconds. It is dropped, never queued, and the stale marker greys out — which is the honest outcome.
 
+Two things that sound like exceptions to that and are not, both found while M1 was being built:
+
+- **A client re-announces its current position when the socket opens.** At most one fix is held, always the newest, and a newer one replaces it rather than joining it — this is state, not a queue. It exists because `watchPosition` may fire once and never again: without it, a phone standing still on a platform reports no position for the whole of the hiding phase, which is when standing still is the entire plan.
+- **One socket's messages are handled one at a time, in arrival order.** `hello` verifies a token and reads the database, so dispatching each frame straight into the event loop let a `pos` overtake the `hello` that registers its connection — and the position was dropped. The wire guarantees frame order; this side does not get to reorder it.
+
 **The position log is not lossy.** Each client records a fix on a **configurable interval, defaulting to 30s**, into a local queue, plus one unconditionally at every question ask, question end and answer. The queue flushes on reconnect. A player who spends ten minutes in a tunnel contributes ten minutes of track the moment they surface, ordered by their own `capturedAt`.
 
 This is the reason client timestamps are trusted rather than stamped on arrival. M14's replay and M8's suggestion inputs both read this log, and neither can afford holes wherever the mobile network had them — nor a flushed batch that all claims to have happened at the instant the signal came back.

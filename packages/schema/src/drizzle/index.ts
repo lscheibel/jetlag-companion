@@ -54,7 +54,13 @@ export const game = pgTable(
 		/** Short join code, unique among active games. */
 		code: text("code").notNull(),
 		status: text("status").$type<GameStatus>().notNull(),
-		hostPlayerId: text("hostPlayerId").notNull(),
+		/**
+		 * Who opened the game. It never changes and nothing authorizes against it
+		 * — that is `player.isHost`, which any player can claim or release. Two
+		 * columns both called "host" meaning different things is how a later
+		 * milestone checks the wrong one. m1-spec §6.
+		 */
+		createdByPlayerId: text("createdByPlayerId").notNull(),
 		mapConfigId: text("mapConfigId"),
 		/**
 		 * The per-game monotonic counter §6 allocates `event.seq` from, held here
@@ -95,6 +101,21 @@ export const player = pgTable(
 		displayName: text("displayName").notNull(),
 		deviceId: text("deviceId").notNull(),
 		joinedAt: epochMs("joinedAt").notNull(),
+		/**
+		 * The host hat. Seeded true for whoever created the game; any player can
+		 * put it on or take it off, and more than one can wear it at once — the
+		 * role exists because some players are new to the game, not because
+		 * anyone needs authority over anyone. m1-spec §6.
+		 */
+		isHost: boolean("isHost").notNull().default(false),
+		/**
+		 * Departure is a column, never a delete: `event.actorPlayerId`,
+		 * `answer.answeringPlayerId` and `positionSnapshot.playerId` all point
+		 * here, and M14 replays a game with names attached. m1-spec §7.
+		 */
+		leftAt: epochMs("leftAt"),
+		/** Set only when a host removed them — the difference is what the join endpoint reads. */
+		removedByPlayerId: text("removedByPlayerId"),
 	},
 	(table) => [index("player_game_idx").on(table.gameId)],
 );
@@ -108,6 +129,8 @@ export const team = pgTable(
 		name: text("name").notNull(),
 		color: text("color").notNull(),
 		emoji: text("emoji").notNull(),
+		/** Ordering that a rename does not disturb. m1-spec §2. */
+		createdAt: epochMs("createdAt").notNull(),
 	},
 	(table) => [index("team_game_idx").on(table.gameId)],
 );
@@ -121,7 +144,14 @@ export const teamMember = pgTable(
 	},
 	(table) => [
 		primaryKey({ columns: [table.teamId, table.playerId] }),
-		index("teamMember_player_idx").on(table.playerId),
+		/**
+		 * UNIQUE, and that is the whole of "one player, one team". A `player` row
+		 * belongs to exactly one game, so uniqueness on `playerId` says it without
+		 * a composite key and without denormalising `gameId` onto the membership.
+		 * `team.join` deletes before it inserts, in the same transaction, or this
+		 * index rejects the move it exists to protect. m1-spec §5.
+		 */
+		uniqueIndex("teamMember_player_idx").on(table.playerId),
 	],
 );
 

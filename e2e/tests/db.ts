@@ -16,18 +16,34 @@ import { Pool } from "pg";
  * browser used. Asserting the browser against itself would prove nothing.
  */
 
-const pool = new Pool({
-	connectionString:
-		process.env.DATABASE_URL ??
-		"postgresql://postgres:password@localhost:5432/zero-lag",
-});
+/**
+ * Opened on demand rather than at import.
+ *
+ * Spec files share this module but close it one at a time, in their own
+ * `afterAll` — so a pool created once at import is ended by whichever file
+ * finishes first and unusable by every file after it. Reopening is the honest
+ * shape: `closeDb` means "this file is done with the database", not "nobody
+ * will ever need it again".
+ */
+let pool: Pool | null = null;
+
+function db(): Pool {
+	pool ??= new Pool({
+		connectionString:
+			process.env.DATABASE_URL ??
+			"postgresql://postgres:password@localhost:5432/zero-lag",
+	});
+	return pool;
+}
 
 export async function closeDb(): Promise<void> {
-	await pool.end();
+	const open = pool;
+	pool = null;
+	await open?.end();
 }
 
 export async function serverSearchAreaHash(gameId: string): Promise<string> {
-	const config = await pool.query<{
+	const config = await db().query<{
 		projection: Projection;
 		validHidingArea: MultiPolygon;
 	}>(
@@ -37,7 +53,7 @@ export async function serverSearchAreaHash(gameId: string): Promise<string> {
 	const row = config.rows[0];
 	if (!row) throw new Error(`no map config for game ${gameId}`);
 
-	const constraints = await pool.query<{
+	const constraints = await db().query<{
 		id: string;
 		geometry: Constraint["geometry"];
 		mode: Constraint["mode"];
@@ -56,7 +72,7 @@ export async function serverSearchAreaHash(gameId: string): Promise<string> {
 }
 
 export async function answerCount(questionId: string): Promise<number> {
-	const result = await pool.query<{ count: string }>(
+	const result = await db().query<{ count: string }>(
 		'SELECT count(*)::text AS count FROM answer WHERE "questionId" = $1',
 		[questionId],
 	);
@@ -64,7 +80,7 @@ export async function answerCount(questionId: string): Promise<number> {
 }
 
 export async function eventSeqs(gameId: string): Promise<number[]> {
-	const result = await pool.query<{ seq: number }>(
+	const result = await db().query<{ seq: number }>(
 		'SELECT seq FROM event WHERE "gameId" = $1 ORDER BY seq',
 		[gameId],
 	);
@@ -72,7 +88,7 @@ export async function eventSeqs(gameId: string): Promise<number[]> {
 }
 
 export async function gameIdForCode(code: string): Promise<string> {
-	const result = await pool.query<{ id: string }>(
+	const result = await db().query<{ id: string }>(
 		"SELECT id FROM game WHERE code = $1",
 		[code],
 	);
@@ -81,8 +97,57 @@ export async function gameIdForCode(code: string): Promise<string> {
 	return id;
 }
 
+/**
+ * The whole of "one player, one team", read from the table rather than the
+ * screen. m1-spec §5: joining is a move, and the UNIQUE index is what makes it
+ * one.
+ */
+export async function teamMembershipCount(playerId: string): Promise<number> {
+	const result = await db().query<{ count: string }>(
+		'SELECT count(*)::text AS count FROM "teamMember" WHERE "playerId" = $1',
+		[playerId],
+	);
+	return Number(result.rows[0]?.count ?? "0");
+}
+
+/**
+ * Identity survives leaving and coming back — the join endpoint returns the
+ * *same* player for a known device, which is what makes a rejoin frictionless.
+ * m1-spec §7.
+ */
+export async function playerIdForName(
+	code: string,
+	displayName: string,
+): Promise<string> {
+	const result = await db().query<{ id: string }>(
+		`SELECT p.id FROM player p
+		 JOIN game g ON g.id = p."gameId"
+		 WHERE g.code = $1 AND p."displayName" = $2`,
+		[code, displayName],
+	);
+	const id = result.rows[0]?.id;
+	if (!id) throw new Error(`no player ${displayName} in game ${code}`);
+	return id;
+}
+
+export async function eventTypes(gameId: string): Promise<string[]> {
+	const result = await db().query<{ type: string }>(
+		'SELECT type FROM event WHERE "gameId" = $1 ORDER BY seq',
+		[gameId],
+	);
+	return result.rows.map((row) => row.type);
+}
+
+export async function roundStatuses(gameId: string): Promise<string[]> {
+	const result = await db().query<{ status: string }>(
+		'SELECT status FROM round WHERE "gameId" = $1 ORDER BY ordinal',
+		[gameId],
+	);
+	return result.rows.map((row) => row.status);
+}
+
 export async function positionCapturedAts(gameId: string): Promise<number[]> {
-	const result = await pool.query<{ capturedAt: string }>(
+	const result = await db().query<{ capturedAt: string }>(
 		'SELECT "capturedAt" FROM "positionSnapshot" WHERE "gameId" = $1 ORDER BY "capturedAt"',
 		[gameId],
 	);

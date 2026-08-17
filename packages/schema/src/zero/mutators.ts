@@ -1,12 +1,17 @@
 import {
-	ApplicationError,
 	defineMutator,
 	defineMutators,
 	type Transaction,
 } from "@rocicorp/zero";
 import { answerToConstraintGeometry } from "@zero-lag/rules";
 import { z } from "zod";
-import type { EventType, GameContext, Json, MutationRejection } from "../types";
+import type { EventType, GameContext, Json } from "../types";
+import {
+	reject,
+	requireContext,
+	requireHost,
+	requireTeamMember,
+} from "./guards";
 import { zql } from "./schema";
 
 /**
@@ -14,22 +19,6 @@ import { zql } from "./schema";
  * one transaction. There is no exception to this, and a state write with no
  * event is a defect. m0-spec §6.
  */
-
-function requireContext(ctx: GameContext | undefined): GameContext {
-	if (!ctx) {
-		throw new ApplicationError("unauthenticated", {
-			details: {
-				code: "not_permitted",
-				reason: "no game token",
-			} satisfies MutationRejection,
-		});
-	}
-	return ctx;
-}
-
-function reject(rejection: MutationRejection): never {
-	throw new ApplicationError(rejection.code, { details: rejection });
-}
 
 /**
  * A mutator runs twice on the client and once on the server, so this returns
@@ -89,19 +78,32 @@ const withEvent = { eventId: z.string() };
 
 type Tx = Transaction;
 
-async function appendEvent(
+type EventEntry = {
+	eventId: string;
+	type: EventType;
+	actorPlayerId: string | null;
+	actorTeamId: string | null;
+	payload: Json;
+	clientSubmittedAt?: number | null;
+};
+
+/**
+ * One transaction, several events, consecutive `seq`. A team move is genuinely
+ * two things that happened — a leave and a join — and the log says so.
+ *
+ * The counter is read once and written once rather than per event, so this does
+ * not depend on a mutator seeing its own uncommitted writes. That holds inside a
+ * Postgres transaction on the server; assuming it of the client's store as well
+ * would be the kind of correlation that stops being true quietly.
+ */
+async function appendEvents(
 	tx: Tx,
-	entry: {
-		eventId: string;
-		gameId: string;
-		type: EventType;
-		actorPlayerId: string | null;
-		actorTeamId: string | null;
-		payload: Json;
-		clientSubmittedAt?: number | null;
-	},
+	gameId: string,
+	entries: readonly EventEntry[],
 ): Promise<void> {
-	const game = await tx.run(zql.game.where("id", entry.gameId).one());
+	if (entries.length === 0) return;
+
+	const game = await tx.run(zql.game.where("id", gameId).one());
 	if (!game) {
 		reject({
 			code: "game_state_invalid",
@@ -112,20 +114,41 @@ async function appendEvent(
 
 	// Allocated inside the mutator transaction from a per-game counter, so
 	// replay ordering is total and gap-free.
-	const seq = game.eventSeq + 1;
-	await tx.mutate.game.update({ id: entry.gameId, eventSeq: seq });
-	await tx.mutate.event.insert({
-		id: entry.eventId,
-		gameId: entry.gameId,
-		seq,
-		type: entry.type,
-		version: 1,
-		actorPlayerId: entry.actorPlayerId,
-		actorTeamId: entry.actorTeamId,
-		payload: entry.payload,
-		clientSubmittedAt: entry.clientSubmittedAt ?? null,
-		serverReceivedAt: now(),
-	});
+	let seq = game.eventSeq;
+	for (const entry of entries) {
+		seq += 1;
+		await tx.mutate.event.insert({
+			id: entry.eventId,
+			gameId,
+			seq,
+			type: entry.type,
+			version: 1,
+			actorPlayerId: entry.actorPlayerId,
+			actorTeamId: entry.actorTeamId,
+			payload: entry.payload,
+			clientSubmittedAt: entry.clientSubmittedAt ?? null,
+			serverReceivedAt: now(),
+		});
+	}
+	await tx.mutate.game.update({ id: gameId, eventSeq: seq });
+}
+
+async function appendEvent(
+	tx: Tx,
+	entry: EventEntry & { gameId: string },
+): Promise<void> {
+	const { gameId, ...rest } = entry;
+	await appendEvents(tx, gameId, [rest]);
+}
+
+/**
+ * A second event in one mutation needs a second id, and it has to be the same
+ * id on the client's optimistic pass and on the server's authoritative one. The
+ * client sends one `eventId`; the rest are derived from it, which is
+ * deterministic without a second round of randomness in the arguments.
+ */
+function derivedEventId(eventId: string, suffix: string): string {
+	return `${eventId}:${suffix}`;
 }
 
 /** Postgres unique-violation, wherever it is buried in the driver's error chain. */
@@ -158,13 +181,49 @@ function isDuplicateAnswer(error: unknown): boolean {
 }
 
 export const mutators = defineMutators({
+	/**
+	 * The host hat. Self-scoped and gated by nothing at all: two people setting
+	 * up a lobby together is a normal Tuesday, not a conflict, so more than one
+	 * player may wear it and there is no transfer, no hand-off and no approval
+	 * step. A game can also end up with none, which the lobby heals by asking.
+	 * m1-spec §6.
+	 */
+	game: {
+		claimHost: defineMutator(
+			z.object({ ...withEvent }),
+			async ({ tx, ctx, args }) => {
+				await setHost(tx, requireContext(ctx), args.eventId, true);
+			},
+		),
+
+		releaseHost: defineMutator(
+			z.object({ ...withEvent }),
+			async ({ tx, ctx, args }) => {
+				await setHost(tx, requireContext(ctx), args.eventId, false);
+			},
+		),
+	},
+
 	player: {
+		/**
+		 * `playerId` names somebody else, and only a host may do that. One mutator
+		 * per concept rather than a `renameOther` twin of everything.
+		 */
 		rename: defineMutator(
-			z.object({ ...withEvent, displayName: z.string().min(1).max(40) }),
+			z.object({
+				...withEvent,
+				playerId: z.string().optional(),
+				displayName: z.string().min(1).max(40),
+			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				const target = args.playerId ?? playerId;
+				if (target !== playerId) {
+					await requireHost(tx, playerId, "renaming another player");
+				}
+
 				await tx.mutate.player.update({
-					id: playerId,
+					id: target,
 					displayName: args.displayName,
 				});
 				await appendEvent(tx, {
@@ -173,13 +232,108 @@ export const mutators = defineMutators({
 					type: "player.renamed",
 					actorPlayerId: playerId,
 					actorTeamId: null,
-					payload: { displayName: args.displayName },
+					payload:
+						target === playerId
+							? { displayName: args.displayName }
+							: { displayName: args.displayName, playerId: target },
+				});
+			},
+		),
+
+		/**
+		 * Leaving is a column, never a delete: `event.actorPlayerId`,
+		 * `answer.answeringPlayerId` and `positionSnapshot.playerId` all point at
+		 * this row, and M14 replays a game with names attached. m1-spec §7.
+		 *
+		 * `removedByPlayerId` stays null, and that is the whole difference between
+		 * this and `remove`: the join endpoint reads it to decide whether coming
+		 * back is frictionless or refused.
+		 */
+		leave: defineMutator(
+			z.object({ ...withEvent }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await dropMemberships(tx, playerId);
+				await tx.mutate.player.update({
+					id: playerId,
+					leftAt: now(),
+					removedByPlayerId: null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "player.left",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					// The membership goes in this same transaction; a player who has
+					// left is on no team, and the log does not need to say it twice.
+					payload: {},
+				});
+			},
+		),
+
+		remove: defineMutator(
+			z.object({ ...withEvent, playerId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "removing a player");
+
+				await dropMemberships(tx, args.playerId);
+				await tx.mutate.player.update({
+					id: args.playerId,
+					leftAt: now(),
+					removedByPlayerId: playerId,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "player.removed",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: { playerId: args.playerId },
+				});
+			},
+		),
+
+		readmit: defineMutator(
+			z.object({ ...withEvent, playerId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "re-admitting a player");
+
+				const target = await tx.run(
+					zql.player.where("id", args.playerId).one(),
+				);
+				await tx.mutate.player.update({
+					id: args.playerId,
+					leftAt: null,
+					removedByPlayerId: null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					// `player.joined` means "this player is in the game now", so the
+					// actor is them rather than the host — who is named in the payload
+					// so the log does not lose whose decision it was.
+					type: "player.joined",
+					actorPlayerId: args.playerId,
+					actorTeamId: null,
+					payload: {
+						displayName: target?.displayName ?? "",
+						readmitted: true,
+						readmittedByPlayerId: playerId,
+					},
 				});
 			},
 		),
 	},
 
 	team: {
+		/**
+		 * Host only: how many teams there are is a property of the game rather than
+		 * of anyone's presentation, and it is exactly the sort of thing a player
+		 * new to the game should not be able to change by accident. m1-spec §4.
+		 */
 		create: defineMutator(
 			z.object({
 				...withEvent,
@@ -190,12 +344,15 @@ export const mutators = defineMutators({
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "creating a team");
+
 				await tx.mutate.team.insert({
 					id: args.teamId,
 					gameId,
 					name: args.name,
 					color: args.color,
 					emoji: args.emoji,
+					createdAt: now(),
 				});
 				await appendEvent(tx, {
 					eventId: args.eventId,
@@ -208,23 +365,166 @@ export const mutators = defineMutators({
 			},
 		),
 
-		join: defineMutator(
-			z.object({ ...withEvent, teamId: z.string() }),
+		/**
+		 * A team's own members, not the host. There is no reason for four people to
+		 * queue behind one person to change an emoji.
+		 *
+		 * Duplicate colours are prevented by the picker and not here: a duplicate
+		 * is ugly rather than broken, and refusing it would be this app's first
+		 * refusal of a harmless action. m1-spec §4.
+		 */
+		update: defineMutator(
+			z.object({
+				...withEvent,
+				teamId: z.string(),
+				name: z.string().min(1).max(40).optional(),
+				color: z.string().optional(),
+				emoji: z.string().optional(),
+			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
-				await tx.mutate.teamMember.upsert({
-					teamId: args.teamId,
-					playerId,
-					joinedAt: now(),
-				});
+				await requireTeamMember(tx, playerId, args.teamId, "editing a team");
+
+				const changes: { name?: string; color?: string; emoji?: string } = {};
+				if (args.name !== undefined) changes.name = args.name;
+				if (args.color !== undefined) changes.color = args.color;
+				if (args.emoji !== undefined) changes.emoji = args.emoji;
+				if (Object.keys(changes).length === 0) return;
+
+				await tx.mutate.team.update({ id: args.teamId, ...changes });
 				await appendEvent(tx, {
 					eventId: args.eventId,
 					gameId,
-					type: "team.memberJoined",
+					type: "team.updated",
 					actorPlayerId: playerId,
+					actorTeamId: args.teamId,
+					// Changed fields only — a replay reader wants the diff, and a
+					// full snapshot here would make an unchanged emoji look edited.
+					payload: changes,
+				});
+			},
+		),
+
+		/**
+		 * Lobby only. `question`, `constraint`, `hidingCommitment` and
+		 * `positionSnapshot` all carry a `teamId`, and the event log names teams
+		 * that must still resolve — so once a round has left `pending` there is no
+		 * safe version of this. Inside the lobby the whole thing is one
+		 * transaction: every member moves out, the pending round's role row goes,
+		 * then the team. m1-spec §4.
+		 */
+		delete: defineMutator(
+			z.object({ ...withEvent, teamId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "deleting a team");
+
+				const rounds = await tx.run(zql.round.where("gameId", gameId));
+				const started = rounds.find((round) => round.status !== "pending");
+				if (started) {
+					reject({
+						code: "game_state_invalid",
+						expected: "a lobby, where no round has started",
+						actual: `round ${started.ordinal} is ${started.status}`,
+					});
+				}
+
+				const team = await tx.run(zql.team.where("id", args.teamId).one());
+				const members = await tx.run(
+					zql.teamMember.where("teamId", args.teamId),
+				);
+
+				const events: EventEntry[] = [];
+				for (const member of members) {
+					await tx.mutate.teamMember.delete({
+						teamId: args.teamId,
+						playerId: member.playerId,
+					});
+					events.push({
+						eventId: derivedEventId(args.eventId, `left:${member.playerId}`),
+						type: "team.memberLeft",
+						actorPlayerId: member.playerId,
+						actorTeamId: args.teamId,
+						payload: {},
+					});
+				}
+
+				for (const round of rounds) {
+					await tx.mutate.roundTeamRole.delete({
+						roundId: round.id,
+						teamId: args.teamId,
+					});
+				}
+
+				await tx.mutate.team.delete({ id: args.teamId });
+				events.push({
+					eventId: args.eventId,
+					type: "team.deleted",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: { teamId: args.teamId, name: team?.name ?? "" },
+				});
+
+				await appendEvents(tx, gameId, events);
+			},
+		),
+
+		/**
+		 * **Joining is a move.** M0 upserted the membership and left the old one
+		 * standing, so a player who joined a second team was in both and
+		 * `useMyRole` silently picked whichever sorted first — a seeker on one
+		 * device and a hider on another, which reads as a sync bug for as long as
+		 * it takes somebody to look at the table. m1-spec §5.
+		 *
+		 * Delete before insert, in this transaction, or the UNIQUE index on
+		 * `teamMember.playerId` rejects the move it exists to protect.
+		 */
+		join: defineMutator(
+			z.object({
+				...withEvent,
+				teamId: z.string(),
+				playerId: z.string().optional(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const target = args.playerId ?? playerId;
+				if (target !== playerId) {
+					await requireHost(tx, playerId, "moving another player");
+				}
+
+				const events: EventEntry[] = [];
+				for (const membership of await tx.run(
+					zql.teamMember.where("playerId", target),
+				)) {
+					// Already there. Nothing happened twice.
+					if (membership.teamId === args.teamId) return;
+					await tx.mutate.teamMember.delete({
+						teamId: membership.teamId,
+						playerId: target,
+					});
+					events.push({
+						eventId: derivedEventId(args.eventId, "left"),
+						type: "team.memberLeft",
+						actorPlayerId: target,
+						actorTeamId: membership.teamId,
+						payload: {},
+					});
+				}
+
+				await tx.mutate.teamMember.insert({
+					teamId: args.teamId,
+					playerId: target,
+					joinedAt: now(),
+				});
+				events.push({
+					eventId: args.eventId,
+					type: "team.memberJoined",
+					actorPlayerId: target,
 					actorTeamId: args.teamId,
 					payload: {},
 				});
+
+				await appendEvents(tx, gameId, events);
 			},
 		),
 
@@ -246,6 +546,59 @@ export const mutators = defineMutators({
 	},
 
 	round: {
+		/**
+		 * The lobby's role assignment and M5's between-round swap are the same
+		 * write: round 1 exists from game creation with `status: "pending"`, so
+		 * there is always somewhere to assign into and a team never needs a role
+		 * column. m1-spec §3.
+		 *
+		 * The event carries the complete assignment rather than a delta, so a
+		 * replay reader never has to accumulate to know the state of the board.
+		 */
+		assignRoles: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				roles: z.array(
+					z.object({
+						teamId: z.string(),
+						role: z.enum(["seeker", "hider"]),
+					}),
+				),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "assigning roles");
+
+				const assigned = new Set(args.roles.map((role) => role.teamId));
+				for (const existing of await tx.run(
+					zql.roundTeamRole.where("roundId", args.roundId),
+				)) {
+					if (assigned.has(existing.teamId)) continue;
+					await tx.mutate.roundTeamRole.delete({
+						roundId: args.roundId,
+						teamId: existing.teamId,
+					});
+				}
+				for (const role of args.roles) {
+					await tx.mutate.roundTeamRole.upsert({
+						roundId: args.roundId,
+						teamId: role.teamId,
+						role: role.role,
+					});
+				}
+
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.rolesAssigned",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: { roundId: args.roundId, roles: args.roles },
+				});
+			},
+		),
+
 		/**
 		 * A round is the unit of play, and role is assigned here rather than on the
 		 * team, because hiders and seekers swap between rounds. m0-spec §5.
@@ -698,6 +1051,39 @@ export const mutators = defineMutators({
 		),
 	},
 });
+
+async function setHost(
+	tx: Tx,
+	ctx: GameContext,
+	eventId: string,
+	isHost: boolean,
+): Promise<void> {
+	await tx.mutate.player.update({ id: ctx.playerId, isHost });
+	await appendEvent(tx, {
+		eventId,
+		gameId: ctx.gameId,
+		type: "host.changed",
+		actorPlayerId: ctx.playerId,
+		actorTeamId: null,
+		payload: { playerId: ctx.playerId, isHost },
+	});
+}
+
+/**
+ * A player belongs to at most one team (§5), but this reads the set rather than
+ * the row: the invariant is new, and a mutator that assumes it while cleaning up
+ * after it would leave exactly the rows it exists to remove.
+ */
+async function dropMemberships(tx: Tx, playerId: string): Promise<void> {
+	for (const membership of await tx.run(
+		zql.teamMember.where("playerId", playerId),
+	)) {
+		await tx.mutate.teamMember.delete({
+			teamId: membership.teamId,
+			playerId,
+		});
+	}
+}
 
 /**
  * The constraint an answer implies, derived by the same pure function the

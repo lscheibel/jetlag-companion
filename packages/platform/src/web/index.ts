@@ -187,10 +187,33 @@ const battery: PlatformAdapter["battery"] = {
 	},
 };
 
+const clipboard: PlatformAdapter["clipboard"] = {
+	capability() {
+		if (typeof navigator === "undefined" || !("clipboard" in navigator)) {
+			return unsupported("unsupported");
+		}
+		// The API exists only in a secure context, and a game set up over a plain
+		// http:// LAN address is a real way to meet this.
+		return AVAILABLE;
+	},
+
+	async write(text: string): Promise<boolean> {
+		if (!clipboard.capability().available) return false;
+		try {
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {
+			// Permission refused, or no user gesture. The caller says so plainly.
+			return false;
+		}
+	},
+};
+
 export const webPlatform: PlatformAdapter = {
 	location,
 	notifications,
 	wakeLock,
 	haptics,
 	battery,
+	clipboard,
 };

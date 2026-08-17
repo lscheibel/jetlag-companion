@@ -42,7 +42,7 @@ const game = table("game")
 		id: string(),
 		code: string(),
 		status: enumeration<GameStatus>(),
-		hostPlayerId: string(),
+		createdByPlayerId: string(),
 		mapConfigId: string().optional(),
 		eventSeq: number(),
 		positionIntervalMs: number(),
@@ -73,6 +73,9 @@ const player = table("player")
 		displayName: string(),
 		deviceId: string(),
 		joinedAt: number(),
+		isHost: boolean(),
+		leftAt: number().optional(),
+		removedByPlayerId: string().optional(),
 	})
 	.primaryKey("id");
 
@@ -83,6 +86,7 @@ const team = table("team")
 		name: string(),
 		color: string(),
 		emoji: string(),
+		createdAt: number(),
 	})
 	.primaryKey("id");
 

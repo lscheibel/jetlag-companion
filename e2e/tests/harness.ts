@@ -86,6 +86,7 @@ export async function openPhone(
 	};
 }
 
+/** Creating and joining both land in the lobby at `/g/:code`. m1-spec §8. */
 export async function createGame(phone: Phone): Promise<string> {
 	await phone.page.getByTestId("display-name").fill(phone.name);
 	await phone.page.getByTestId("create-game").click();
@@ -100,12 +101,86 @@ export async function joinGame(phone: Phone, code: string): Promise<void> {
 	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
 }
 
+/** Join and get refused, which is only possible after a host removed you. */
+export async function joinRefused(phone: Phone, code: string): Promise<string> {
+	await phone.page.getByTestId("display-name").fill(phone.name);
+	await phone.page.getByTestId("join-code").fill(code);
+	await phone.page.getByTestId("join-game").click();
+	await expect(phone.page.getByTestId("landing-error")).toBeVisible();
+	return (await phone.page.getByTestId("landing-error").textContent()) ?? "";
+}
+
+/** The M0 debug harness, which lives under the game's own URL. m1-spec §8. */
+export async function openDebug(phone: Phone, code: string): Promise<void> {
+	await phone.page.goto(`/g/${code}/debug`);
+	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
+}
+
+export async function openLobby(phone: Phone, code: string): Promise<void> {
+	await phone.page.goto(`/g/${code}`);
+	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
+}
+
 /** Zero has to be genuinely connected before a test can trust what it reads. */
 export async function waitForSync(phone: Phone): Promise<void> {
 	await expect(phone.page.getByTestId("connection-state")).toHaveText(
 		"connected",
 		{ timeout: 30_000 },
 	);
+}
+
+/**
+ * What one phone actually received about another on the ephemeral channel.
+ *
+ * Read off the socket frames rather than the UI, because this is what fails
+ * loudly when somebody widens a fan-out filter by accident three milestones
+ * from now. m0-spec §12, test 6.
+ */
+export type SeenPresence = {
+	readonly displayName: string;
+	readonly teamId: string | null;
+	readonly role: string | null;
+	readonly fix: unknown;
+	readonly battery: unknown;
+};
+
+function readEntries(frame: string): SeenPresence[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(frame);
+	} catch {
+		return [];
+	}
+	if (typeof parsed !== "object" || parsed === null) return [];
+	const entries = Reflect.get(parsed, "entries");
+	if (!Array.isArray(entries)) return [];
+
+	return entries.flatMap((entry: unknown) => {
+		if (typeof entry !== "object" || entry === null) return [];
+		const displayName = Reflect.get(entry, "displayName");
+		if (typeof displayName !== "string") return [];
+		return [
+			{
+				displayName,
+				teamId: Reflect.get(entry, "teamId") ?? null,
+				role: Reflect.get(entry, "role") ?? null,
+				fix: Reflect.get(entry, "fix") ?? null,
+				battery: Reflect.get(entry, "battery") ?? null,
+			} satisfies SeenPresence,
+		];
+	});
+}
+
+/** Every presence entry this phone was ever sent about `displayName`. */
+export function presenceOf(phone: Phone, displayName: string): SeenPresence[] {
+	return phone.frames
+		.filter((frame) => frame.includes('"presence"'))
+		.flatMap(readEntries)
+		.filter((entry) => entry.displayName === displayName);
+}
+
+export function sawPresence(phone: Phone): boolean {
+	return phone.frames.some((frame) => frame.includes('"presence"'));
 }
 
 export async function createTeam(phone: Phone, name: string): Promise<void> {
