@@ -1,6 +1,8 @@
 import { useQuery } from "@rocicorp/zero/react";
 import { queries } from "@zero-lag/schema";
 import type { EphemeralState } from "../ephemeral";
+import { ageOf, positionLabel } from "../map/staleness";
+import { useNow } from "../map/use-now";
 import { Panel } from "./panel";
 
 interface PresenceProps {
@@ -11,6 +13,7 @@ interface PresenceProps {
 
 export function Presence({ state, queueSize, lastCapturedAt }: PresenceProps) {
 	const [log] = useQuery(queries.positionLog());
+	const now = useNow();
 
 	return (
 		<Panel testId="presence" title="Presence and position log">
@@ -29,18 +32,30 @@ export function Presence({ state, queueSize, lastCapturedAt }: PresenceProps) {
 				</p>
 			)}
 
+			{/*
+			 * Staleness is `fixAgeMs` plus the time since the frame arrived — two
+			 * elapsed durations, each measured on one clock. M0 rendered
+			 * `Date.now() - capturedAt` here, which subtracts the sender's clock
+			 * from the reader's and is the one operation m0-spec §7 says is never
+			 * performed anywhere. m2-spec §5.
+			 */}
 			<ul data-testid="presence-entries">
-				{state.entries.map((entry) => (
-					<li
-						data-testid={`presence-${entry.displayName}`}
-						key={entry.playerId}
-					>
-						{entry.displayName} — {entry.role ?? "no role"} —{" "}
-						{entry.fix
-							? `last seen ${Math.round((Date.now() - entry.fix.capturedAt) / 1000)}s ago`
-							: "no fix"}
-					</li>
-				))}
+				{state.entries.map((entry) => {
+					const { ageMs } = ageOf(entry.fixAgeMs, state.entriesArrivedAt, now);
+					return (
+						<li
+							data-testid={`presence-${entry.displayName}`}
+							key={entry.playerId}
+						>
+							{entry.displayName} — {entry.role ?? "no role"} —{" "}
+							{entry.online ? "online" : "offline"} —{" "}
+							{positionLabel({
+								ageMs,
+								accuracyMeters: entry.fix?.accuracyMeters ?? null,
+							})}
+						</li>
+					);
+				})}
 			</ul>
 
 			<p data-testid="position-queue-size">queued: {queueSize}</p>

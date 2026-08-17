@@ -7,7 +7,6 @@ import { Questions } from "../game/questions";
 import { Roster } from "../game/roster";
 import { Rounds } from "../game/rounds";
 import { useGameShell } from "../game/shell";
-import { usePositionTracking } from "../game/use-position-tracking";
 import { useMyRole } from "../game/use-role";
 
 /**
@@ -16,16 +15,12 @@ import { useMyRole } from "../game/use-role";
  * decision 4, and moved under the game's own URL by m1-spec §8.
  */
 export default function DebugRoute() {
-	const { session, channel, ephemeral, positionIntervalMs } = useGameShell();
+	const { session, ephemeral, tracking } = useGameShell();
 	const role = useMyRole(session.playerId);
-
-	const { queueSize, lastFix, sample } = usePositionTracking({
-		gameId: session.gameId,
-		teamId: role.teamId,
-		roundId: role.roundId,
-		intervalMs: positionIntervalMs,
-		channel,
-	});
+	// The watch and the queue belong to the session, not to this screen —
+	// m2-spec §10, and two of them over one `localStorage` key is one queue
+	// counted twice.
+	const { queueSize, lastFix, sample } = tracking;
 
 	return (
 		<main className="mx-auto max-w-2xl space-y-3 p-4">

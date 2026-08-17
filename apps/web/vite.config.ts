@@ -13,6 +13,15 @@ export default defineConfig({
 	},
 	optimizeDeps: {
 		include: ["@rocicorp/zero", "@rocicorp/zero/react", "react", "react-dom"],
+		/**
+		 * MapLibre loads its tile worker from a blob whose only statement is
+		 * `import "<new URL('maplibre-gl-worker.mjs', import.meta.url)>"`. Prebundled
+		 * into `.vite/deps`, that URL resolves next to the bundle, where the worker
+		 * file is not — so the worker starts, its import 404s, and every vector tile
+		 * request hangs forever with no error event. The symptom is a correctly
+		 * sized map showing nothing but the style's background colour.
+		 */
+		exclude: ["maplibre-gl"],
 	},
 	plugins: [
 		tailwindcss(),

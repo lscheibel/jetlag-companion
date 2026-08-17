@@ -1,7 +1,5 @@
 import {
-	BERLIN_PROJECTION,
 	circleRegion,
-	createProjector,
 	EMPTY_REGION,
 	type Meters,
 	normalizeRegion,
@@ -29,7 +27,6 @@ const basePack: Omit<AreaPack, "contentHash"> = {
 	id: "berlin-vbb",
 	version: "0.1.0",
 	name: "Berlin — VBB (M0 fixture)",
-	projection: BERLIN_PROJECTION,
 	bounds: [13.2, 52.4, 13.6, 52.6],
 	modes: [
 		{ id: "s-bahn", name: "S-Bahn" },
@@ -183,20 +180,16 @@ function radiusForStop(modeIds: readonly string[]): Meters {
  * stop list. This function runs once, here, and its output is the stored value.
  */
 function buildValidHidingArea(enabledStopIds: readonly string[]): Region {
-	const projector = createProjector(BERLIN_PROJECTION);
 	const enabled = new Set(enabledStopIds);
 	let area = EMPTY_REGION;
 	for (const stop of BERLIN_VBB_PACK.stops) {
 		if (!enabled.has(stop.id)) continue;
 		area = unionRegions(
 			area,
-			circleRegion(
-				projector.forward(stop.position),
-				radiusForStop(stop.modeIds),
-			),
+			circleRegion(stop.position, radiusForStop(stop.modeIds)),
 		);
 	}
-	return normalizeRegion(area, BERLIN_PROJECTION);
+	return normalizeRegion(area);
 }
 
 export function berlinFixtureMapConfig(
@@ -204,17 +197,12 @@ export function berlinFixtureMapConfig(
 	id = `mapcfg-${gameId}`,
 ): MapConfig {
 	const enabledStopIds = BERLIN_VBB_PACK.stops.map((stop) => stop.id);
-	const projector = createProjector(BERLIN_PROJECTION);
 	const base: Omit<MapConfig, "contentHash"> = {
 		id,
 		gameId,
 		areaPackId: BERLIN_VBB_PACK.id,
 		areaPackVersion: BERLIN_VBB_PACK.version,
-		projection: BERLIN_PROJECTION,
-		validHidingArea: regionToMultiPolygon(
-			buildValidHidingArea(enabledStopIds),
-			projector,
-		),
+		validHidingArea: regionToMultiPolygon(buildValidHidingArea(enabledStopIds)),
 		enabledStopIds,
 		hidingRadiusByMode: HIDING_RADIUS_BY_MODE,
 	};

@@ -4,6 +4,7 @@ import { EphemeralChannel, type EphemeralState } from "../ephemeral";
 const OFFLINE: EphemeralState = {
 	connected: false,
 	entries: [],
+	entriesArrivedAt: 0,
 	clockOffsetMs: null,
 };
 

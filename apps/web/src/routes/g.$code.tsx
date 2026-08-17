@@ -5,9 +5,12 @@ import {
 } from "@rocicorp/zero/react";
 import { queries } from "@zero-lag/schema";
 import { useEffect, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import type { GameShell } from "../game/shell";
+import { useBatteryBroadcast } from "../game/use-battery-broadcast";
 import { useEphemeralChannel } from "../game/use-ephemeral";
+import { usePositionTracking } from "../game/use-position-tracking";
+import { useMyRole } from "../game/use-role";
 import { loadSession, type Session } from "../session";
 import { zeroOptions } from "../zero/options";
 import type { Route } from "./+types/g.$code";
@@ -61,9 +64,49 @@ function Connected({ session }: { session: Session }) {
 	const [games] = useQuery(queries.game());
 	const positionIntervalMs = games[0]?.positionIntervalMs ?? 30_000;
 
+	const role = useMyRole(session.playerId);
+	const location = useLocation();
+
+	/**
+	 * The tracking gate, in one place. m2-spec §10.
+	 *
+	 * | Lobby, map closed              | no broadcast | no log |
+	 * | Map open, round pending        | broadcast    | no log |
+	 * | Round hiding/seeking, any screen | broadcast  | log    |
+	 *
+	 * Which screen is open is read off the pathname rather than reported upward
+	 * by a child, because the route that owns the session already knows. The M0
+	 * debug harness counts as a screen that is asking where everyone is — it has
+	 * a presence panel — so it broadcasts on the same terms as the map.
+	 */
+	const onPositionScreen =
+		location.pathname.endsWith("/map") || location.pathname.endsWith("/debug");
+	const roundRunning =
+		role.roundStatus === "hiding" || role.roundStatus === "seeking";
+
+	const tracking = usePositionTracking({
+		gameId: session.gameId,
+		teamId: role.teamId,
+		roundId: role.roundId,
+		intervalMs: positionIntervalMs,
+		channel,
+		broadcast: onPositionScreen || roundRunning,
+		logging: roundRunning,
+	});
+
+	// Battery is not position: it costs nothing to read and the lobby shows it,
+	// so it is announced for the whole session rather than gated on a screen.
+	useBatteryBroadcast(channel, positionIntervalMs);
+
 	const shell: GameShell = useMemo(
-		() => ({ session, channel, ephemeral: state, positionIntervalMs }),
-		[session, channel, state, positionIntervalMs],
+		() => ({
+			session,
+			channel,
+			ephemeral: state,
+			positionIntervalMs,
+			tracking,
+		}),
+		[session, channel, state, positionIntervalMs, tracking],
 	);
 
 	return (

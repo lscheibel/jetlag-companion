@@ -1,8 +1,6 @@
 import {
-	createProjector,
 	type MultiPolygon,
 	multiPolygonToRegion,
-	type Projection,
 	regionHash,
 } from "@zero-lag/geo";
 import { type Constraint, foldConstraints } from "@zero-lag/rules";
@@ -44,12 +42,8 @@ export async function closeDb(): Promise<void> {
 
 export async function serverSearchAreaHash(gameId: string): Promise<string> {
 	const config = await db().query<{
-		projection: Projection;
 		validHidingArea: MultiPolygon;
-	}>(
-		'SELECT projection, "validHidingArea" FROM "mapConfig" WHERE "gameId" = $1',
-		[gameId],
-	);
+	}>('SELECT "validHidingArea" FROM "mapConfig" WHERE "gameId" = $1', [gameId]);
 	const row = config.rows[0];
 	if (!row) throw new Error(`no map config for game ${gameId}`);
 
@@ -66,9 +60,8 @@ export async function serverSearchAreaHash(gameId: string): Promise<string> {
 		[gameId],
 	);
 
-	const projector = createProjector(row.projection);
-	const seed = multiPolygonToRegion(row.validHidingArea, projector);
-	return regionHash(foldConstraints(seed, constraints.rows, row.projection));
+	const seed = multiPolygonToRegion(row.validHidingArea);
+	return regionHash(foldConstraints(seed, constraints.rows));
 }
 
 export async function answerCount(questionId: string): Promise<number> {
@@ -144,6 +137,36 @@ export async function roundStatuses(gameId: string): Promise<string[]> {
 		[gameId],
 	);
 	return result.rows.map((row) => row.status);
+}
+
+/**
+ * How many durable snapshots a given team actually has in the table.
+ *
+ * The query-side half of the visibility rule is only provable against the
+ * database: a seeker whose synced count is zero proves nothing on its own if
+ * the hiders never wrote anything. m2-spec §13, test 11.
+ */
+export async function positionCountForTeam(teamId: string): Promise<number> {
+	const result = await db().query<{ count: string }>(
+		'SELECT count(*)::text AS count FROM "positionSnapshot" WHERE "teamId" = $1',
+		[teamId],
+	);
+	return Number(result.rows[0]?.count ?? "0");
+}
+
+export async function teamIdForName(
+	code: string,
+	name: string,
+): Promise<string> {
+	const result = await db().query<{ id: string }>(
+		`SELECT t.id FROM team t
+		 JOIN game g ON g.id = t."gameId"
+		 WHERE g.code = $1 AND t.name = $2`,
+		[code, name],
+	);
+	const id = result.rows[0]?.id;
+	if (!id) throw new Error(`no team ${name} in game ${code}`);
+	return id;
 }
 
 export async function positionCapturedAts(gameId: string): Promise<number[]> {

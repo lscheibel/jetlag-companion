@@ -1,10 +1,4 @@
-import type {
-	BBox,
-	LngLat,
-	Meters,
-	MultiPolygon,
-	Projection,
-} from "@zero-lag/geo";
+import type { BBox, LngLat, Meters, MultiPolygon } from "@zero-lag/geo";
 
 export type TransitMode = {
 	readonly id: string;
@@ -41,7 +35,6 @@ export type AreaPack = {
 	readonly version: string;
 	readonly contentHash: string;
 	readonly name: string;
-	readonly projection: Projection;
 	readonly bounds: BBox;
 	readonly modes: readonly TransitMode[];
 	readonly lines: readonly TransitLine[];
@@ -59,7 +52,6 @@ export type MapConfig = {
 	readonly gameId: string;
 	readonly areaPackId: string;
 	readonly areaPackVersion: string;
-	readonly projection: Projection;
 
 	/**
 	 * Stored, not recomputed from `enabledStopIds`.

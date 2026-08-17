@@ -12,7 +12,6 @@ export function areaPackContentHash(
 		id: pack.id,
 		version: pack.version,
 		name: pack.name,
-		projection: { ...pack.projection },
 		bounds: [...pack.bounds],
 		modes: pack.modes.map((mode) => ({ ...mode })),
 		lines: pack.lines.map((line) => ({ ...line, stopIds: [...line.stopIds] })),
@@ -39,7 +38,6 @@ export function mapConfigContentHash(
 	return contentHash({
 		areaPackId: config.areaPackId,
 		areaPackVersion: config.areaPackVersion,
-		projection: { ...config.projection },
 		validHidingArea: toJson(config.validHidingArea),
 		enabledStopIds: [...config.enabledStopIds].sort(),
 		hidingRadiusByMode: { ...config.hidingRadiusByMode },

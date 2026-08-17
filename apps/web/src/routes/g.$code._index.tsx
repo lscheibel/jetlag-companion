@@ -138,6 +138,13 @@ function Lobby() {
 
 			<footer className="flex items-center gap-3 pt-2 text-sm">
 				<Link
+					className="min-h-11 rounded border px-3 py-2"
+					data-testid="open-map"
+					to={`/g/${session.code}/map`}
+				>
+					Map
+				</Link>
+				<Link
 					className="rounded border px-3 py-2"
 					data-testid="open-debug"
 					to={`/g/${session.code}/debug`}

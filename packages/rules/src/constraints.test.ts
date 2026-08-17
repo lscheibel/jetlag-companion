@@ -1,15 +1,15 @@
 import {
-	BERLIN_PROJECTION,
-	createProjector,
+	distanceMeters,
 	type LngLat,
 	type MultiPolygon,
+	metersPerDegree,
+	offsetLngLat,
 	type Region,
 	regionArea,
-	regionContainsXY,
+	regionContains,
 	regionHash,
 	subtractRegions,
 	WORLD_REGION,
-	type XY,
 } from "@zero-lag/geo";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -22,16 +22,27 @@ import {
 	toRegion,
 } from "./constraints";
 
-const projection = BERLIN_PROJECTION;
-const projector = createProjector(projection);
-
 /**
  * Snapping and simplification move vertices, so a point sitting within a metre
- * or two of a boundary can legitimately land on either side. That is a
- * property of the numerical hygiene the engine is required to do, not a defect
- * in it, so generated points are kept clear of the edge.
+ * or two of a boundary can legitimately land on either side. That is a property
+ * of the numerical hygiene the engine is required to do, not a defect in it, so
+ * generated points are kept clear of the edge.
+ *
+ * The margin is wider than the couple of metres the engine actually moves,
+ * because the checks below measure a few of these boundaries in a local metre
+ * frame rather than geodesically, and that approximation is worth a handful of
+ * metres at the far end of a 5 km sector.
  */
-const BOUNDARY_CLEARANCE_METERS = 10;
+const BOUNDARY_CLEARANCE_METERS = 20;
+
+/** Metres east and north of an origin — good enough to measure a gap with. */
+function localFrame(origin: LngLat): (p: LngLat) => [number, number] {
+	const scale = metersPerDegree(origin[1]);
+	return (p) => [
+		(p[0] - origin[0]) * scale.lng,
+		(p[1] - origin[1]) * scale.lat,
+	];
+}
 
 const berlinLngLat = fc
 	.tuple(
@@ -86,16 +97,16 @@ const polygonGeometry = fc
 		fc.integer({ min: 300, max: 3000 }),
 	)
 	.map(([corner, width, height]): ConstraintGeometry => {
-		const [x, y] = projector.forward(corner);
-		const ring: XY[] = [
-			[x, y],
-			[x + width, y],
-			[x + width, y + height],
-			[x, y + height],
-			[x, y],
-		];
 		const polygons: MultiPolygon = [
-			[ring.map((point) => projector.inverse(point))],
+			[
+				[
+					corner,
+					offsetLngLat(corner, width, 0),
+					offsetLngLat(corner, width, height),
+					offsetLngLat(corner, 0, height),
+					corner,
+				],
+			],
 		];
 		return { kind: "polygon", polygons };
 	});
@@ -114,19 +125,17 @@ const anyConstraint = fc
 	)
 	.map(
 		([geometry, mode]): Constraint => ({
-			id: `c${regionHash(toRegion(geometry, projection)).slice(0, 12)}${mode}`,
+			id: `c${regionHash(toRegion(geometry)).slice(0, 12)}${mode}`,
 			geometry,
 			mode,
 		}),
 	);
 
-function distanceMeters(a: LngLat, b: LngLat): number {
-	const pa = projector.forward(a);
-	const pb = projector.forward(b);
-	return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]);
-}
-
-function distanceToSegment(p: XY, a: XY, b: XY): number {
+function distanceToSegment(
+	p: readonly [number, number],
+	a: readonly [number, number],
+	b: readonly [number, number],
+): number {
 	const dx = b[0] - a[0];
 	const dy = b[1] - a[1];
 	const lengthSquared = dx * dx + dy * dy;
@@ -140,37 +149,42 @@ function distanceToSegment(p: XY, a: XY, b: XY): number {
 
 /** Is the point close enough to the constraint's edge that either answer is fair? */
 function nearBoundary(point: LngLat, geometry: ConstraintGeometry): boolean {
-	const p = projector.forward(point);
+	const toLocal = localFrame(point);
 	switch (geometry.kind) {
-		case "radius": {
-			const c = projector.forward(geometry.center);
-			const distance = Math.hypot(p[0] - c[0], p[1] - c[1]);
-			return Math.abs(distance - geometry.radius) < BOUNDARY_CLEARANCE_METERS;
-		}
+		case "radius":
+			return (
+				Math.abs(distanceMeters(point, geometry.center) - geometry.radius) <
+				BOUNDARY_CLEARANCE_METERS
+			);
 		case "halfPlane": {
-			const a = projector.forward(geometry.a);
-			const b = projector.forward(geometry.b);
-			const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-			const mx = (a[0] + b[0]) / 2;
-			const my = (a[1] + b[1]) / 2;
-			const signed =
-				((p[0] - mx) * (b[0] - a[0]) + (p[1] - my) * (b[1] - a[1])) / length;
-			return Math.abs(signed) < BOUNDARY_CLEARANCE_METERS;
+			// The gap to the bisector is half the difference of the two distances.
+			const gap =
+				Math.abs(
+					distanceMeters(point, geometry.a) - distanceMeters(point, geometry.b),
+				) / 2;
+			return gap < BOUNDARY_CLEARANCE_METERS;
 		}
 		case "sector": {
-			const c = projector.forward(geometry.center);
-			const distance = Math.hypot(p[0] - c[0], p[1] - c[1]);
-			if (Math.abs(distance - geometry.radius) < BOUNDARY_CLEARANCE_METERS) {
+			if (
+				Math.abs(distanceMeters(point, geometry.center) - geometry.radius) <
+				BOUNDARY_CLEARANCE_METERS
+			) {
 				return true;
 			}
 			// The two straight edges of the pie slice.
+			const center = toLocal(geometry.center);
 			for (const bearing of [geometry.fromDeg, geometry.toDeg]) {
 				const angle = ((90 - bearing) * Math.PI) / 180;
-				const tip: XY = [
-					c[0] + geometry.radius * Math.cos(angle),
-					c[1] + geometry.radius * Math.sin(angle),
-				];
-				if (distanceToSegment(p, c, tip) < BOUNDARY_CLEARANCE_METERS) {
+				const tip = toLocal(
+					offsetLngLat(
+						geometry.center,
+						geometry.radius * Math.cos(angle),
+						geometry.radius * Math.sin(angle),
+					),
+				);
+				if (
+					distanceToSegment([0, 0], center, tip) < BOUNDARY_CLEARANCE_METERS
+				) {
 					return true;
 				}
 			}
@@ -180,9 +194,9 @@ function nearBoundary(point: LngLat, geometry: ConstraintGeometry): boolean {
 			for (const polygon of geometry.polygons) {
 				for (const ring of polygon) {
 					for (let i = 0; i < ring.length - 1; i++) {
-						const a = projector.forward(ring[i] as LngLat);
-						const b = projector.forward(ring[i + 1] as LngLat);
-						if (distanceToSegment(p, a, b) < BOUNDARY_CLEARANCE_METERS) {
+						const a = toLocal(ring[i] as LngLat);
+						const b = toLocal(ring[i + 1] as LngLat);
+						if (distanceToSegment([0, 0], a, b) < BOUNDARY_CLEARANCE_METERS) {
 							return true;
 						}
 					}
@@ -200,13 +214,33 @@ describe("satisfies and applyConstraint are two readings of one definition", () 
 			fc.property(anyConstraint, berlinLngLat, (constraint, point) => {
 				fc.pre(!nearBoundary(point, constraint.geometry));
 
-				const viaArea = regionContainsXY(
-					applyConstraint(WORLD_REGION, constraint, projection),
-					projector.forward(point),
+				const viaArea = regionContains(
+					applyConstraint(WORLD_REGION, constraint),
+					point,
 				);
-				expect(satisfies(point, constraint, projection)).toBe(viaArea);
+				expect(satisfies(point, constraint)).toBe(viaArea);
 			}),
 			{ numRuns: 300 },
+		);
+	});
+
+	/**
+	 * And the definition itself is the right one — checked against a real
+	 * distance rather than against the polygon that drew it, which is the half
+	 * the invariant above cannot see because both of its readings share a
+	 * polygon.
+	 */
+	it("puts a radius constraint where the metres say it is", () => {
+		fc.assert(
+			fc.property(radiusGeometry, berlinLngLat, (geometry, point) => {
+				fc.pre(!nearBoundary(point, geometry));
+				const constraint: Constraint = { id: "r", geometry, mode: "include" };
+				const inside =
+					geometry.kind === "radius" &&
+					distanceMeters(point, geometry.center) < geometry.radius;
+				expect(satisfies(point, constraint)).toBe(inside);
+			}),
+			{ numRuns: 200 },
 		);
 	});
 });
@@ -217,6 +251,12 @@ function symmetricDifferenceArea(a: Region, b: Region): number {
 }
 
 describe("the fold commutes", () => {
+	const seed = toRegion({
+		kind: "radius",
+		center: [13.4, 52.52],
+		radius: 8000,
+	});
+
 	it("yields the same set when applied in any order", () => {
 		// The mathematical claim, tested without relying on the sort in
 		// foldConstraints: every constraint is an intersection with some set, and
@@ -226,10 +266,6 @@ describe("the fold commutes", () => {
 				fc.array(anyConstraint, { minLength: 2, maxLength: 4 }),
 				fc.array(fc.integer(), { minLength: 4, maxLength: 4 }),
 				(constraints, shuffleKeys) => {
-					const seed = toRegion(
-						{ kind: "radius", center: [13.4, 52.52], radius: 8000 },
-						projection,
-					);
 					const shuffled = constraints
 						.map((constraint, index) => ({
 							constraint,
@@ -239,11 +275,11 @@ describe("the fold commutes", () => {
 						.map((entry) => entry.constraint);
 
 					const inOrder = constraints.reduce(
-						(area, c) => applyConstraint(area, c, projection),
+						(area, c) => applyConstraint(area, c),
 						seed,
 					);
 					const outOfOrder = shuffled.reduce(
-						(area, c) => applyConstraint(area, c, projection),
+						(area, c) => applyConstraint(area, c),
 						seed,
 					);
 
@@ -268,10 +304,6 @@ describe("the fold commutes", () => {
 				fc.array(anyConstraint, { minLength: 2, maxLength: 5 }),
 				fc.array(fc.integer(), { minLength: 5, maxLength: 5 }),
 				(constraints, shuffleKeys) => {
-					const seed = toRegion(
-						{ kind: "radius", center: [13.4, 52.52], radius: 8000 },
-						projection,
-					);
 					const shuffled = constraints
 						.map((constraint, index) => ({
 							constraint,
@@ -280,8 +312,8 @@ describe("the fold commutes", () => {
 						.sort((a, b) => a.key - b.key)
 						.map((entry) => entry.constraint);
 
-					expect(regionHash(foldConstraints(seed, shuffled, projection))).toBe(
-						regionHash(foldConstraints(seed, constraints, projection)),
+					expect(regionHash(foldConstraints(seed, shuffled))).toBe(
+						regionHash(foldConstraints(seed, constraints)),
 					);
 				},
 			),
@@ -290,10 +322,6 @@ describe("the fold commutes", () => {
 	});
 
 	it("makes disabling a middle constraint independent of position", () => {
-		const seed = toRegion(
-			{ kind: "radius", center: [13.4, 52.52], radius: 8000 },
-			projection,
-		);
 		const constraints: Constraint[] = [
 			{
 				id: "a",
@@ -327,18 +355,20 @@ describe("the fold commutes", () => {
 			constraints[0] as Constraint,
 		];
 
-		expect(regionHash(foldConstraints(seed, withoutB, projection))).toBe(
-			regionHash(foldConstraints(seed, reordered, projection)),
+		expect(regionHash(foldConstraints(seed, withoutB))).toBe(
+			regionHash(foldConstraints(seed, reordered)),
 		);
 	});
 });
 
 describe("the fold is idempotent", () => {
+	const seed = toRegion({
+		kind: "radius",
+		center: [13.4, 52.52],
+		radius: 8000,
+	});
+
 	it("returns byte-identical output when a constraint is disabled and re-enabled", () => {
-		const seed = toRegion(
-			{ kind: "radius", center: [13.4, 52.52], radius: 8000 },
-			projection,
-		);
 		const constraints: Constraint[] = [
 			{
 				id: "a",
@@ -352,13 +382,9 @@ describe("the fold is idempotent", () => {
 			},
 		];
 
-		const before = foldConstraints(seed, constraints, projection);
-		const disabled = foldConstraints(
-			seed,
-			[constraints[0] as Constraint],
-			projection,
-		);
-		const after = foldConstraints(seed, constraints, projection);
+		const before = foldConstraints(seed, constraints);
+		const disabled = foldConstraints(seed, [constraints[0] as Constraint]);
+		const after = foldConstraints(seed, constraints);
 
 		expect(regionHash(after)).toBe(regionHash(before));
 		expect(regionHash(disabled)).not.toBe(regionHash(before));
@@ -367,8 +393,8 @@ describe("the fold is idempotent", () => {
 	it("computes the same geometry on every evaluation", () => {
 		fc.assert(
 			fc.property(anyGeometry, (geometry) => {
-				expect(regionHash(toRegion(geometry, projection))).toBe(
-					regionHash(toRegion(geometry, projection)),
+				expect(regionHash(toRegion(geometry))).toBe(
+					regionHash(toRegion(geometry)),
 				);
 			}),
 			{ numRuns: 100 },
@@ -378,10 +404,7 @@ describe("the fold is idempotent", () => {
 
 describe("radar", () => {
 	const alex: LngLat = [13.4132, 52.5219];
-	const seed = toRegion(
-		{ kind: "radius", center: alex, radius: 10000 },
-		projection,
-	);
+	const seed = toRegion({ kind: "radius", center: alex, radius: 10000 });
 
 	it("keeps the disc on yes and carves it out on no", () => {
 		const yes: Constraint = {
@@ -391,11 +414,11 @@ describe("radar", () => {
 		};
 		const no: Constraint = { ...yes, id: "no", mode: "exclude" };
 
-		const kept = applyConstraint(seed, yes, projection);
-		const carved = applyConstraint(seed, no, projection);
+		const kept = applyConstraint(seed, yes);
+		const carved = applyConstraint(seed, no);
 
-		expect(regionContainsXY(kept, projector.forward(alex))).toBe(true);
-		expect(regionContainsXY(carved, projector.forward(alex))).toBe(false);
+		expect(regionContains(kept, alex)).toBe(true);
+		expect(regionContains(carved, alex)).toBe(false);
 		expect(regionArea(kept) + regionArea(carved)).toBeCloseTo(
 			regionArea(seed),
 			-1,

@@ -188,12 +188,6 @@ export type Json =
 
 // --- map config -------------------------------------------------------------
 
-export type StoredProjection = {
-	readonly proj4: string;
-	readonly snapPrecisionMeters: number;
-	readonly simplifyToleranceMeters: number;
-};
-
 export type StoredHidingRadii = Readonly<Record<string, number>>;
 
 export type StoredMultiPolygon = MultiPolygon;

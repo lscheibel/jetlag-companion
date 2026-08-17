@@ -25,7 +25,6 @@ import type {
 	RoundStatus,
 	StoredHidingRadii,
 	StoredMultiPolygon,
-	StoredProjection,
 	TeamRole,
 } from "../types";
 
@@ -81,8 +80,13 @@ export const mapConfig = pgTable("mapConfig", {
 	gameId: text("gameId").notNull(),
 	areaPackId: text("areaPackId").notNull(),
 	areaPackVersion: text("areaPackVersion").notNull(),
-	projection: jsonb("projection").$type<StoredProjection>().notNull(),
-	/** Stored, not derived on demand — the seed of every fold. m0-spec §11. */
+	/**
+	 * Stored, not derived on demand — the seed of every fold. m0-spec §11.
+	 *
+	 * WGS84 lng/lat, like every other coordinate in the system. The projection
+	 * column that used to sit beside it is gone: booleans are topological and
+	 * need no metric, so there was never a frame for this to be in. m0-spec §9.
+	 */
 	validHidingArea: jsonb("validHidingArea")
 		.$type<StoredMultiPolygon>()
 		.notNull(),

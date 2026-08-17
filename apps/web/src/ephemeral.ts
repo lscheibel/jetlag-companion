@@ -17,11 +17,25 @@ export type PresenceEntry = {
 	fix: (ClientFix & { receivedAt: number | null }) | null;
 	battery: BatteryState | null;
 	onlineSince: number;
+	/** False once the socket has gone. The entry, and its last fix, remain. */
+	online: boolean;
+	/** How old the fix was when the server sent it. m2-spec §5. */
+	fixAgeMs: number | null;
 };
 
 export type EphemeralState = {
 	readonly connected: boolean;
 	readonly entries: readonly PresenceEntry[];
+	/**
+	 * This device's clock, read when the frame carrying `entries` arrived.
+	 *
+	 * Half of the age arithmetic in m2-spec §5: an entry's age on screen is
+	 * `fixAgeMs + (Date.now() - entriesArrivedAt)` — two elapsed durations added,
+	 * each measured on one clock. No absolute timestamp from one device is ever
+	 * compared with another's, which is what m0-spec §7 promises and what
+	 * `Date.now() - capturedAt` quietly broke.
+	 */
+	readonly entriesArrivedAt: number;
 	/** Set once if this device's own clock is minutes away from the server's. */
 	readonly clockOffsetMs: number | null;
 };
@@ -33,6 +47,29 @@ const MIN_SEND_INTERVAL_MS = 3_000;
 const MIN_SEND_DISTANCE_M = 10;
 const FORCE_SEND_AFTER_MS = 10_000;
 
+/**
+ * How often the channel re-offers the fix it is holding. m2-spec §5 and §6.
+ *
+ * The third inherited defect, and the one M2 found by watching a marker fail to
+ * move. `sendPosition` was only ever called from a `watchPosition` callback, so
+ * both of its heuristics were unreachable in the two cases that matter most:
+ *
+ * - A fix arriving inside the 3 s throttle window was dropped and never
+ *   re-offered. `watchPosition` does not call back again for a phone that has
+ *   arrived somewhere and stopped, so the position it moved to was simply never
+ *   sent.
+ * - `FORCE_SEND_AFTER_MS` could never fire on a stationary phone, for the same
+ *   reason. Its marker's `receivedAt` was stamped once and then aged through
+ *   §5's buckets while the phone sat there online with a perfectly good lock —
+ *   a hider standing on a platform would have looked stale to everyone within
+ *   two minutes, which is the whole hiding phase.
+ *
+ * Re-offering is not a retry and not a queue: `sendPosition` is handed the one
+ * fix already held, and every existing rule about distance and interval still
+ * decides whether it goes.
+ */
+const HEARTBEAT_MS = 2_000;
+
 export class EphemeralChannel {
 	readonly #token: string;
 	#socket: WebSocket | null = null;
@@ -40,6 +77,7 @@ export class EphemeralChannel {
 	#state: EphemeralState = {
 		connected: false,
 		entries: [],
+		entriesArrivedAt: Date.now(),
 		clockOffsetMs: null,
 	};
 	#lastSentAt = 0;
@@ -59,6 +97,7 @@ export class EphemeralChannel {
 	#current: ClientFix | null = null;
 	#currentBattery: BatteryState | null = null;
 	#reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	#heartbeat: ReturnType<typeof setInterval> | null = null;
 	#closed = false;
 
 	constructor(token: string) {
@@ -77,6 +116,9 @@ export class EphemeralChannel {
 
 	connect(): void {
 		if (this.#closed || this.#socket) return;
+		this.#heartbeat ??= setInterval(() => {
+			if (this.#current) this.sendPosition(this.#current);
+		}, HEARTBEAT_MS);
 		const url = new URL(env.VITE_SERVER_URL);
 		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 		url.pathname = "/api/ephemeral";
@@ -84,7 +126,24 @@ export class EphemeralChannel {
 		const socket = new WebSocket(url);
 		this.#socket = socket;
 
+		/**
+		 * A closed channel never introduces itself, and the guard is the whole
+		 * point of this handler.
+		 *
+		 * `close()` cannot cancel a handshake, so a socket abandoned mid-connect
+		 * finishes connecting anyway. Without this check it then said `hello` —
+		 * and the server's one-connection-per-player rule is "newest wins", so the
+		 * dying socket replaced the live one that had already taken its place,
+		 * which was then sent `bye: replaced` and stopped reconnecting on purpose.
+		 * The result was a phone with no presence stream at all, for the rest of
+		 * the game, whenever a remount lost that race. Every screen change is a
+		 * remount, and so is every StrictMode double-mount in development.
+		 */
 		socket.addEventListener("open", () => {
+			if (this.#closed) {
+				socket.close();
+				return;
+			}
 			socket.send(JSON.stringify({ t: "hello", token: this.#token }));
 			this.#patch({ connected: true });
 			// Re-announce where we are, because the room has just learned we exist
@@ -96,9 +155,19 @@ export class EphemeralChannel {
 			this.#receive(String(raw.data));
 		});
 
+		/**
+		 * The entries survive the socket, on the reading side too. m2-spec §11.
+		 *
+		 * M0 emptied them here, so a phone entering a tunnel lost every marker it
+		 * had — the same "vanishes rather than goes stale" mistake the server made
+		 * on close, seen from the other end. What it knew a moment ago is still the
+		 * best information available, and it ages through §5's buckets from the
+		 * frame it arrived in rather than being thrown away. A reconnect replaces
+		 * the lot with a fresh frame.
+		 */
 		socket.addEventListener("close", () => {
 			this.#socket = null;
-			this.#patch({ connected: false, entries: [] });
+			this.#patch({ connected: false });
 			this.#scheduleReconnect();
 		});
 
@@ -108,13 +177,15 @@ export class EphemeralChannel {
 	close(): void {
 		this.#closed = true;
 		if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
+		if (this.#heartbeat) clearInterval(this.#heartbeat);
+		this.#heartbeat = null;
 		const socket = this.#socket;
 		this.#socket = null;
 		if (!socket) return;
 		if (socket.readyState === WebSocket.CONNECTING) {
 			// Closing a socket mid-handshake logs a warning and leaves the server
-			// with a half-open connection, so let it finish first.
-			socket.addEventListener("open", () => socket.close());
+			// with a half-open connection, so let it finish first. `#closed` is
+			// already true, so the open handler above says nothing and hangs up.
 			return;
 		}
 		socket.close();
@@ -207,7 +278,10 @@ export class EphemeralChannel {
 
 		switch (typed.t) {
 			case "presence":
-				this.#patch({ entries: typed.entries });
+				this.#patch({
+					entries: typed.entries,
+					entriesArrivedAt: Date.now(),
+				});
 				return;
 			case "clockDrift":
 				this.#patch({ clockOffsetMs: typed.offsetMs });

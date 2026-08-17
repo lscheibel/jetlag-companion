@@ -26,7 +26,6 @@ import type {
 	RoundStatus,
 	StoredHidingRadii,
 	StoredMultiPolygon,
-	StoredProjection,
 	TeamRole,
 } from "../types";
 
@@ -58,7 +57,6 @@ const mapConfig = table("mapConfig")
 		gameId: string(),
 		areaPackId: string(),
 		areaPackVersion: string(),
-		projection: json<StoredProjection>(),
 		validHidingArea: json<StoredMultiPolygon>(),
 		enabledStopIds: json<string[]>(),
 		hidingRadiusByMode: json<StoredHidingRadii>(),

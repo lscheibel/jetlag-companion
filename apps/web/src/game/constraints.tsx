@@ -1,11 +1,5 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import {
-	createProjector,
-	multiPolygonToRegion,
-	type Projection,
-	regionArea,
-	regionHash,
-} from "@zero-lag/geo";
+import { multiPolygonToRegion, regionArea, regionHash } from "@zero-lag/geo";
 import {
 	type Constraint,
 	foldConstraints,
@@ -31,9 +25,7 @@ export function Constraints() {
 	const searchArea = useMemo(() => {
 		if (!mapConfig) return null;
 
-		const projection = mapConfig.projection as Projection;
-		const projector = createProjector(projection);
-		const seed = multiPolygonToRegion(mapConfig.validHidingArea, projector);
+		const seed = multiPolygonToRegion(mapConfig.validHidingArea);
 
 		const enabled: Constraint[] = constraints
 			.filter((row) => row.enabled)
@@ -43,7 +35,7 @@ export function Constraints() {
 				mode: row.mode,
 			}));
 
-		const region = foldConstraints(seed, enabled, projection);
+		const region = foldConstraints(seed, enabled);
 		return {
 			areaSquareMeters: regionArea(region),
 			hash: regionHash(region),

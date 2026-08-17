@@ -97,6 +97,89 @@ const location: PlatformAdapter["location"] = {
 	},
 };
 
+type CompassEvent = DeviceOrientationEvent & {
+	/** Safari's own, already in compass degrees. */
+	readonly webkitCompassHeading?: number;
+};
+
+type OrientationConstructor = typeof DeviceOrientationEvent & {
+	/** iOS 13+ only, and only callable from a user gesture. */
+	requestPermission?: () => Promise<PermissionOutcome>;
+};
+
+/**
+ * `alpha` is a compass bearing only when the reading is absolute.
+ *
+ * A relative `alpha` is measured from wherever the device happened to be when
+ * the sensor started, so it tracks a real bearing closely enough to look right
+ * and is not one. Rendering it would be inferring north from a number that
+ * merely correlates with it, so a non-absolute reading is dropped instead.
+ */
+function compassHeadingOf(event: CompassEvent): number | null {
+	if (typeof event.webkitCompassHeading === "number") {
+		return event.webkitCompassHeading;
+	}
+	if (!event.absolute || event.alpha === null) return null;
+	// `alpha` counts anticlockwise from east-north-east zero; a compass counts
+	// clockwise from north.
+	return (360 - event.alpha) % 360;
+}
+
+const orientation: PlatformAdapter["orientation"] = {
+	capability() {
+		if (typeof window === "undefined") return unsupported("unsupported");
+		if (typeof DeviceOrientationEvent === "undefined") {
+			return unsupported("unsupported");
+		}
+		// Whether a compass exists behind the API is not knowable synchronously —
+		// a desktop browser defines the event and never fires it. The UI treats an
+		// available capability that produces no reading as no compass either way,
+		// which is why `watch` never reports a null heading.
+		return AVAILABLE;
+	},
+
+	watch(cb): Unsubscribe {
+		if (!orientation.capability().available) return () => {};
+
+		let live = true;
+		const handler = (event: Event) => {
+			if (!live) return;
+			const heading = compassHeadingOf(event as CompassEvent);
+			if (heading !== null) cb(heading);
+		};
+
+		const listen = () => {
+			if (!live) return;
+			// `deviceorientationabsolute` is the one that promises north. Chrome on
+			// Android fires only that one; Safari fires `deviceorientation` with its
+			// own compass field. Both are attached and `compassHeadingOf` decides.
+			window.addEventListener("deviceorientationabsolute", handler);
+			window.addEventListener("deviceorientation", handler);
+		};
+
+		const orientationEvent = DeviceOrientationEvent as OrientationConstructor;
+		if (typeof orientationEvent.requestPermission === "function") {
+			// iOS. Granted only when this call happens inside a user gesture, which
+			// is why the map asks for a heading from the control the player taps
+			// rather than on mount.
+			void orientationEvent
+				.requestPermission()
+				.then((outcome) => {
+					if (outcome === "granted") listen();
+				})
+				.catch(() => {});
+		} else {
+			listen();
+		}
+
+		return () => {
+			live = false;
+			window.removeEventListener("deviceorientationabsolute", handler);
+			window.removeEventListener("deviceorientation", handler);
+		};
+	},
+};
+
 const notifications: PlatformAdapter["notifications"] = {
 	capability() {
 		if (typeof Notification === "undefined") return unsupported("unsupported");
@@ -211,6 +294,7 @@ const clipboard: PlatformAdapter["clipboard"] = {
 
 export const webPlatform: PlatformAdapter = {
 	location,
+	orientation,
 	notifications,
 	wakeLock,
 	haptics,

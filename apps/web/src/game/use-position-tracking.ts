@@ -5,7 +5,7 @@ import {
 	type PositionReason,
 	type PositionSnapshot,
 } from "@zero-lag/schema";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EphemeralChannel } from "../ephemeral";
 import { PositionLog } from "../position-log";
 
@@ -15,6 +15,30 @@ interface PositionTrackingInput {
 	roundId: string | null;
 	intervalMs: number;
 	channel: EphemeralChannel | null;
+	/**
+	 * Broadcasting follows the screen. m2-spec §10.
+	 *
+	 * A player who opens the map is asking where everyone is, and the answer is
+	 * worthless if their own phone is not part of it. A player sitting in the
+	 * lobby is not asking, and their phone stays quiet — a lobby that drains 8%
+	 * of everyone's battery while the group argues about team names is a bad
+	 * first impression and an avoidable one. m1-spec §9.
+	 */
+	broadcast: boolean;
+	/**
+	 * Logging follows the round. m2-spec §10.
+	 *
+	 * The durable log is M14's replay artifact, and it does not want twenty
+	 * minutes of everybody milling about a station concourse before the round
+	 * starts.
+	 */
+	logging: boolean;
+}
+
+export interface PositionTracking {
+	readonly queueSize: number;
+	readonly lastFix: PositionSnapshot | null;
+	sample(reason: PositionReason): Promise<void>;
 }
 
 /** How often an idle client retries a queue it could not empty. */
@@ -33,7 +57,9 @@ export function usePositionTracking({
 	roundId,
 	intervalMs,
 	channel,
-}: PositionTrackingInput) {
+	broadcast,
+	logging,
+}: PositionTrackingInput): PositionTracking {
 	const zero = useZero();
 	const [queueSize, setQueueSize] = useState(0);
 	const [lastFix, setLastFix] = useState<PositionSnapshot | null>(null);
@@ -46,9 +72,11 @@ export function usePositionTracking({
 	const teamRef = useRef(teamId);
 	const roundRef = useRef(roundId);
 	const channelRef = useRef(channel);
+	const loggingRef = useRef(logging);
 	teamRef.current = teamId;
 	roundRef.current = roundId;
 	channelRef.current = channel;
+	loggingRef.current = logging;
 
 	const sample = useCallback(async (reason: PositionReason) => {
 		const log = logRef.current;
@@ -61,6 +89,8 @@ export function usePositionTracking({
 		latest.current = fix;
 		setLastFix(fix);
 		channelRef.current?.sendPosition(fix);
+
+		if (!loggingRef.current) return;
 
 		log.add({
 			id: crypto.randomUUID(),
@@ -83,6 +113,7 @@ export function usePositionTracking({
 
 	// Live position: straight to the lossy channel, never queued.
 	useEffect(() => {
+		if (!broadcast) return;
 		let live = true;
 		const receive = (fix: PositionSnapshot) => {
 			if (!live) return;
@@ -108,14 +139,14 @@ export function usePositionTracking({
 			live = false;
 			stop();
 		};
-	}, [channel]);
+	}, [channel, broadcast]);
 
-	// The durable log's cadence. Configurable, because it sets both replay
-	// resolution and M8's suggestion freshness.
+	// The durable log's cadence. Configurable, because it sets replay resolution.
 	useEffect(() => {
+		if (!logging) return;
 		const timer = setInterval(() => void sample("interval"), intervalMs);
 		return () => clearInterval(timer);
-	}, [intervalMs, sample]);
+	}, [intervalMs, sample, logging]);
 
 	useEffect(() => {
 		const log = logRef.current;
@@ -166,5 +197,11 @@ export function usePositionTracking({
 		};
 	}, [zero]);
 
-	return { queueSize, lastFix, sample };
+	// Memoized because the session layout puts this straight into the outlet
+	// context, and a fresh object every render would rebuild the shell — and with
+	// it every screen inside the game — on each tick of the position watch.
+	return useMemo(
+		() => ({ queueSize, lastFix, sample }),
+		[queueSize, lastFix, sample],
+	);
 }

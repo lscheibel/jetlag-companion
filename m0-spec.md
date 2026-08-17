@@ -43,7 +43,7 @@ apps/
 packages/
   schema/               Zero schema, Drizzle schema, mutator definitions, shared types
   rules/                PURE. Constraint definitions, question evaluation. No I/O, no Zero
-  geo/                  Projection, boolean ops, simplification. Wraps turf/polygon-clipping
+  geo/                  Boolean ops, geodesics, simplification. Wraps turf/polygon-clipping
   platform/             PlatformAdapter interface + web implementation
   area-packs/           Pack format, validation, build tooling, Berlin fixture
   ui/                   Shared components
@@ -71,7 +71,7 @@ Two channels, deliberately different in character.
 
 Zero has no presence layer by design; this split is its intended usage rather than a workaround. Nothing about live position belongs in Postgres — it is worthless ten seconds later, and routing it through logical replication would generate continuous write churn to sync data that M2's staleness UI is already designed to survive losing.
 
-**Persisted position snapshots are a third thing** and travel over Zero: a low-rate write (§8) capturing position at moments that matter, for M8's suggestion inputs and M14's replay track.
+**Persisted position snapshots are a third thing** and travel over Zero: a low-rate write (§8) capturing position at moments that matter, for M14's replay track.
 
 ### Queries are resolved on the server
 
@@ -471,7 +471,9 @@ Two things that sound like exceptions to that and are not, both found while M1 w
 
 **The position log is not lossy.** Each client records a fix on a **configurable interval, defaulting to 30s**, into a local queue, plus one unconditionally at every question ask, question end and answer. The queue flushes on reconnect. A player who spends ten minutes in a tunnel contributes ten minutes of track the moment they surface, ordered by their own `capturedAt`.
 
-This is the reason client timestamps are trusted rather than stamped on arrival. M14's replay and M8's suggestion inputs both read this log, and neither can afford holes wherever the mobile network had them — nor a flushed batch that all claims to have happened at the instant the signal came back.
+This is the reason client timestamps are trusted rather than stamped on arrival. M14's replay reads this log, and it can afford neither holes wherever the mobile network had them nor a flushed batch that all claims to have happened at the instant the signal came back.
+
+**The log is written during a game and read after it.** An earlier draft said M8's suggestions read it too; they do not. A location question is evaluated against the live position of the player answering it, and a thermometer's two reference points are recorded on the `question` row (§5). Nothing in a running game reads this table, which is why its visibility is a question for the reveal rather than for the round (m2-spec §4).
 
 The interval sets both replay resolution and suggestion freshness, so it wants to be a knob rather than a constant.
 
@@ -507,12 +509,12 @@ Four geometry kinds cover every question in the game and both hand-authored cons
 ### The core operations
 
 ```ts
-function toRegion(g: ConstraintGeometry, p: Projection): Region;
-function applyConstraint(area: Region, c: Constraint, p: Projection): Region;
-function foldConstraints(seed: Region, cs: Constraint[], p: Projection): Region;
+function toRegion(g: ConstraintGeometry, t?: Tolerances): Region;
+function applyConstraint(area: Region, c: Constraint, t?: Tolerances): Region;
+function foldConstraints(seed: Region, cs: Constraint[], t?: Tolerances): Region;
 
 // The inverse usage — M8's hider-side suggestion
-function satisfies(point: LngLat, c: Constraint, p: Projection): boolean;
+function satisfies(point: LngLat, c: Constraint): boolean;
 ```
 
 **`satisfies` and `applyConstraint` are two readings of one definition, and this is the point.** M8 asks _"does the hider's live position satisfy this?"_; M13 asks _"what area survives it?"_ Two implementations would drift, and the symptom — a hider told "yes, within 3 km" while the seeker's map eliminates the wrong region — reads as a geometry bug long before anyone suspects duplication.
@@ -541,19 +543,46 @@ cacheKey = sha256(mapConfig.contentHash, sorted(enabledConstraintIds))
 
 Incremental append is `snapshot(n) = snapshot(n−1) ∩ Sₙ`. Disabling forces a fresh fold, which at these sizes is cheap.
 
-### Projection and numerical hygiene
+### One coordinate system, and where the metre gets in
 
-All boolean operations happen in a **projected, metric CRS**, never in degrees. The projection is a property of the map config, chosen when the area is built:
+> **Every coordinate in this system is WGS84 lng/lat. There is no second CRS, no stored projection, and no forward/inverse round trip anywhere.**
+
+An earlier draft of this section put all boolean operations in a projected metric CRS — UTM 33N at Berlin scale — with the projection stored on the map config and the area pack. That has been reversed, and the reasoning it rested on was subtly wrong.
+
+**Booleans never needed a metric.** Intersection, union and difference are topological: they ask which side of an edge a point falls on, and the lng/lat mapping is continuous and monotonic, so two polygons that overlap on the ground overlap in degree space and every containment result is preserved. What planar clipping in degrees produces is a *distorted* picture — at Berlin's 52.5°, one degree of longitude is 67.9 km against 111.3 km of latitude, so the plane is stretched about 1.64:1 — and distortion is not error. The answer comes back in degrees and is correct.
+
+Nor does a library rescue the projected version. `polygon-clipping` is planar, and so are turf's `union`, `intersect` and `difference`, which are built on the same algorithm. Nothing in JavaScript does geodesic polygon booleans. The choice was never metric-versus-not; it was where the metre enters.
+
+**It enters in exactly three places, and each is local:**
+
+| Needs a metre | How it gets one |
+| --- | --- |
+| Constructing geometry from a distance — a radius, a bisector, a sector | metres-to-degrees from the WGS84 ellipsoid **at that feature's own latitude** |
+| Measuring — a length, an area | a geodesic function: Vincenty for distance, a spherical excess formula for area |
+| Tolerances — snapping and simplification | a scale factor from a representative latitude |
 
 ```ts
-type Projection = {
-  proj4: string; // e.g. UTM 33N for Berlin
-  snapPrecisionMeters: number; // default 0.1
-  simplifyToleranceMeters: number; // default 1.0
+type Tolerances = {
+  snapPrecisionMeters: number;      // default 0.1
+  simplifyToleranceMeters: number;  // default 1.0
 };
 ```
 
-Repeated boolean operations on unions of hundreds of buffered circles accumulate degenerate slivers and near-duplicate vertices. **Snapping and simplification between fold steps are part of the engine, not a later optimisation.** This is invisible at the third constraint and ugly at the fifteenth, which is exactly late enough to be expensive to fix.
+That is what removes the problems. There is no CRS to choose per area pack, no question anywhere about which frame a geometry is in, and no conversion between what Postgres stores, what the wire carries, what GeoJSON mandates and what MapLibre draws — because they are all the same numbers. `Projection`, `Projector`, `createProjector` and the `proj4` dependency all go.
+
+**It is also more accurate at the scale the build plan's seventh principle insists on.** UTM 33N is a single six-degree zone: correct in Berlin and unusable for a Deutschlandticket map spanning Aachen to Görlitz, which would have forced a second projection and a per-pack choice. Constructing each circle at its own latitude has no zone and no edge — a 400 m radius is 400 m in Flensburg and in Garmisch.
+
+**Two things this costs, both real and both bounded.**
+
+*Tolerances become anisotropic.* Douglas–Peucker with one tolerance on stretched coordinates simplifies harder along the stretched axis, so the ring is scaled into metres before snapping and simplifying and scaled back after — a projection, admittedly, but a one-line multiply rather than a stored, configured CRS with round trips.
+
+**That scale is read at a fixed reference latitude, and finding out why is the one thing building this taught.** The obvious version reads it from the region's own bounding box, which gives a grid that is properly square on the ground. It is also **not idempotent**: snapping moves vertices, moving vertices moves the bounding box, and the next pass therefore picks a slightly different grid and moves everything again. A normal form cannot depend on a quantity the normal form itself changes.
+
+So the tolerance is read at the equator. It is a *threshold* — 0.1 m of snapping, 1 m of simplification, chosen to collapse near-duplicate vertices rather than to describe anything — and read there it is at most 1% coarser in latitude anywhere on Earth and finer in longitude, which makes simplification slightly more conservative at high latitudes and costs nothing else. Construction and measurement, where a scale error *is* a geometry error, stay per-point and per-latitude. This is the one place in the package where a fixed figure is the right answer rather than the lazy one.
+
+*A straight line in degrees is not a straight line on the ground.* Over a long edge — a half-plane spanning 300 km, a sparse admin boundary — the degree-space chord departs from the geodesic by about a kilometre at the midpoint. **Long edges are therefore densified at construction**, to the same fixed vertex budget circles already use. This was true in UTM as well; it was merely smaller inside one zone, which is the kind of thing that is fine until the map gets big.
+
+**And the hygiene rule is unchanged.** Repeated boolean operations on unions of hundreds of circles accumulate degenerate slivers and near-duplicate vertices, so **snapping and simplification between fold steps are part of the engine, not a later optimisation.** This is invisible at the third constraint and ugly at the fifteenth, which is exactly late enough to be expensive to fix.
 
 Circles are densified to a fixed vertex count (default 64) at construction, so that a given radius always produces byte-identical geometry on every device. Client and server must agree exactly — that is an M0 acceptance test.
 
@@ -605,7 +634,6 @@ type AreaPack = {
   version: string; // semver
   contentHash: string; // sha256 of canonical serialization
   name: string;
-  projection: Projection;
   bounds: BBox;
   modes: TransitMode[];
   lines: TransitLine[];
@@ -622,9 +650,9 @@ type MapConfig = {
   gameId: string;
   areaPackId: string;
   areaPackVersion: string;
-  projection: Projection;
 
   validHidingArea: MultiPolygon; // stored, not derived on demand — the seed of every fold
+                                 // WGS84 lng/lat, like everything else (§9)
 
   enabledStopIds: string[];
   hidingRadiusByMode: Record<string, Meters>;
@@ -676,6 +704,14 @@ Test 6 is worth keeping even under the good-faith assumption. Not because a frie
 3. **Join codes** — globally unique, six characters from an unambiguous alphabet (no `0/O`, `1/I`). Simplest to reason about, and the collision domain is nowhere near a problem at this scale.
 4. **Debug harness** — kept, provided it stays cheap. A tool that can drive a synthetic game with scripted movement is worth a great deal by the time M13 needs to be verified against a hand calculation, and it doubles as the fixture generator for the Playwright suite.
 5. **`validHidingArea`** — stored (§11).
+6. **One coordinate system: WGS84 lng/lat, with no stored projection anywhere** (§9). This reverses an earlier decision to fold in UTM 33N. Booleans are topological and need no metric; the metre enters only when constructing geometry from a distance, when measuring, and when choosing a tolerance. Construction and measurement take their scale from the latitude they happen at, which is both simpler and correct at national scale, where one UTM zone is not.
+7. **Tolerances are read at a fixed reference latitude** (§9), because a normal form cannot depend on a quantity it changes — and a threshold read 1% coarse is a threshold, while a radius read 1% coarse is a bug.
+
+### Settled during the WGS84 change
+
+- `mapConfig.projection` and `AreaPack.projection` are dropped columns and dropped fields, so every content hash in the system moves once. Nothing reads a stored hash across that boundary — the search-area cache is in memory and per-session — so no migration is owed beyond the column drop.
+- `Region` is degrees, `regionContainsXY` becomes `regionContains`, and `multiPolygonToRegion`/`regionToMultiPolygon` stop taking a projector and become the trivial conversions they always wanted to be.
+- Acceptance test 5 is what proved it: the fold still comes back byte-identical between a browser and Node, now with nothing between the two but the same arithmetic on the same numbers.
 
 ### Still open
 

@@ -49,6 +49,22 @@ export interface PlatformAdapter {
 			opts?: LocationOpts,
 		): Unsubscribe;
 	};
+	/**
+	 * Which way the phone is facing. m2-spec §8.
+	 *
+	 * The compass, and only the compass. `PositionSnapshot.headingDeg` is course
+	 * over ground — null whenever a phone is standing still, which is exactly
+	 * when somebody at a station exit needs to know which way to walk — so the
+	 * two are different questions and this is the one M2 asks.
+	 *
+	 * The callback takes a number rather than a nullable one on purpose: "no
+	 * heading" is the absence of the capability, not a null reading inside it. A
+	 * device with no compass never calls back, and nothing is rendered.
+	 */
+	readonly orientation: {
+		capability(): Capability;
+		watch(cb: (headingDeg: number) => void): Unsubscribe;
+	};
 	readonly notifications: {
 		capability(): Capability;
 		requestPermission(): Promise<PermissionOutcome>;

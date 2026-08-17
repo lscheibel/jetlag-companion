@@ -63,7 +63,6 @@ games.post("/", async (c) => {
 			gameId,
 			areaPackId: mapConfig.areaPackId,
 			areaPackVersion: mapConfig.areaPackVersion,
-			projection: mapConfig.projection,
 			validHidingArea: mapConfig.validHidingArea,
 			enabledStopIds: [...mapConfig.enabledStopIds],
 			hidingRadiusByMode: mapConfig.hidingRadiusByMode,

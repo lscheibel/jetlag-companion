@@ -86,6 +86,8 @@ Specified in full in [m1-spec.md](m1-spec.md).
 
 **Goal:** The core "where is everyone" surface, with the asymmetry the game needs.
 
+Specified in full in [m2-spec.md](m2-spec.md).
+
 **Features**
 
 - Base map, own position with accuracy radius, follow/recenter, heading
@@ -96,13 +98,15 @@ Specified in full in [m1-spec.md](m1-spec.md).
 - Staleness rather than confidence: "last seen 3 min ago", greyed markers, accuracy circles
 - Per-player battery level visible to teammates and to hiders, wherever the platform exposes it. Battery is a browser-dependent capability that several browsers do not implement at all, so it degrades to an honest "unavailable" rather than to a stale number — one of the first things the M0 platform adapter earns its keep on
 
-**Reviewable when:** A hider watches three seeker teams move in real time; seeker team A cannot see seeker team B anywhere in the UI; a phone put into airplane mode goes visibly stale instead of silently wrong.
+**Reviewable when:** A hider watches three seeker teams move in real time; seeker team A can see that seeker team B is in the game, on which team, and online — and cannot see where they are; a phone put into airplane mode goes visibly stale instead of silently wrong.
 
 **Deferred:** 3D buildings (M3), deduction shading (M13).
 
 ## M3 — Map toolkit
 
 **Goal:** Both roles get the geometry tools they'd otherwise open Google Maps for.
+
+Specified in full in [m3-spec.md](m3-spec.md).
 
 **Features**
 
@@ -323,10 +327,9 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Features**
 
 - Offline queueing across every action, with clear pending/synced state and clear superseded state
-- Map tiles and area data pre-cached at setup for the whole game area, against a per-preset zoom and size budget agreed back in M4 — a single Bezirk and a nationwide map cannot share one caching policy
 - Background location and reliable push notifications for questions, answers, curses and deadlines. **Neither is deliverable in a browser**: geolocation stops when the screen locks and web push is best-effort at both ends, so this item is what a Capacitor build exists for. Until it lands, the honest fallback is foreground-only tracking, a wake-lock during active rounds, and M2's staleness UI telling the truth about the gap
 - Low-power mode; battery warnings for yourself and your team
-- High-contrast outdoor mode, one-handed layout, large tap targets
+- One-handed layout, large tap targets
 
 **Reviewable when:** A complete ask-answer cycle survives ten minutes underground and reconciles on resurfacing with no duplicates and no lost answers.
 
@@ -381,7 +384,7 @@ User-authored questions and curses · custom decks and rule packs, shareable by 
 - **M8 depends on M7 only for UI, not for correctness.** The answer-time evaluation model should be settled before M7 ships, since it shapes what the question log stores.
 - **M13 depends on M7's answer log**, not on M8. It works fine with entirely hand-entered answers — and because the fold consumes a constraint list rather than the log directly, it works equally well with constraints that have no question behind them at all.
 - **The constraint library is built once, and never twice.** M8 evaluates a constraint as a point test against the answering player's live position; M13 folds the same constraint over a polygon. If those become two implementations they will drift, and the symptom — a hider told "yes, within 3 km" while the seeker's map eliminates the wrong region — reads as a geometry bug for a week before anyone suspects duplication. The interface lands in M0, the per-question definitions in M6, and both milestones import them.
-- **Geometry is done in metres, not degrees.** Buffers and bisectors are constructed in a projected CRS — UTM 33N at Berlin scale — and long folds accumulate degenerate slivers from repeated boolean operations. Simplification and coordinate snapping between fold steps belong in the engine from the start, not in a later optimisation pass. This bites at the fifteenth answer, not the third, which is exactly late enough to be expensive.
+- **One coordinate system, everywhere: WGS84 lng/lat.** An earlier draft folded constraints in a projected metric CRS. Booleans do not need one — they are topological, and lng/lat preserves every containment result — so there is no stored projection, no per-pack CRS choice, and no conversion between what Postgres holds, what the wire carries and what the map draws. The metre enters in three places only: constructing geometry from a distance (a radius, a bisector, a sector), measuring a length or an area, and choosing a snap or simplify tolerance. Each takes its scale from its own latitude, which is why this is *more* accurate on a Deutschlandticket map than a single UTM zone could ever be. Two consequences carry: long edges are densified, because a straight line in degrees is not a straight line on the ground; and simplification and coordinate snapping between fold steps belong in the engine from the start, not in a later optimisation pass, because long folds accumulate degenerate slivers from repeated boolean operations. That one bites at the fifteenth answer, not the third, which is exactly late enough to be expensive.
 - **M14 depends on a complete event log**, which means every earlier milestone must emit well-formed events from day one — including notes and "not possible to answer" responses. Retrofitting this later is the most likely source of pain in the whole plan.
 - **M9's server-side stripping is a release blocker**, not a feature. A single leaked geotag ends a round. It is also the one place where assuming good faith buys nothing: photos get screenshotted and forwarded well outside the game, so the metadata must be gone before the file leaves the server rather than merely hidden by a client.
 

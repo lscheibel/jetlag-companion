@@ -1,6 +1,5 @@
 import {
 	circleRegion,
-	createProjector,
 	halfPlaneRegion,
 	intersectRegions,
 	type LngLat,
@@ -8,11 +7,11 @@ import {
 	type MultiPolygon,
 	multiPolygonToRegion,
 	normalizeRegion,
-	type Projection,
 	type Region,
-	regionContainsXY,
+	regionContains,
 	sectorRegion,
 	subtractRegions,
+	type Tolerances,
 } from "@zero-lag/geo";
 
 /**
@@ -60,34 +59,26 @@ export type Constraint = {
  */
 export function toRegion(
 	geometry: ConstraintGeometry,
-	projection: Projection,
+	tolerances?: Tolerances,
 ): Region {
-	const projector = createProjector(projection);
 	const raw = (() => {
 		switch (geometry.kind) {
 			case "radius":
-				return circleRegion(
-					projector.forward(geometry.center),
-					geometry.radius,
-				);
+				return circleRegion(geometry.center, geometry.radius);
 			case "halfPlane":
-				return halfPlaneRegion(
-					projector.forward(geometry.a),
-					projector.forward(geometry.b),
-					geometry.nearer,
-				);
+				return halfPlaneRegion(geometry.a, geometry.b, geometry.nearer);
 			case "polygon":
-				return multiPolygonToRegion(geometry.polygons, projector);
+				return multiPolygonToRegion(geometry.polygons);
 			case "sector":
 				return sectorRegion(
-					projector.forward(geometry.center),
+					geometry.center,
 					geometry.radius,
 					geometry.fromDeg,
 					geometry.toDeg,
 				);
 		}
 	})();
-	return normalizeRegion(raw, projection);
+	return normalizeRegion(raw, tolerances);
 }
 
 /**
@@ -99,14 +90,14 @@ export function toRegion(
 export function applyConstraint(
 	area: Region,
 	constraint: Constraint,
-	projection: Projection,
+	tolerances?: Tolerances,
 ): Region {
-	const set = toRegion(constraint.geometry, projection);
+	const set = toRegion(constraint.geometry, tolerances);
 	const result =
 		constraint.mode === "include"
 			? intersectRegions(area, set)
 			: subtractRegions(area, set);
-	return normalizeRegion(result, projection);
+	return normalizeRegion(result, tolerances);
 }
 
 /**
@@ -123,14 +114,14 @@ export function applyConstraint(
 export function foldConstraints(
 	seed: Region,
 	constraints: readonly Constraint[],
-	projection: Projection,
+	tolerances?: Tolerances,
 ): Region {
 	const ordered = [...constraints].sort((a, b) =>
 		a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
 	);
 	return ordered.reduce(
-		(area, constraint) => applyConstraint(area, constraint, projection),
-		normalizeRegion(seed, projection),
+		(area, constraint) => applyConstraint(area, constraint, tolerances),
+		normalizeRegion(seed, tolerances),
 	);
 }
 
@@ -147,12 +138,11 @@ export function foldConstraints(
 export function satisfies(
 	point: LngLat,
 	constraint: Constraint,
-	projection: Projection,
+	tolerances?: Tolerances,
 ): boolean {
-	const projector = createProjector(projection);
-	const inside = regionContainsXY(
-		toRegion(constraint.geometry, projection),
-		projector.forward(point),
+	const inside = regionContains(
+		toRegion(constraint.geometry, tolerances),
+		point,
 	);
 	return constraint.mode === "include" ? inside : !inside;
 }

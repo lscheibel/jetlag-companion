@@ -34,6 +34,23 @@ export type PresenceEntry = {
 	fix: PositionSnapshot | null;
 	battery: BatteryState | null;
 	onlineSince: number;
+	/**
+	 * An entry outlives its socket. m2-spec §6.
+	 *
+	 * M0 deleted the entry on close, so a phone entering a tunnel did not go
+	 * stale — it vanished from every other device, taking its last known position
+	 * with it. "Last seen 5 minutes ago" was unimplementable against that.
+	 */
+	online: boolean;
+	/**
+	 * How old the fix is, measured here, at fan-out. m2-spec §5.
+	 *
+	 * Staleness used to be `Date.now() - capturedAt` on the reader's device,
+	 * which compares two device clocks — the one operation m0-spec §7 says is
+	 * never performed. This is one clock subtracted from itself, and the client
+	 * counts up from it using only its own. Null when there has never been a fix.
+	 */
+	fixAgeMs: number | null;
 };
 
 export type EphemeralDown =
@@ -129,10 +146,27 @@ function visibleTo(
 		}
 		// Identity, team, role and online-ness always travel. `battery` follows
 		// `fix` rather than identity, because how a seeker team's phones are
-		// holding up is information about a seeker team.
-		visible.push({ ...entry, fix: null, battery: null });
+		// holding up is information about a seeker team — and so does `fixAgeMs`,
+		// because "moved eight seconds ago" is a fact about a rival's movement.
+		visible.push({ ...entry, fix: null, battery: null, fixAgeMs: null });
 	}
 	return visible;
+}
+
+/**
+ * The age of every fix, measured on one clock at the moment of sending.
+ *
+ * Done once per fan-out rather than once per subscriber: every socket in the
+ * room is being written to inside the same tick, so they would all measure the
+ * same thing anyway, and one reading is one fewer way for two players to
+ * disagree about how old a marker is.
+ */
+function stampAges(entries: Iterable<PresenceEntry>): PresenceEntry[] {
+	const now = Date.now();
+	return [...entries].map((entry) => ({
+		...entry,
+		fixAgeMs: entry.fix?.receivedAt == null ? null : now - entry.fix.receivedAt,
+	}));
 }
 
 function carriesPosition(
@@ -166,7 +200,7 @@ async function tick(gameId: string, room: Room): Promise<void> {
 	}
 	room.dirty = false;
 
-	const entries = [...room.presence.values()];
+	const entries = stampAges(room.presence.values());
 	for (const connection of room.connections) {
 		send(connection.socket, {
 			t: "presence",
@@ -287,12 +321,30 @@ export function attachEphemeralChannel(server: Server, path: string): void {
 			queue = queue.then(() => handleMessage(text)).catch(() => {});
 		});
 
+		/**
+		 * The socket goes; the entry stays. m2-spec §6.
+		 *
+		 * Its last known fix stays with it and keeps ageing, so a phone in a tunnel
+		 * greys through the staleness buckets instead of disappearing. There is
+		 * deliberately no expiry sweep: an entry is discarded when the room is —
+		 * when the last connection leaves — and never before, because "where did we
+		 * last see Ben" is worth more than the bytes it costs in a game of twenty.
+		 */
 		socket.on("close", () => {
 			if (!connection) return;
 			const room = rooms.get(connection.gameId);
 			if (!room) return;
 			room.connections.delete(connection);
-			room.presence.delete(connection.playerId);
+
+			const entry = room.presence.get(connection.playerId);
+			// Guarded, because a second tab replaces the first: that close arrives
+			// after the newcomer has already registered, and it must not mark a live
+			// player offline.
+			const replaced = [...room.connections].some(
+				(other) => other.playerId === connection?.playerId,
+			);
+			if (entry && !replaced) entry.online = false;
+
 			room.dirty = true;
 			closeRoomIfEmpty(connection.gameId, room);
 		});
@@ -400,20 +452,38 @@ async function register(
 		driftReported: false,
 	};
 	room.connections.add(connection);
-	room.presence.set(claims.sub, {
-		playerId: claims.sub,
-		displayName: player.displayName,
-		teamId,
-		role,
-		fix: null,
-		battery: null,
-		onlineSince: Date.now(),
-	});
+
+	/**
+	 * Updated in place, never replaced. A page reload is a new socket for a
+	 * player whose last position is still perfectly good, and blanking it would
+	 * put every other device back to "no position" for as long as the reloaded
+	 * phone took to get a fix. m2-spec §6.
+	 */
+	const existing = room.presence.get(claims.sub);
+	if (existing) {
+		existing.displayName = player.displayName;
+		existing.teamId = teamId;
+		existing.role = role;
+		if (!existing.online) existing.onlineSince = Date.now();
+		existing.online = true;
+	} else {
+		room.presence.set(claims.sub, {
+			playerId: claims.sub,
+			displayName: player.displayName,
+			teamId,
+			role,
+			fix: null,
+			battery: null,
+			onlineSince: Date.now(),
+			online: true,
+			fixAgeMs: null,
+		});
+	}
 	room.dirty = true;
 
 	send(socket, {
 		t: "presence",
-		entries: visibleTo(connection, room.presence.values()),
+		entries: visibleTo(connection, stampAges(room.presence.values())),
 	});
 
 	return connection;

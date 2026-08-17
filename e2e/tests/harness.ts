@@ -8,7 +8,22 @@ export type Phone = {
 	readonly page: Page;
 	/** Every WebSocket frame this phone received, for the visibility assertion. */
 	readonly frames: string[];
+	/** And every one it sent, for "this toggle transmits nothing". m2-spec §9. */
+	readonly sentFrames: string[];
 	readonly tunnel: Tunnel;
+	/**
+	 * The ephemeral socket, cut separately from Zero's.
+	 *
+	 * They are different servers on different ports and they fail independently
+	 * in the field — a phone can be syncing and not broadcasting. m2-spec §6's
+	 * regression guard needs the presence socket specifically.
+	 */
+	readonly channelTunnel: Tunnel;
+	/**
+	 * Every URL this phone asked OpenFreeMap for — and was answered by the stub
+	 * rather than by OpenFreeMap. m2-spec §13.
+	 */
+	readonly tileRequests: string[];
 	close(): Promise<void>;
 };
 
@@ -27,10 +42,10 @@ export type Tunnel = {
 	leave(): void;
 };
 
-async function installTunnel(page: Page): Promise<Tunnel> {
+async function installTunnel(page: Page, pattern: RegExp): Promise<Tunnel> {
 	const state = { blocked: false, cut: null as (() => void) | null };
 
-	await page.routeWebSocket(/localhost:4848/, (ws) => {
+	await page.routeWebSocket(pattern, (ws) => {
 		if (state.blocked) {
 			ws.close();
 			return;
@@ -52,10 +67,104 @@ async function installTunnel(page: Page): Promise<Tunnel> {
 	};
 }
 
+/**
+ * **The acceptance suite never calls OpenFreeMap.** m2-spec §13.
+ *
+ * Not a convenience and not a mode: every phone intercepts `tiles.openfreemap.org`
+ * unconditionally, and no request to it ever leaves the machine. OpenFreeMap
+ * serves this project for free with no key and no request ceiling, and a test
+ * suite that hammers it on every run — locally, in CI, once per phone per case —
+ * is putting artificial load on somebody else's generosity for no information.
+ * That the real service serves real tiles is an assumption, not a thing this
+ * suite has any business verifying.
+ *
+ * `stub` answers with a minimal style that still declares a vector source, so
+ * MapLibre reaches `load` *and* goes on to ask its worker for tiles. That second
+ * part is deliberate: the requests arriving here are what proves the tile worker
+ * is alive, which is the one thing a style-only stub could not tell you and the
+ * exact defect §3 records.
+ *
+ * `blocked` refuses everything, which is what a phone underground actually
+ * sees, and is how the cold-start test gets its empty canvas.
+ */
+export type TileMode = "stub" | "blocked";
+
+export const TILE_HOST = "https://tiles.openfreemap.org";
+const STUB_TILE_URL = `${TILE_HOST}/stub/{z}/{x}/{y}.pbf`;
+
+const STUB_STYLE = JSON.stringify({
+	version: 8,
+	sources: {
+		openmaptiles: {
+			type: "vector",
+			tiles: [STUB_TILE_URL],
+			minzoom: 0,
+			maxzoom: 14,
+		},
+	},
+	layers: [
+		{
+			id: "background",
+			type: "background",
+			paint: { "background-color": "#eeeeee" },
+		},
+		{
+			id: "stub-roads",
+			type: "line",
+			source: "openmaptiles",
+			"source-layer": "transportation",
+			paint: { "line-color": "#cccccc" },
+		},
+	],
+});
+
+async function installTiles(
+	context: BrowserContext,
+	mode: TileMode,
+	requests: string[],
+): Promise<void> {
+	// On the context rather than the page, so nothing a page spawns can slip out
+	// to the real host either.
+	await context.route(`${TILE_HOST}/**`, async (route) => {
+		const url = route.request().url();
+		requests.push(url);
+
+		if (mode === "blocked") {
+			await route.abort("internetdisconnected");
+			return;
+		}
+		if (url.includes("/styles/")) {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: STUB_STYLE,
+			});
+			return;
+		}
+		// An empty body is a valid empty vector tile: the request is the part that
+		// matters here, and painting nothing keeps the canvas predictable.
+		await route.fulfill({
+			status: 200,
+			contentType: "application/x-protobuf",
+			body: "",
+		});
+	});
+}
+
+export type PhoneOptions = {
+	geolocation?: { longitude: number; latitude: number };
+	tiles?: TileMode;
+	/**
+	 * Take the Battery Status API away, which is the state several browsers ship
+	 * in and the reason m0-spec §10 made capabilities first-class. m2-spec §7.
+	 */
+	noBattery?: boolean;
+};
+
 export async function openPhone(
 	browser: Browser,
 	name: string,
-	options: { geolocation?: { longitude: number; latitude: number } } = {},
+	options: PhoneOptions = {},
 ): Promise<Phone> {
 	const context = await browser.newContext({
 		permissions: ["geolocation"],
@@ -66,14 +175,30 @@ export async function openPhone(
 	});
 	const page = await context.newPage();
 
+	if (options.noBattery) {
+		await page.addInitScript(() => {
+			Object.defineProperty(Navigator.prototype, "getBattery", {
+				value: undefined,
+				configurable: true,
+			});
+		});
+	}
+
 	const frames: string[] = [];
+	const sentFrames: string[] = [];
 	page.on("websocket", (socket) => {
 		socket.on("framereceived", (frame) => {
 			if (typeof frame.payload === "string") frames.push(frame.payload);
 		});
+		socket.on("framesent", (frame) => {
+			if (typeof frame.payload === "string") sentFrames.push(frame.payload);
+		});
 	});
 
-	const tunnel = await installTunnel(page);
+	const tileRequests: string[] = [];
+	await installTiles(context, options.tiles ?? "stub", tileRequests);
+	const tunnel = await installTunnel(page, /localhost:4848/);
+	const channelTunnel = await installTunnel(page, /\/api\/ephemeral/);
 
 	await page.goto("/");
 	return {
@@ -81,7 +206,10 @@ export async function openPhone(
 		context,
 		page,
 		frames,
+		sentFrames,
 		tunnel,
+		channelTunnel,
+		tileRequests,
 		close: () => context.close(),
 	};
 }
@@ -121,6 +249,12 @@ export async function openLobby(phone: Phone, code: string): Promise<void> {
 	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
 }
 
+/** The map. m2-spec §12. */
+export async function openMap(phone: Phone, code: string): Promise<void> {
+	await phone.page.goto(`/g/${code}/map`);
+	await expect(phone.page.getByTestId("map-canvas")).toBeVisible();
+}
+
 /** Zero has to be genuinely connected before a test can trust what it reads. */
 export async function waitForSync(phone: Phone): Promise<void> {
 	await expect(phone.page.getByTestId("connection-state")).toHaveText(
@@ -142,6 +276,9 @@ export type SeenPresence = {
 	readonly role: string | null;
 	readonly fix: unknown;
 	readonly battery: unknown;
+	/** m2-spec §5 and §6: measured on the server, and never about a rival team. */
+	readonly fixAgeMs: number | null;
+	readonly online: boolean | null;
 };
 
 function readEntries(frame: string): SeenPresence[] {
@@ -166,6 +303,8 @@ function readEntries(frame: string): SeenPresence[] {
 				role: Reflect.get(entry, "role") ?? null,
 				fix: Reflect.get(entry, "fix") ?? null,
 				battery: Reflect.get(entry, "battery") ?? null,
+				fixAgeMs: Reflect.get(entry, "fixAgeMs") ?? null,
+				online: Reflect.get(entry, "online") ?? null,
 			} satisfies SeenPresence,
 		];
 	});

@@ -2,9 +2,7 @@ import { useQuery, useZero } from "@rocicorp/zero/react";
 import { BERLIN_VBB_PACK, HIDING_RADIUS_BY_MODE } from "@zero-lag/area-packs";
 import {
 	circleRegion,
-	createProjector,
 	normalizeRegion,
-	type Projection,
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
 import { mutators, queries } from "@zero-lag/schema";
@@ -39,19 +37,13 @@ export function Hiding({ role }: HidingProps) {
 		);
 		if (!stop) return;
 
-		const projection = mapConfig.projection as Projection;
-		const projector = createProjector(projection);
 		const radius = stop.modeIds.reduce(
 			(largest, modeId) =>
 				Math.max(largest, HIDING_RADIUS_BY_MODE[modeId] ?? 0),
 			0,
 		);
 		const zone = regionToMultiPolygon(
-			normalizeRegion(
-				circleRegion(projector.forward(stop.position), radius),
-				projection,
-			),
-			projector,
+			normalizeRegion(circleRegion(stop.position, radius)),
 		);
 
 		void zero.mutate(

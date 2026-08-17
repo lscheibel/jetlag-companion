@@ -1,27 +1,32 @@
 export {
+	type DegreeScale,
+	distanceMeters,
+	metersPerDegree,
+	offsetLngLat,
+	ringAreaMeters,
+} from "./geodesic";
+export {
 	canonicalJson,
 	contentHash,
 	type JsonValue,
 	sha256Hex,
 } from "./hash";
 export {
-	BERLIN_PROJECTION,
-	createProjector,
-	UTM_33N,
-} from "./projection";
-export {
 	CIRCLE_SEGMENTS,
 	canonicalizeRegion,
+	circleLngLat,
 	circleRegion,
 	complementRegion,
+	DEFAULT_TOLERANCES,
 	EMPTY_REGION,
 	halfPlaneRegion,
 	intersectRegions,
 	isEmptyRegion,
+	multiPolygonBBox,
 	multiPolygonToRegion,
 	normalizeRegion,
 	regionArea,
-	regionContainsXY,
+	regionContains,
 	regionHash,
 	regionToMultiPolygon,
 	sectorRegion,
@@ -29,7 +34,6 @@ export {
 	snapRegion,
 	subtractRegions,
 	unionRegions,
-	WORLD_EXTENT_METERS,
 	WORLD_REGION,
 } from "./region";
 export type {
@@ -37,13 +41,8 @@ export type {
 	LngLat,
 	Meters,
 	MultiPolygon,
-	MultiPolygonXY,
 	Polygon,
-	PolygonXY,
-	Projection,
-	Projector,
 	Region,
 	Ring,
-	RingXY,
-	XY,
+	Tolerances,
 } from "./types";
