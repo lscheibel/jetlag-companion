@@ -1,0 +1,76 @@
+import { circleLngLat } from "@zero-lag/geo";
+import { useMemo } from "react";
+import { ringsFeature } from "./geojson";
+import { MapMarker } from "./map-canvas";
+import { useGeoJsonLayer } from "./use-geojson-layer";
+
+export interface MapPin {
+	readonly id: string;
+	readonly lng: number;
+	readonly lat: number;
+	readonly radiusMeters: number | null;
+	readonly label: string;
+	readonly note: string;
+	readonly color: string;
+	readonly createdByPlayerId: string;
+}
+
+const RADIUS_LAYERS = [
+	{
+		id: "pin-radius-fill",
+		type: "fill" as const,
+		paint: { "fill-color": "#4B4B4B", "fill-opacity": 0.09 },
+	},
+	{
+		id: "pin-radius-outline",
+		type: "line" as const,
+		paint: {
+			"line-color": "#4B4B4B",
+			"line-width": 2,
+			"line-dasharray": [2, 2],
+		},
+	},
+];
+
+interface PinLayerProps {
+	readonly pins: readonly MapPin[];
+	readonly disabled: boolean;
+	readonly onSelect: (pinId: string) => void;
+}
+
+export function PinLayer({ pins, disabled, onSelect }: PinLayerProps) {
+	const radii = useMemo(
+		() =>
+			ringsFeature(
+				pins.flatMap((pin) =>
+					pin.radiusMeters && pin.radiusMeters > 0
+						? circleLngLat([pin.lng, pin.lat], pin.radiusMeters).flat()
+						: [],
+				),
+			),
+		[pins],
+	);
+	useGeoJsonLayer("pin-radius-source", radii, RADIUS_LAYERS);
+
+	return (
+		<>
+			{pins.map((pin, index) => (
+				<MapMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
+					<button
+						className="flex min-h-11 items-center gap-1 rounded-full bg-background/90 pr-2 font-semibold text-xs shadow"
+						data-testid={`pin-${pin.id}`}
+						disabled={disabled}
+						onClick={() => onSelect(pin.id)}
+						type="button"
+					>
+						<span
+							className="size-5 rounded-full border-2 border-white"
+							style={{ backgroundColor: pin.color }}
+						/>
+						{pin.label.trim() || `Pin ${index + 1}`}
+					</button>
+				</MapMarker>
+			))}
+		</>
+	);
+}

@@ -1,6 +1,7 @@
 import {
 	bigint,
 	boolean,
+	doublePrecision,
 	index,
 	integer,
 	jsonb,
@@ -291,6 +292,56 @@ export const constraint = pgTable(
 );
 
 /**
+ * Team-authored map notes live for the game. `roundId` records when a pin was
+ * dropped for replay, but does not limit its lifetime or visibility. m3-spec §2.
+ */
+export const pin = pgTable(
+	"pin",
+	{
+		id: text("id").primaryKey(),
+		gameId: text("gameId").notNull(),
+		teamId: text("teamId").notNull(),
+		roundId: text("roundId"),
+		createdByPlayerId: text("createdByPlayerId").notNull(),
+		lng: doublePrecision("lng").notNull(),
+		lat: doublePrecision("lat").notNull(),
+		radiusMeters: doublePrecision("radiusMeters"),
+		label: text("label").notNull(),
+		note: text("note").notNull(),
+		color: text("color").notNull(),
+		createdAt: epochMs("createdAt").notNull(),
+		updatedAt: epochMs("updatedAt").notNull(),
+	},
+	(table) => [index("pin_team_idx").on(table.gameId, table.teamId)],
+);
+
+/**
+ * A seeker team's current intended search area. The unique index is the
+ * one-zone-per-team-per-round rule; declaration replaces rather than appends.
+ */
+export const searchZone = pgTable(
+	"searchZone",
+	{
+		id: text("id").primaryKey(),
+		roundId: text("roundId").notNull(),
+		seekerTeamId: text("seekerTeamId").notNull(),
+		stopId: text("stopId"),
+		lng: doublePrecision("lng").notNull(),
+		lat: doublePrecision("lat").notNull(),
+		radiusMeters: doublePrecision("radiusMeters").notNull(),
+		note: text("note").notNull(),
+		declaredByPlayerId: text("declaredByPlayerId").notNull(),
+		declaredAt: epochMs("declaredAt").notNull(),
+	},
+	(table) => [
+		uniqueIndex("searchZone_round_team_idx").on(
+			table.roundId,
+			table.seekerTeamId,
+		),
+	],
+);
+
+/**
  * The durable position log — not the same thing as presence. Presence is lossy
  * on purpose; this is queued locally and flushed on reconnect, so ten minutes
  * in a tunnel become ten minutes of track. m0-spec §8.
@@ -359,6 +410,8 @@ export const drizzleSchema = {
 	question,
 	answer,
 	constraint,
+	pin,
+	searchZone,
 	positionSnapshot,
 	event,
 };

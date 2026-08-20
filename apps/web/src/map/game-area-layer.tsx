@@ -1,10 +1,20 @@
 import type { MultiPolygon } from "@zero-lag/geo";
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { multiPolygonFeature } from "./geojson";
-import { useMapInstance } from "./map-canvas";
+import { useGeoJsonLayer } from "./use-geojson-layer";
 
-const SOURCE_ID = "game-area";
-const LAYER_ID = "game-area-outline";
+const LAYERS = [
+	{
+		id: "game-area-outline",
+		type: "line" as const,
+		paint: {
+			"line-color": "#111827",
+			"line-width": 2,
+			"line-dasharray": [2, 2],
+			"line-opacity": 0.6,
+		},
+	},
+];
 
 interface GameAreaLayerProps {
 	readonly area: MultiPolygon | null;
@@ -19,34 +29,7 @@ interface GameAreaLayerProps {
  * now would be inventing a meaning that M13 has to undo.
  */
 export function GameAreaLayer({ area }: GameAreaLayerProps) {
-	const map = useMapInstance();
-
-	// A source and a layer are objects owned by MapLibre, so they are set up and
-	// torn down the way any other external system is.
-	useEffect(() => {
-		if (!map || !area) return;
-
-		map.addSource(SOURCE_ID, {
-			type: "geojson",
-			data: multiPolygonFeature(area),
-		});
-		map.addLayer({
-			id: LAYER_ID,
-			type: "line",
-			source: SOURCE_ID,
-			paint: {
-				"line-color": "#111827",
-				"line-width": 2,
-				"line-dasharray": [2, 2],
-				"line-opacity": 0.6,
-			},
-		});
-
-		return () => {
-			if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
-			if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-		};
-	}, [map, area]);
-
+	const data = useMemo(() => multiPolygonFeature(area), [area]);
+	useGeoJsonLayer("game-area", data, LAYERS);
 	return null;
 }

@@ -24,6 +24,8 @@ export type Phone = {
 	 * rather than by OpenFreeMap. m2-spec §13.
 	 */
 	readonly tileRequests: string[];
+	/** Any HTTP request outside the app's local servers and intercepted tile stub. */
+	readonly externalRequests: string[];
 	close(): Promise<void>;
 };
 
@@ -115,8 +117,40 @@ const STUB_STYLE = JSON.stringify({
 			"source-layer": "transportation",
 			paint: { "line-color": "#cccccc" },
 		},
+		{
+			id: "stub-buildings-flat",
+			type: "fill",
+			source: "openmaptiles",
+			"source-layer": "building",
+			paint: { "fill-color": "#dddddd" },
+		},
 	],
 });
+
+const LOCAL_ORIGINS = new Set([
+	"http://localhost:3000",
+	"http://localhost:4848",
+	"http://localhost:5173",
+]);
+
+async function installThirdPartyGuard(
+	context: BrowserContext,
+	requests: string[],
+): Promise<void> {
+	await context.route("http://**/*", async (route) => {
+		const url = route.request().url();
+		if (LOCAL_ORIGINS.has(new URL(url).origin)) {
+			await route.continue();
+			return;
+		}
+		requests.push(url);
+		await route.abort("blockedbyclient");
+	});
+	await context.route("https://**/*", async (route) => {
+		requests.push(route.request().url());
+		await route.abort("blockedbyclient");
+	});
+}
 
 async function installTiles(
 	context: BrowserContext,
@@ -196,6 +230,8 @@ export async function openPhone(
 	});
 
 	const tileRequests: string[] = [];
+	const externalRequests: string[] = [];
+	await installThirdPartyGuard(context, externalRequests);
 	await installTiles(context, options.tiles ?? "stub", tileRequests);
 	const tunnel = await installTunnel(page, /localhost:4848/);
 	const channelTunnel = await installTunnel(page, /\/api\/ephemeral/);
@@ -210,7 +246,11 @@ export async function openPhone(
 		tunnel,
 		channelTunnel,
 		tileRequests,
-		close: () => context.close(),
+		externalRequests,
+		close: async () => {
+			expect(externalRequests).toEqual([]);
+			await context.close();
+		},
 	};
 }
 

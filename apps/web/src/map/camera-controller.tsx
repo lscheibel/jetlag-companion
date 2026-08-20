@@ -42,9 +42,13 @@ export function CameraController({
 		};
 		map.on("dragstart", onDrag);
 		map.on("zoomstart", onDrag);
+		map.on("rotatestart", onDrag);
+		map.on("pitchstart", onDrag);
 		return () => {
 			map.off("dragstart", onDrag);
 			map.off("zoomstart", onDrag);
+			map.off("rotatestart", onDrag);
+			map.off("pitchstart", onDrag);
 		};
 	}, [map]);
 

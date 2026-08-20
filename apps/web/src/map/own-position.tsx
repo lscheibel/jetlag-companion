@@ -1,14 +1,25 @@
 import { circleLngLat } from "@zero-lag/geo";
 import type { PositionSnapshot } from "@zero-lag/schema";
-import type { GeoJSONSource } from "maplibre-gl";
-import { useEffect, useMemo } from "react";
-import { EMPTY_FEATURES, multiPolygonFeature } from "./geojson";
-import { MapMarker, useMapInstance } from "./map-canvas";
+import { useMemo } from "react";
+import { multiPolygonFeature } from "./geojson";
+import { MapMarker } from "./map-canvas";
 import { formatAccuracy } from "./staleness";
+import { formatCoordinates } from "./toolkit";
+import { useGeoJsonLayer } from "./use-geojson-layer";
+import { useMapCamera } from "./use-map-camera";
 
-const SOURCE_ID = "own-accuracy";
-const LAYER_ID = "own-accuracy-fill";
-const OUTLINE_ID = "own-accuracy-outline";
+const ACCURACY_LAYERS = [
+	{
+		id: "own-accuracy-fill",
+		type: "fill" as const,
+		paint: { "fill-color": "#0072B2", "fill-opacity": 0.12 },
+	},
+	{
+		id: "own-accuracy-outline",
+		type: "line" as const,
+		paint: { "line-color": "#0072B2", "line-width": 1, "line-opacity": 0.5 },
+	},
+];
 
 interface OwnPositionProps {
 	readonly fix: PositionSnapshot | null;
@@ -25,6 +36,7 @@ interface OwnPositionProps {
  */
 export function OwnPosition({ fix, headingDeg }: OwnPositionProps) {
 	const usable = fix && fix.source !== "unavailable" ? fix : null;
+	const { bearing } = useMapCamera();
 
 	return (
 		<>
@@ -40,7 +52,7 @@ export function OwnPosition({ fix, headingDeg }: OwnPositionProps) {
 								aria-hidden
 								className="absolute"
 								data-testid="own-heading"
-								style={{ transform: `rotate(${headingDeg}deg)` }}
+								style={{ transform: `rotate(${headingDeg - bearing}deg)` }}
 							>
 								<svg
 									aria-hidden
@@ -76,43 +88,12 @@ export function OwnPosition({ fix, headingDeg }: OwnPositionProps) {
  * long before anyone suspects duplication. m0-spec §9.
  */
 function AccuracyRing({ fix }: { fix: PositionSnapshot | null }) {
-	const map = useMapInstance();
-
 	const ring = useMemo(() => {
 		if (!fix || fix.accuracyMeters <= 0) return null;
 		return circleLngLat([fix.lng, fix.lat], fix.accuracyMeters);
 	}, [fix]);
-
-	useEffect(() => {
-		if (!map) return;
-
-		map.addSource(SOURCE_ID, { type: "geojson", data: EMPTY_FEATURES });
-		map.addLayer({
-			id: LAYER_ID,
-			type: "fill",
-			source: SOURCE_ID,
-			paint: { "fill-color": "#0072B2", "fill-opacity": 0.12 },
-		});
-		map.addLayer({
-			id: OUTLINE_ID,
-			type: "line",
-			source: SOURCE_ID,
-			paint: { "line-color": "#0072B2", "line-width": 1, "line-opacity": 0.5 },
-		});
-
-		return () => {
-			if (map.getLayer(OUTLINE_ID)) map.removeLayer(OUTLINE_ID);
-			if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
-			if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-		};
-	}, [map]);
-
-	useEffect(() => {
-		map
-			?.getSource<GeoJSONSource>(SOURCE_ID)
-			?.setData(multiPolygonFeature(ring));
-	}, [map, ring]);
-
+	const data = useMemo(() => multiPolygonFeature(ring), [ring]);
+	useGeoJsonLayer("own-accuracy", data, ACCURACY_LAYERS);
 	return null;
 }
 
@@ -127,7 +108,7 @@ export function OwnPositionReadout({ fix }: { fix: PositionSnapshot | null }) {
 	}
 	return (
 		<p data-testid="own-readout">
-			{fix.lat.toFixed(5)}, {fix.lng.toFixed(5)} ·{" "}
+			{formatCoordinates([fix.lng, fix.lat])} ·{" "}
 			{formatAccuracy(fix.accuracyMeters)}
 		</p>
 	);

@@ -174,6 +174,39 @@ const constraint = table("constraint")
 	})
 	.primaryKey("id");
 
+const pin = table("pin")
+	.columns({
+		id: string(),
+		gameId: string(),
+		teamId: string(),
+		roundId: string().optional(),
+		createdByPlayerId: string(),
+		lng: number(),
+		lat: number(),
+		radiusMeters: number().optional(),
+		label: string(),
+		note: string(),
+		color: string(),
+		createdAt: number(),
+		updatedAt: number(),
+	})
+	.primaryKey("id");
+
+const searchZone = table("searchZone")
+	.columns({
+		id: string(),
+		roundId: string(),
+		seekerTeamId: string(),
+		stopId: string().optional(),
+		lng: number(),
+		lat: number(),
+		radiusMeters: number(),
+		note: string(),
+		declaredByPlayerId: string(),
+		declaredAt: number(),
+	})
+	.primaryKey("id");
+
 const positionSnapshot = table("positionSnapshot")
 	.columns({
 		id: string(),
@@ -215,6 +248,7 @@ const gameRelationships = relationships(game, ({ many, one }) => ({
 		destField: ["gameId"],
 		destSchema: round,
 	}),
+	pins: many({ sourceField: ["id"], destField: ["gameId"], destSchema: pin }),
 	mapConfig: one({
 		sourceField: ["mapConfigId"],
 		destField: ["id"],
@@ -232,6 +266,12 @@ const teamRelationships = relationships(team, ({ many }) => ({
 		sourceField: ["id"],
 		destField: ["teamId"],
 		destSchema: roundTeamRole,
+	}),
+	pins: many({ sourceField: ["id"], destField: ["teamId"], destSchema: pin }),
+	searchZones: many({
+		sourceField: ["id"],
+		destField: ["seekerTeamId"],
+		destSchema: searchZone,
 	}),
 }));
 
@@ -264,6 +304,16 @@ const roundRelationships = relationships(round, ({ many }) => ({
 		sourceField: ["id"],
 		destField: ["roundId"],
 		destSchema: constraint,
+	}),
+	pins: many({
+		sourceField: ["id"],
+		destField: ["roundId"],
+		destSchema: pin,
+	}),
+	searchZones: many({
+		sourceField: ["id"],
+		destField: ["roundId"],
+		destSchema: searchZone,
 	}),
 }));
 
@@ -309,6 +359,32 @@ const constraintRelationships = relationships(constraint, ({ many }) => ({
 	}),
 }));
 
+const pinRelationships = relationships(pin, ({ many, one }) => ({
+	teamMembers: many({
+		sourceField: ["teamId"],
+		destField: ["teamId"],
+		destSchema: teamMember,
+	}),
+	round: one({
+		sourceField: ["roundId"],
+		destField: ["id"],
+		destSchema: round,
+	}),
+}));
+
+const searchZoneRelationships = relationships(searchZone, ({ many, one }) => ({
+	seekerTeamMembers: many({
+		sourceField: ["seekerTeamId"],
+		destField: ["teamId"],
+		destSchema: teamMember,
+	}),
+	round: one({
+		sourceField: ["roundId"],
+		destField: ["id"],
+		destSchema: round,
+	}),
+}));
+
 const hidingCommitmentRelationships = relationships(
 	hidingCommitment,
 	({ many, one }) => ({
@@ -349,6 +425,8 @@ export const schema = createSchema({
 		question,
 		answer,
 		constraint,
+		pin,
+		searchZone,
 		positionSnapshot,
 		event,
 	],
@@ -360,6 +438,8 @@ export const schema = createSchema({
 		roundTeamRoleRelationships,
 		questionRelationships,
 		constraintRelationships,
+		pinRelationships,
+		searchZoneRelationships,
 		hidingCommitmentRelationships,
 		positionSnapshotRelationships,
 	],

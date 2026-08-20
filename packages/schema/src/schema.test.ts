@@ -87,6 +87,41 @@ describe("one player, one team", () => {
 	});
 });
 
+describe("the M3 map toolkit schema", () => {
+	it("indexes pins by their game and owning team", () => {
+		const pin = getTableConfig(drizzleSchema.pin);
+		const teamIndex = pin.indexes.find(
+			(index) => index.config.name === "pin_team_idx",
+		);
+		expect(
+			teamIndex?.config.columns.map((c) => ("name" in c ? c.name : c)),
+		).toEqual(["gameId", "teamId"]);
+	});
+
+	it("allows one search zone per seeker team per round", () => {
+		const searchZone = getTableConfig(drizzleSchema.searchZone);
+		const unique = searchZone.indexes.find(
+			(index) => index.config.name === "searchZone_round_team_idx",
+		);
+		expect(unique?.config.unique).toBe(true);
+		expect(
+			unique?.config.columns.map((c) => ("name" in c ? c.name : c)),
+		).toEqual(["roundId", "seekerTeamId"]);
+	});
+
+	it("declares every map-tool event", () => {
+		expect(EVENT_TYPES).toEqual(
+			expect.arrayContaining([
+				"pin.created",
+				"pin.updated",
+				"pin.deleted",
+				"searchZone.declared",
+				"searchZone.cleared",
+			]),
+		);
+	});
+});
+
 describe("the M1 vocabulary", () => {
 	it("declares the events M1 emits", () => {
 		expect(EVENT_TYPES).toContain("host.changed");

@@ -7,6 +7,7 @@ import { answerToConstraintGeometry } from "@zero-lag/rules";
 import { z } from "zod";
 import type { EventType, GameContext, Json } from "../types";
 import {
+	refuse,
 	reject,
 	requireContext,
 	requireHost,
@@ -75,6 +76,9 @@ const constraintGeometry = z.discriminatedUnion("kind", [
 ]);
 
 const withEvent = { eventId: z.string() };
+const longitude = z.number().finite().min(-180).max(180);
+const latitude = z.number().finite().min(-90).max(90);
+const radiusMeters = z.number().finite().positive();
 
 type Tx = Transaction;
 
@@ -1003,6 +1007,315 @@ export const mutators = defineMutators({
 		),
 	},
 
+	pin: {
+		create: defineMutator(
+			z.object({
+				...withEvent,
+				pinId: z.string(),
+				teamId: z.string(),
+				roundId: z.string().nullable(),
+				lng: longitude,
+				lat: latitude,
+				radiusMeters: radiusMeters.nullable(),
+				label: z.string().max(120),
+				note: z.string().max(10_000),
+				color: z.string().min(1).max(100),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireTeamInGame(tx, args.teamId, gameId, "creating a pin");
+				await requireTeamMember(tx, playerId, args.teamId, "creating a pin");
+				if (args.roundId !== null) {
+					await requireRoundInGame(tx, args.roundId, gameId, "creating a pin");
+				}
+
+				const createdAt = now();
+				await tx.mutate.pin.insert({
+					id: args.pinId,
+					gameId,
+					teamId: args.teamId,
+					roundId: args.roundId,
+					createdByPlayerId: playerId,
+					lng: args.lng,
+					lat: args.lat,
+					radiusMeters: args.radiusMeters,
+					label: args.label,
+					note: args.note,
+					color: args.color,
+					createdAt,
+					updatedAt: createdAt,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "pin.created",
+					actorPlayerId: playerId,
+					actorTeamId: args.teamId,
+					payload: {
+						pinId: args.pinId,
+						lng: args.lng,
+						lat: args.lat,
+						radiusMeters: args.radiusMeters,
+						label: args.label,
+						color: args.color,
+					},
+				});
+			},
+		),
+
+		update: defineMutator(
+			z.object({
+				...withEvent,
+				pinId: z.string(),
+				lng: longitude.optional(),
+				lat: latitude.optional(),
+				radiusMeters: radiusMeters.nullable().optional(),
+				label: z.string().max(120).optional(),
+				note: z.string().max(10_000).optional(),
+				color: z.string().min(1).max(100).optional(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const pin = await tx.run(zql.pin.where("id", args.pinId).one());
+				if (!pin) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing pin in this game",
+							actual: "no such pin",
+						});
+					}
+					return;
+				}
+				if (pin.gameId !== gameId) {
+					refuse(tx, {
+						code: "not_permitted",
+						reason: "editing a pin is limited to this game",
+					});
+					return;
+				}
+				await requireTeamInGame(tx, pin.teamId, gameId, "editing a pin");
+				await requireTeamMember(tx, playerId, pin.teamId, "editing a pin");
+
+				const changes: {
+					lng?: number;
+					lat?: number;
+					radiusMeters?: number | null;
+					label?: string;
+					note?: string;
+					color?: string;
+				} = {};
+				if (args.lng !== undefined) changes.lng = args.lng;
+				if (args.lat !== undefined) changes.lat = args.lat;
+				if (args.radiusMeters !== undefined)
+					changes.radiusMeters = args.radiusMeters;
+				if (args.label !== undefined) changes.label = args.label;
+				if (args.note !== undefined) changes.note = args.note;
+				if (args.color !== undefined) changes.color = args.color;
+				if (Object.keys(changes).length === 0) return;
+
+				await tx.mutate.pin.update({
+					id: args.pinId,
+					...changes,
+					updatedAt: now(),
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "pin.updated",
+					actorPlayerId: playerId,
+					actorTeamId: pin.teamId,
+					payload: { pinId: args.pinId, ...changes },
+				});
+			},
+		),
+
+		delete: defineMutator(
+			z.object({ ...withEvent, pinId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const pin = await tx.run(zql.pin.where("id", args.pinId).one());
+				if (!pin) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing pin in this game",
+							actual: "no such pin",
+						});
+					}
+					return;
+				}
+				if (pin.gameId !== gameId) {
+					refuse(tx, {
+						code: "not_permitted",
+						reason: "deleting a pin is limited to this game",
+					});
+					return;
+				}
+				await requireTeamInGame(tx, pin.teamId, gameId, "deleting a pin");
+				await requireTeamMember(tx, playerId, pin.teamId, "deleting a pin");
+
+				await tx.mutate.pin.delete({ id: args.pinId });
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "pin.deleted",
+					actorPlayerId: playerId,
+					actorTeamId: pin.teamId,
+					payload: { pinId: args.pinId },
+				});
+			},
+		),
+	},
+
+	searchZone: {
+		declare: defineMutator(
+			z.object({
+				...withEvent,
+				zoneId: z.string(),
+				roundId: z.string(),
+				seekerTeamId: z.string(),
+				stopId: z.string().nullable(),
+				lng: longitude,
+				lat: latitude,
+				radiusMeters,
+				note: z.string().max(10_000),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireTeamInGame(
+					tx,
+					args.seekerTeamId,
+					gameId,
+					"declaring a search zone",
+				);
+				await requireTeamMember(
+					tx,
+					playerId,
+					args.seekerTeamId,
+					"declaring a search zone",
+				);
+				await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"declaring a search zone",
+				);
+				await requireSeekerRole(
+					tx,
+					args.roundId,
+					args.seekerTeamId,
+					"declaring a search zone",
+				);
+
+				const zoneWithId = await tx.run(
+					zql.searchZone.where("id", args.zoneId).one(),
+				);
+				if (
+					zoneWithId &&
+					(zoneWithId.roundId !== args.roundId ||
+						zoneWithId.seekerTeamId !== args.seekerTeamId)
+				) {
+					refuse(tx, {
+						code: "not_permitted",
+						reason: "a search-zone id cannot be moved to another scope",
+					});
+				}
+				const existing = await tx.run(
+					zql.searchZone
+						.where("roundId", args.roundId)
+						.where("seekerTeamId", args.seekerTeamId)
+						.one(),
+				);
+				if (existing && existing.id !== args.zoneId) {
+					await tx.mutate.searchZone.delete({ id: existing.id });
+				}
+
+				await tx.mutate.searchZone.upsert({
+					id: args.zoneId,
+					roundId: args.roundId,
+					seekerTeamId: args.seekerTeamId,
+					stopId: args.stopId,
+					lng: args.lng,
+					lat: args.lat,
+					radiusMeters: args.radiusMeters,
+					note: args.note,
+					declaredByPlayerId: playerId,
+					declaredAt: now(),
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "searchZone.declared",
+					actorPlayerId: playerId,
+					actorTeamId: args.seekerTeamId,
+					payload: {
+						zoneId: args.zoneId,
+						stopId: args.stopId,
+						lng: args.lng,
+						lat: args.lat,
+						radiusMeters: args.radiusMeters,
+						note: args.note,
+					},
+				});
+			},
+		),
+
+		clear: defineMutator(
+			z.object({ ...withEvent, zoneId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const zone = await tx.run(
+					zql.searchZone.where("id", args.zoneId).one(),
+				);
+				if (!zone) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing search zone in this game",
+							actual: "no such search zone",
+						});
+					}
+					return;
+				}
+				await requireRoundInGame(
+					tx,
+					zone.roundId,
+					gameId,
+					"clearing a search zone",
+				);
+				await requireTeamInGame(
+					tx,
+					zone.seekerTeamId,
+					gameId,
+					"clearing a search zone",
+				);
+				await requireTeamMember(
+					tx,
+					playerId,
+					zone.seekerTeamId,
+					"clearing a search zone",
+				);
+				await requireSeekerRole(
+					tx,
+					zone.roundId,
+					zone.seekerTeamId,
+					"clearing a search zone",
+				);
+
+				await tx.mutate.searchZone.delete({ id: args.zoneId });
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "searchZone.cleared",
+					actorPlayerId: playerId,
+					actorTeamId: zone.seekerTeamId,
+					payload: { zoneId: args.zoneId },
+				});
+			},
+		),
+	},
+
 	position: {
 		/**
 		 * The durable position log, flushed from a local queue. Deliberately not an
@@ -1083,6 +1396,81 @@ async function dropMemberships(tx: Tx, playerId: string): Promise<void> {
 			playerId,
 		});
 	}
+}
+
+async function requireTeamInGame(
+	tx: Tx,
+	teamId: string,
+	gameId: string,
+	action: string,
+): Promise<void> {
+	const team = await tx.run(zql.team.where("id", teamId).one());
+	if (!team) {
+		// A cold optimistic store cannot prove the scope. The server always can.
+		if (tx.location === "server") {
+			reject({
+				code: "game_state_invalid",
+				expected: "a team in this game",
+				actual: "no such team",
+			});
+		}
+		return;
+	}
+	if (team.gameId !== gameId) {
+		refuse(tx, {
+			code: "not_permitted",
+			reason: `${action} is limited to this game`,
+		});
+	}
+}
+
+async function requireRoundInGame(
+	tx: Tx,
+	roundId: string,
+	gameId: string,
+	action: string,
+): Promise<void> {
+	const round = await tx.run(zql.round.where("id", roundId).one());
+	if (!round) {
+		if (tx.location === "server") {
+			reject({
+				code: "game_state_invalid",
+				expected: "a round in this game",
+				actual: "no such round",
+			});
+		}
+		return;
+	}
+	if (round.gameId !== gameId) {
+		refuse(tx, {
+			code: "not_permitted",
+			reason: `${action} is limited to this game's rounds`,
+		});
+	}
+}
+
+async function requireSeekerRole(
+	tx: Tx,
+	roundId: string,
+	teamId: string,
+	action: string,
+): Promise<void> {
+	const role = await tx.run(
+		zql.roundTeamRole.where("roundId", roundId).where("teamId", teamId).one(),
+	);
+	if (role?.role === "seeker") return;
+
+	// `queries.rounds()` carries all role rows with a known round, so a client
+	// that knows the round can make the same decision without blocking offline
+	// writes. A cold store defers the decision to the server.
+	if (tx.location !== "server") {
+		const round = await tx.run(zql.round.where("id", roundId).one());
+		if (!round) return;
+	}
+	refuse(tx, {
+		code: "not_permitted",
+		reason: `${action} is for seeker teams`,
+	});
 }
 
 /**

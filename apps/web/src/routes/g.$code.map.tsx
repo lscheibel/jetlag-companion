@@ -1,16 +1,28 @@
-import { useQuery } from "@rocicorp/zero/react";
-import { multiPolygonBBox } from "@zero-lag/geo";
-import { queries } from "@zero-lag/schema";
+import { useQuery, useZero } from "@rocicorp/zero/react";
+import { BERLIN_VBB_PACK } from "@zero-lag/area-packs";
+import { type LngLat, multiPolygonBBox } from "@zero-lag/geo";
+import { webPlatform } from "@zero-lag/platform/web";
+import { mutators, queries } from "@zero-lag/schema";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
+import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
 import { GameAreaLayer } from "../map/game-area-layer";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapControls } from "../map/map-controls";
+import {
+	MapFlyTo,
+	MapTapHandler,
+	RadiusDragHandler,
+} from "../map/map-interactions";
+import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
+import { MeasureLayer } from "../map/measure-layer";
+import { NorthReset } from "../map/north-reset";
 import { OwnPosition, OwnPositionReadout } from "../map/own-position";
+import { PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import {
@@ -18,6 +30,8 @@ import {
 	type MapPlayer,
 	visibleMarkers,
 } from "../map/players";
+import { SearchZoneLayer } from "../map/search-zone-layer";
+import type { MapTool, SearchResult } from "../map/toolkit";
 import { useBlindness } from "../map/use-blindness";
 import { useCompassHeading } from "../map/use-compass-heading";
 import { useNow } from "../map/use-now";
@@ -39,14 +53,28 @@ const FALLBACK_CENTER = [13.4132, 52.5219] as const;
 export default function MapRoute() {
 	const { session, ephemeral, tracking } = useGameShell();
 	const role = useMyRole(session.playerId);
+	const zero = useZero();
 
 	const [players] = useQuery(queries.players());
 	const [teams] = useQuery(queries.teams());
 	const [games] = useQuery(queries.game());
+	const [pins] = useQuery(queries.pins());
+	const [searchZones] = useQuery(queries.searchZones());
 
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [tool, setTool] = useState<MapTool>({ kind: "none" });
+	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
+	const [draftRadius, setDraftRadius] = useState<number | null>(null);
+	const [flyTarget, setFlyTarget] = useState<
+		| { readonly kind: "point"; readonly point: LngLat }
+		| {
+				readonly kind: "bounds";
+				readonly bounds: readonly [number, number, number, number];
+		  }
+		| null
+	>(null);
 	/**
 	 * MapLibre does not re-fetch a style that failed, so coming back from a
 	 * tunnel is a remount rather than a recovery. Bumping this is the only thing
@@ -92,6 +120,116 @@ export default function MapRoute() {
 	);
 	const others = shown.filter((player) => !player.isSelf);
 	const selected = others.find((player) => player.playerId === selectedId);
+	const myTeam = teams.find((team) => team.id === role.teamId);
+	const editingPin =
+		tool.kind === "editingPin"
+			? (pins.find((pin) => pin.id === tool.pinId) ?? null)
+			: null;
+	const zone = searchZones[0] ?? null;
+	const measure = tool.kind === "measure" ? tool.measure : null;
+	const origin: LngLat =
+		ownFix && ownFix.source !== "unavailable"
+			? [ownFix.lng, ownFix.lat]
+			: initialBounds
+				? [
+						(initialBounds[0] + initialBounds[2]) / 2,
+						(initialBounds[1] + initialBounds[3]) / 2,
+					]
+				: FALLBACK_CENTER;
+
+	const cancelTool = () => {
+		webPlatform.haptics.vibrate([15]);
+		setTool({ kind: "none" });
+		setDraftPoint(null);
+		setDraftRadius(null);
+	};
+
+	const changeTool = (next: MapTool) => {
+		if (
+			next.kind === "placingPin" &&
+			tool.kind === "measure" &&
+			tool.measure.kind === "radius" &&
+			tool.measure.center
+		) {
+			setDraftPoint(tool.measure.center);
+			setDraftRadius(tool.measure.radiusMeters);
+		}
+		setTool(next);
+	};
+
+	const handleTap = (point: LngLat) => {
+		if (tool.kind === "none" || tool.kind === "editingPin") return;
+		webPlatform.haptics.vibrate([10]);
+		if (tool.kind === "measure") {
+			setTool({
+				kind: "measure",
+				measure:
+					tool.measure.kind === "path"
+						? { kind: "path", points: [...tool.measure.points, point] }
+						: tool.measure.center
+							? tool.measure
+							: { ...tool.measure, center: point },
+			});
+			return;
+		}
+		if (tool.kind === "placingPin") {
+			setDraftPoint(point);
+			return;
+		}
+		setTool({ ...tool, center: point });
+	};
+
+	const handleSearchResult = (result: SearchResult) => {
+		if (result.kind === "coordinate") {
+			setFlyTarget({ kind: "point", point: result.parsed.point });
+			setDraftPoint(result.parsed.point);
+			setTool({ kind: "placingPin" });
+			return;
+		}
+		if (result.kind === "stop") {
+			setFlyTarget({ kind: "point", point: result.stop.position });
+			return;
+		}
+		if (result.kind === "boundary") {
+			const bounds = multiPolygonBBox(result.boundary.polygons);
+			if (bounds) setFlyTarget({ kind: "bounds", bounds });
+			return;
+		}
+		const stops = result.line.stopIds.flatMap((id) => {
+			const stop = BERLIN_VBB_PACK.stops.find(
+				(candidate) => candidate.id === id,
+			);
+			return stop ? [stop.position] : [];
+		});
+		if (stops.length > 0) {
+			const lngs = stops.map((point) => point[0]);
+			const lats = stops.map((point) => point[1]);
+			setFlyTarget({
+				kind: "bounds",
+				bounds: [
+					Math.min(...lngs),
+					Math.min(...lats),
+					Math.max(...lngs),
+					Math.max(...lats),
+				],
+			});
+		}
+	};
+
+	const handleSearchStopZone = (
+		stop: (typeof BERLIN_VBB_PACK.stops)[number],
+	) => {
+		const config = games[0]?.mapConfig;
+		const mode = stop.modeIds[0];
+		const radius = (mode ? config?.hidingRadiusByMode[mode] : undefined) ?? 500;
+		setFlyTarget({ kind: "point", point: stop.position });
+		setTool({
+			kind: "placingZone",
+			center: stop.position,
+			radiusMeters: radius,
+			stopId: stop.id,
+		});
+	};
 
 	/**
 	 * A game whose roster has not arrived is not a game with nobody in it. Zero
@@ -99,9 +237,79 @@ export default function MapRoute() {
 	 * connection has no synced data at all — not stale data, none. m2-spec §11.
 	 */
 	const loaded = players.length > 0;
+	const event = () => ({ eventId: crypto.randomUUID() });
+
+	const savePin = (input: {
+		label: string;
+		note: string;
+		color: string;
+		radiusMeters: number | null;
+	}) => {
+		if (!role.teamId) return;
+		if (editingPin) {
+			void zero.mutate(
+				mutators.pin.update({
+					...event(),
+					pinId: editingPin.id,
+					...input,
+				}),
+			);
+		} else if (draftPoint) {
+			void zero.mutate(
+				mutators.pin.create({
+					...event(),
+					pinId: crypto.randomUUID(),
+					teamId: role.teamId,
+					roundId: role.roundId,
+					lng: draftPoint[0],
+					lat: draftPoint[1],
+					...input,
+					radiusMeters: draftRadius ?? input.radiusMeters,
+				}),
+			);
+		}
+		webPlatform.haptics.vibrate([15]);
+		cancelTool();
+	};
+
+	const saveZone = (note: string) => {
+		if (
+			tool.kind !== "placingZone" ||
+			!tool.center ||
+			!role.teamId ||
+			!role.roundId
+		) {
+			return;
+		}
+		void zero.mutate(
+			mutators.searchZone.declare({
+				...event(),
+				zoneId: zone?.id ?? crypto.randomUUID(),
+				roundId: role.roundId,
+				seekerTeamId: role.teamId,
+				stopId: tool.stopId,
+				lng: tool.center[0],
+				lat: tool.center[1],
+				radiusMeters: tool.radiusMeters,
+				note,
+			}),
+		);
+		cancelTool();
+	};
+
+	const clearZone = () => {
+		if (zone) {
+			void zero.mutate(
+				mutators.searchZone.clear({ ...event(), zoneId: zone.id }),
+			);
+		}
+		cancelTool();
+	};
 
 	return (
-		<main className="absolute inset-0 overflow-hidden">
+		<main
+			className={`absolute inset-0 overflow-hidden ${tool.kind === "none" ? "" : "[&_.maplibregl-marker]:pointer-events-none"}`}
+		>
 			<MapCanvas
 				initialBounds={initialBounds}
 				initialCenter={
@@ -113,17 +321,39 @@ export default function MapRoute() {
 				onStatusChange={setStatus}
 			>
 				<GameAreaLayer area={area} />
+				<BuildingsLayer />
+				<SearchZoneLayer zone={zone} />
+				<PinLayer
+					disabled={tool.kind !== "none"}
+					onSelect={(pinId) => setTool({ kind: "editingPin", pinId })}
+					pins={pins}
+				/>
+				<MeasureLayer measure={measure} />
 				<CameraController
 					camera={camera}
 					fix={ownFix}
 					headingDeg={headingDeg}
 					onUserGesture={() => setCamera(FREE)}
 				/>
+				<MapTapHandler onTap={handleTap} />
+				<RadiusDragHandler
+					active={tool.kind === "measure" && tool.measure.kind === "radius"}
+					onChange={(center, radiusMeters) =>
+						setTool({
+							kind: "measure",
+							measure: { kind: "radius", center, radiusMeters },
+						})
+					}
+				/>
+				<MapFlyTo target={flyTarget} />
+				<NorthReset />
 				<OwnPosition fix={ownFix} headingDeg={headingDeg} />
 				{others.map((player) => (
 					<PlayerMarker
 						key={player.playerId}
-						onSelect={setSelectedId}
+						onSelect={(playerId) => {
+							if (tool.kind === "none") setSelectedId(playerId);
+						}}
 						player={player}
 					/>
 				))}
@@ -148,6 +378,12 @@ export default function MapRoute() {
 					</span>
 				)}
 			</header>
+			<span className="sr-only" data-testid="pins-synced-count">
+				{pins.length}
+			</span>
+			<span className="sr-only" data-testid="search-zones-synced-count">
+				{searchZones.length}
+			</span>
 
 			{/*
 			 * Own position as numbers, always. The picture is the part that needs a
@@ -156,6 +392,9 @@ export default function MapRoute() {
 			 */}
 			<div className="absolute top-16 right-3 z-10 rounded bg-background/90 px-2 py-1 text-xs shadow">
 				<OwnPositionReadout fix={ownFix} />
+				{ownFix && ownFix.source !== "unavailable" && (
+					<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
+				)}
 			</div>
 
 			<AbsentPlayers players={others} />
@@ -168,6 +407,66 @@ export default function MapRoute() {
 				}
 				trackingNotice="Tracking pauses when the screen locks."
 			/>
+
+			<div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 mx-auto w-full max-w-xl p-3">
+				<MapToolSheet
+					canPlaceZone={
+						role.role === "seeker" &&
+						role.teamId !== null &&
+						role.roundId !== null
+					}
+					draftPoint={draftPoint}
+					editingPin={editingPin}
+					enabledStopIds={games[0]?.mapConfig?.enabledStopIds ?? []}
+					onCancel={cancelTool}
+					onClearZone={clearZone}
+					onDeletePin={() => {
+						if (editingPin) {
+							void zero.mutate(
+								mutators.pin.delete({
+									...event(),
+									pinId: editingPin.id,
+								}),
+							);
+						}
+						cancelTool();
+					}}
+					onSavePin={savePin}
+					onSaveZone={saveZone}
+					onSearchResult={handleSearchResult}
+					onSearchStopZone={handleSearchStopZone}
+					onSeedMeasure={() => {
+						if (
+							tool.kind === "measure" &&
+							tool.measure.kind === "path" &&
+							ownFix &&
+							ownFix.source !== "unavailable"
+						) {
+							setTool({
+								kind: "measure",
+								measure: {
+									kind: "path",
+									points: [[ownFix.lng, ownFix.lat]],
+								},
+							});
+						}
+					}}
+					onToolChange={changeTool}
+					onUndoMeasure={() => {
+						if (tool.kind !== "measure" || tool.measure.kind !== "path") return;
+						setTool({
+							kind: "measure",
+							measure: {
+								kind: "path",
+								points: tool.measure.points.slice(0, -1),
+							},
+						});
+					}}
+					origin={origin}
+					teamColor={myTeam?.color ?? "#0072B2"}
+					tool={tool}
+				/>
+			</div>
 
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />

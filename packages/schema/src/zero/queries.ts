@@ -90,6 +90,30 @@ export const queries = defineQueries({
 			.orderBy("ordinal", "asc");
 	}),
 
+	/** Team-authored content is visible to that team only, with no role exception. */
+	pins: defineQuery(({ ctx }) => {
+		const { gameId, playerId } = requireContext(ctx);
+		return zql.pin
+			.where("gameId", gameId)
+			.where(({ exists }) =>
+				exists("teamMembers", (member) => member.where("playerId", playerId)),
+			)
+			.orderBy("createdAt", "asc");
+	}),
+
+	/** A team's intended search area is private authored content. m3-spec §3. */
+	searchZones: defineQuery(({ ctx }) => {
+		const { gameId, playerId } = requireContext(ctx);
+		return zql.searchZone.where(({ and, exists }) =>
+			and(
+				exists("round", (round) => round.where("gameId", gameId)),
+				exists("seekerTeamMembers", (member) =>
+					member.where("playerId", playerId),
+				),
+			),
+		);
+	}),
+
 	/**
 	 * A committed zone is the hiders' secret while the round runs. It becomes
 	 * everyone's once the round is over, which is when a replay wants it.

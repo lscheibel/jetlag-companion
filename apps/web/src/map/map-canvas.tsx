@@ -92,9 +92,8 @@ export function MapCanvas({
 			],
 			zoom: 11,
 			attributionControl: false,
-			// M3 owns tilt and rotate. Until then the only rotation is the compass's.
-			pitchWithRotate: false,
-			dragRotate: false,
+			pitchWithRotate: true,
+			dragRotate: true,
 		});
 
 		const bounds = opening.current.initialBounds;

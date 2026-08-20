@@ -176,3 +176,40 @@ export async function positionCapturedAts(gameId: string): Promise<number[]> {
 	);
 	return result.rows.map((row) => Number(row.capturedAt));
 }
+
+export async function pinCountForTeam(teamId: string): Promise<number> {
+	const result = await db().query<{ count: string }>(
+		'SELECT count(*)::text AS count FROM pin WHERE "teamId" = $1',
+		[teamId],
+	);
+	return Number(result.rows[0]?.count ?? "0");
+}
+
+export async function pinExists(pinId: string): Promise<boolean> {
+	const result = await db().query<{ exists: boolean }>(
+		"SELECT EXISTS(SELECT 1 FROM pin WHERE id = $1) AS exists",
+		[pinId],
+	);
+	return result.rows[0]?.exists ?? false;
+}
+
+export async function searchZoneCountForRoundTeam(
+	roundId: string,
+	teamId: string,
+): Promise<number> {
+	const result = await db().query<{ count: string }>(
+		'SELECT count(*)::text AS count FROM "searchZone" WHERE "roundId" = $1 AND "seekerTeamId" = $2',
+		[roundId, teamId],
+	);
+	return Number(result.rows[0]?.count ?? "0");
+}
+
+export async function currentRoundId(gameId: string): Promise<string> {
+	const result = await db().query<{ id: string }>(
+		'SELECT id FROM round WHERE "gameId" = $1 ORDER BY ordinal DESC LIMIT 1',
+		[gameId],
+	);
+	const id = result.rows[0]?.id;
+	if (!id) throw new Error(`no round for game ${gameId}`);
+	return id;
+}

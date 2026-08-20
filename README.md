@@ -7,18 +7,18 @@ n seeker teams against m hider teams, one to three players per team.
 - [m0-spec.md](m0-spec.md) — the contracts every later milestone inherits
 - [m1-spec.md](m1-spec.md) — teams and the lobby
 - [m2-spec.md](m2-spec.md) — the live map and visibility rules
-- [m3-spec.md](m3-spec.md) — the map toolkit *(specified, not built)*
+- [m3-spec.md](m3-spec.md) — the map toolkit
 
-**Status: M2.** M0 built the contracts — sync topology, the event log,
+**Status: M3.** M0 built the contracts — sync topology, the event log,
 first-to-the-server-wins, the constraint engine with radar as its proof, the
 platform adapter, the area pack format. M1 spent them on the lobby. M2 puts a
 coordinate on a screen: everyone in a game can always see who is playing, and
-only some people can see where. A disconnected phone goes visibly stale rather
-than silently missing, and a hider who does not want to watch the search closing
-in can switch it off.
+only some people can see where. M3 turns those coordinates into tools: local
+geodesic measurement, offline area-pack search, team-private pins and suspected
+search zones, coordinate copy, rotation, tilt, and 3D buildings.
 
-M2 adds no Postgres column and no event type. It is a rendering milestone that
-amends the ephemeral channel twice and adds one platform capability.
+Pins and search zones are durable, optimistic team-authored state. Measurements
+remain entirely local and produce no row, event, or socket frame.
 
 ```
 /                 create a game, or join by typing a code
@@ -99,9 +99,10 @@ being byte-identical across evaluations.
 
 ## Acceptance tests
 
-Each milestone's spec file is its definition of done: seven cases in
-`e2e/tests/m0.spec.ts`, nine in `m1.spec.ts`, twelve in `m2.spec.ts`. They need
-the stack up first, then:
+Each milestone's spec file is its definition of done. The checked-in Playwright
+suites cover M0 through M2; M3's pure geometry, parsing, search, and schema
+contracts are covered by the unit suites. Acceptance tests need the stack up
+first, then:
 
 ```bash
 npm run test:e2e

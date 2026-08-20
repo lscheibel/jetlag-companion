@@ -150,6 +150,11 @@ export const EVENT_TYPES = [
 	"question.cancelled",
 	"constraint.created",
 	"constraint.enabledChanged",
+	"pin.created",
+	"pin.updated",
+	"pin.deleted",
+	"searchZone.declared",
+	"searchZone.cleared",
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
