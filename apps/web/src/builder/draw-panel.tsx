@@ -46,7 +46,8 @@ export function DrawPanel(props: DrawPanelProps) {
 			</div>
 			{props.drawing && (
 				<p className="mt-2 text-xs" data-testid="draw-hint">
-					Tap the map to add corners. Three or more make an area.
+					Tap the map to add corners. Tap an edge to insert one. Drag a corner
+					to move it.
 					<span data-testid="draw-vertex-count">{props.vertexCount}</span>
 				</p>
 			)}

@@ -1,6 +1,7 @@
-import { circleLngLat, type LngLat, type MultiPolygon } from "@zero-lag/geo";
+import type { LngLat, MultiPolygon } from "@zero-lag/geo";
 import { useMemo } from "react";
-import { EMPTY_FEATURES, multiPolygonFeature } from "./geojson";
+import { CircleDraftLayer } from "./circle-draft-layer";
+import { multiPolygonFeature } from "./geojson";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
 const FILL_LAYERS = [
@@ -31,22 +32,25 @@ interface ConstraintDraftLayerProps {
 	readonly polygons?: MultiPolygon | null;
 }
 
+function BoundaryDraft({ polygons }: { readonly polygons: MultiPolygon }) {
+	const data = useMemo(() => multiPolygonFeature(polygons), [polygons]);
+	useGeoJsonLayer("constraint-draft-fill-source", data, FILL_LAYERS);
+	useGeoJsonLayer("constraint-draft-outline-source", data, OUTLINE_LAYERS);
+	return null;
+}
+
 /** In-progress constraint. Not the measure blue — this is a deduction. */
 export function ConstraintDraftLayer({
 	center = null,
 	radiusMeters = 0,
 	polygons = null,
 }: ConstraintDraftLayerProps) {
-	const data = useMemo(
-		() =>
-			polygons
-				? multiPolygonFeature(polygons)
-				: center
-					? multiPolygonFeature(circleLngLat(center, radiusMeters))
-					: EMPTY_FEATURES,
-		[center, radiusMeters, polygons],
+	if (polygons) return <BoundaryDraft polygons={polygons} />;
+	return (
+		<CircleDraftLayer
+			center={center}
+			kind="constraint"
+			radiusMeters={radiusMeters}
+		/>
 	);
-	useGeoJsonLayer("constraint-draft-fill-source", data, FILL_LAYERS);
-	useGeoJsonLayer("constraint-draft-outline-source", data, OUTLINE_LAYERS);
-	return null;
 }

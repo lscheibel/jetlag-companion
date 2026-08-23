@@ -50,6 +50,7 @@ export interface Builder {
 	readonly hidingRadiusMeters: number;
 	readonly canSave: boolean;
 	addVertex: (point: LngLat) => void;
+	setRing: (ring: readonly LngLat[]) => void;
 	undoVertex: () => void;
 	clear: () => void;
 	setDrawing: (drawing: boolean) => void;
@@ -89,6 +90,7 @@ export function useBuilder(): Builder {
 		canSave: (area?.length ?? 0) > 0 && state.name.trim().length > 0,
 		addVertex: (point) =>
 			setState((current) => ({ ...current, ring: [...current.ring, point] })),
+		setRing: (ring) => setState((current) => ({ ...current, ring })),
 		undoVertex: () =>
 			setState((current) => ({ ...current, ring: current.ring.slice(0, -1) })),
 		clear: () => setState((current) => ({ ...EMPTY, name: current.name })),

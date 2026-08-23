@@ -21,7 +21,9 @@ import { ZoneNotice } from "../game/zone-notice";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
+import { CircleDraftLayer } from "../map/circle-draft-layer";
 import { ConstraintDraftLayer } from "../map/constraint-draft-layer";
+import type { RadiusDraft, RingDraft } from "../map/draw-gestures";
 import { DrawLayer } from "../map/draw-layer";
 import { EliminatedLayer } from "../map/eliminated-layer";
 import { GameAreaLayer } from "../map/game-area-layer";
@@ -29,9 +31,10 @@ import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapControls } from "../map/map-controls";
 import {
 	MapFlyTo,
-	MapTapHandler,
-	RadiusDragHandler,
+	MapPointerHandler,
+	type PointerMode,
 } from "../map/map-interactions";
+import type { GestureCause } from "../map/map-pointer";
 import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
@@ -60,6 +63,37 @@ import { useWakeLock } from "../map/use-wake-lock";
 
 /** Berlin, for a map that has nothing else to go on. */
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
+
+function pointerMode(tool: MapTool): PointerMode {
+	if (
+		tool.kind === "none" ||
+		tool.kind === "editingPin" ||
+		tool.kind === "listingConstraints"
+	) {
+		return { kind: "off" };
+	}
+	if (tool.kind === "measure" && tool.measure.kind === "radius") {
+		return {
+			kind: "radius",
+			center: tool.measure.center,
+			radiusMeters: tool.measure.radiusMeters,
+		};
+	}
+	if (tool.kind === "drawingRadiusConstraint" || tool.kind === "placingZone") {
+		return {
+			kind: "radius",
+			center: tool.center,
+			radiusMeters: tool.radiusMeters,
+		};
+	}
+	if (tool.kind === "measure" && tool.measure.kind === "path") {
+		return { kind: "ring", closed: false, points: tool.measure.points };
+	}
+	if (tool.kind === "drawingPolygonConstraint") {
+		return { kind: "ring", closed: true, points: tool.ring };
+	}
+	return { kind: "tap" };
+}
 
 /**
  * The map. m2-spec §12.
@@ -235,29 +269,8 @@ export default function MapRoute() {
 			return;
 		}
 		webPlatform.haptics.vibrate([10]);
-		if (tool.kind === "measure") {
-			setTool({
-				kind: "measure",
-				measure:
-					tool.measure.kind === "path"
-						? { kind: "path", points: [...tool.measure.points, point] }
-						: tool.measure.center
-							? tool.measure
-							: { ...tool.measure, center: point },
-			});
-			return;
-		}
 		if (tool.kind === "placingPin") {
 			setDraftPoint(point);
-			return;
-		}
-		if (tool.kind === "drawingRadiusConstraint") {
-			if (tool.center) return;
-			setTool({ ...tool, center: point });
-			return;
-		}
-		if (tool.kind === "drawingPolygonConstraint") {
-			setTool({ ...tool, ring: [...tool.ring, point] });
 			return;
 		}
 		if (tool.kind === "pickingBoundaryConstraint") {
@@ -266,9 +279,54 @@ export default function MapRoute() {
 			setTool({ ...tool, selectedId: hit.id });
 			const box = multiPolygonBBox(hit.polygons);
 			if (box) setFlyTarget({ kind: "bounds", bounds: box });
-			return;
 		}
-		setTool({ ...tool, center: point });
+	};
+
+	const handleRadiusDraft = (draft: RadiusDraft, cause: GestureCause) => {
+		if (cause === "tap") webPlatform.haptics.vibrate([10]);
+		setTool((current) => {
+			if (current.kind === "drawingRadiusConstraint") {
+				return {
+					...current,
+					center: draft.center,
+					radiusMeters: draft.radiusMeters,
+				};
+			}
+			if (current.kind === "placingZone") {
+				return {
+					...current,
+					center: draft.center,
+					radiusMeters: draft.radiusMeters,
+				};
+			}
+			if (current.kind === "measure" && current.measure.kind === "radius") {
+				return {
+					kind: "measure",
+					measure: {
+						kind: "radius",
+						center: draft.center,
+						radiusMeters: draft.radiusMeters,
+					},
+				};
+			}
+			return current;
+		});
+	};
+
+	const handleRingDraft = (draft: RingDraft, cause: GestureCause) => {
+		if (cause === "tap") webPlatform.haptics.vibrate([10]);
+		setTool((current) => {
+			if (current.kind === "drawingPolygonConstraint") {
+				return { ...current, ring: draft.points };
+			}
+			if (current.kind === "measure" && current.measure.kind === "path") {
+				return {
+					kind: "measure",
+					measure: { kind: "path", points: draft.points },
+				};
+			}
+			return current;
+		});
 	};
 
 	const handleSearchResult = (result: SearchResult) => {
@@ -513,32 +571,24 @@ export default function MapRoute() {
 				{tool.kind === "drawingPolygonConstraint" && (
 					<DrawLayer ring={tool.ring} />
 				)}
+				{tool.kind === "placingZone" && (
+					<CircleDraftLayer
+						center={tool.center}
+						kind="zone"
+						radiusMeters={tool.radiusMeters}
+					/>
+				)}
 				<CameraController
 					camera={camera}
 					fix={ownFix}
 					headingDeg={headingDeg}
 					onUserGesture={() => setCamera(FREE)}
 				/>
-				<MapTapHandler onTap={handleTap} />
-				<RadiusDragHandler
-					active={
-						(tool.kind === "measure" && tool.measure.kind === "radius") ||
-						tool.kind === "drawingRadiusConstraint"
-					}
-					onChange={(center, radiusMeters) => {
-						if (tool.kind === "drawingRadiusConstraint") {
-							setTool({
-								kind: "drawingRadiusConstraint",
-								center,
-								radiusMeters,
-							});
-							return;
-						}
-						setTool({
-							kind: "measure",
-							measure: { kind: "radius", center, radiusMeters },
-						});
-					}}
+				<MapPointerHandler
+					mode={pointerMode(tool)}
+					onRadiusChange={handleRadiusDraft}
+					onRingChange={handleRingDraft}
+					onTap={handleTap}
 				/>
 				<MapFlyTo target={flyTarget} />
 				<NorthReset />

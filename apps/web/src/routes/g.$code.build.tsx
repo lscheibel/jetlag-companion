@@ -25,7 +25,7 @@ import { AreaLayer } from "../map/area-layer";
 import { BuilderStopsLayer } from "../map/builder-stops-layer";
 import { DrawLayer } from "../map/draw-layer";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
-import { MapTapHandler } from "../map/map-interactions";
+import { MapPointerHandler } from "../map/map-interactions";
 import type { SearchableStop } from "../map/toolkit";
 import { MapViewportReporter } from "../map/viewport-reporter";
 
@@ -168,7 +168,16 @@ export default function BuildRoute() {
 				<BuilderStopsLayer stops={preview} />
 				<DrawLayer ring={builder.state.ring} />
 				<MapViewportReporter onSettle={setViewBounds} />
-				{builder.state.drawing && <MapTapHandler onTap={builder.addVertex} />}
+				{builder.state.drawing && (
+					<MapPointerHandler
+						mode={{
+							kind: "ring",
+							closed: true,
+							points: builder.state.ring,
+						}}
+						onRingChange={(draft) => builder.setRing(draft.points)}
+					/>
+				)}
 			</MapCanvas>
 
 			{/* The map object exists a beat before React mounts the tap handler as

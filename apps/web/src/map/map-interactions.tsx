@@ -1,6 +1,15 @@
-import { distanceMeters, type LngLat } from "@zero-lag/geo";
+import type { LngLat } from "@zero-lag/geo";
 import { useEffect, useRef } from "react";
+import type { RadiusDraft, RingDraft } from "./draw-gestures";
 import { useMapInstance } from "./map-canvas";
+import {
+	bindMapPointers,
+	type GestureCause,
+	type PointerMap,
+	type PointerMode,
+} from "./map-pointer";
+
+export type { PointerMode } from "./map-pointer";
 
 export function MapTapHandler({
 	onTap,
@@ -55,42 +64,39 @@ export function MapFlyTo({
 	return null;
 }
 
-export function RadiusDragHandler({
-	active,
-	onChange,
+/**
+ * Mouse and touch on one pipeline. Mode is read from a ref so a gesture that
+ * started on an empty map can keep going after React commits the first vertex.
+ */
+export function MapPointerHandler({
+	mode,
+	onTap,
+	onRadiusChange,
+	onRingChange,
 }: {
-	readonly active: boolean;
-	readonly onChange: (center: LngLat, radiusMeters: number) => void;
+	readonly mode: PointerMode;
+	readonly onTap?: (point: LngLat) => void;
+	readonly onRadiusChange?: (draft: RadiusDraft, cause: GestureCause) => void;
+	readonly onRingChange?: (draft: RingDraft, cause: GestureCause) => void;
 }) {
 	const map = useMapInstance();
-	const change = useRef(onChange);
-	change.current = onChange;
+	const modeRef = useRef(mode);
+	modeRef.current = mode;
+	const tapRef = useRef(onTap);
+	tapRef.current = onTap;
+	const radiusRef = useRef(onRadiusChange);
+	radiusRef.current = onRadiusChange;
+	const ringRef = useRef(onRingChange);
+	ringRef.current = onRingChange;
 
 	useEffect(() => {
-		if (!map || !active) return;
-		let center: LngLat | null = null;
-		const start = (event: { lngLat: { lng: number; lat: number } }) => {
-			center = [event.lngLat.lng, event.lngLat.lat];
-			map.dragPan.disable();
-		};
-		const move = (event: { lngLat: { lng: number; lat: number } }) => {
-			if (!center) return;
-			const edge: LngLat = [event.lngLat.lng, event.lngLat.lat];
-			change.current(center, Math.max(1, distanceMeters(center, edge)));
-		};
-		const end = () => {
-			center = null;
-			map.dragPan.enable();
-		};
-		map.on("mousedown", start);
-		map.on("mousemove", move);
-		map.on("mouseup", end);
-		return () => {
-			map.off("mousedown", start);
-			map.off("mousemove", move);
-			map.off("mouseup", end);
-			map.dragPan.enable();
-		};
-	}, [map, active]);
+		if (!map) return;
+		return bindMapPointers(map as unknown as PointerMap, {
+			getMode: () => modeRef.current,
+			onTap: (point) => tapRef.current?.(point),
+			onRadiusChange: (draft, cause) => radiusRef.current?.(draft, cause),
+			onRingChange: (draft, cause) => ringRef.current?.(draft, cause),
+		});
+	}, [map]);
 	return null;
 }

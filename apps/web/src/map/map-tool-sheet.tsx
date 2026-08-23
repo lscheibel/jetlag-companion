@@ -651,7 +651,7 @@ function PolygonConstraintPrompt(props: MapToolSheetProps) {
 	return (
 		<div className="pointer-events-auto flex items-center justify-between gap-2 rounded bg-background/95 p-3 shadow">
 			<strong>
-				Tap vertices
+				Tap to add, tap an edge to insert
 				<span
 					className="ml-2 font-normal text-sm"
 					data-testid="constraint-vertex-count"
