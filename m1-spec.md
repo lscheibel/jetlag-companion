@@ -22,7 +22,6 @@ M0 proved the contracts with a harness. M1 spends them on the first thing a play
 
 **Explicitly out of scope**
 
-- Ready checks and area-comfort confirmation (M5)
 - House rules (M5)
 - Starting a round (M5). M1 assigns roles; it does not begin play
 - Any map, any question, any card
@@ -105,7 +104,7 @@ And one consequence that is a trap, stated here because it is the kind of thing 
 
 In the lobby every team may already know it is a hider team, and none of what that implies has begun. The gate is `round.status === "hiding" | "seeking"`, never "a role is set" — and it belongs on anything that lets a team _act_ on its role: the question controls, M5's zone commitment, M12's found flow. It is deliberately **not** on presence: §9 is a rule about positions, and it is the same rule in the lobby as in a round.
 
-**Balance is displayed, not enforced.** A lobby with no hider team, or with three players on one team and one on another, gets an advisory line — _"no hider team yet"_ — and nothing more. M5 owns the ready check, and even that will warn rather than block.
+**Balance is displayed, not enforced.** A lobby with no hider team, or with three players on one team and one on another, gets an advisory line — _"no hider team yet"_ — and nothing more. M5's round controls warn rather than block for the same reason.
 
 ---
 

@@ -80,7 +80,7 @@ Specified in full in [m1-spec.md](m1-spec.md).
 
 **Reviewable when:** Five phones join; the host builds 2 hider teams and 3 seeker teams with distinct colors and emoji; a player switches teams and everyone sees it immediately.
 
-**Deferred:** Ready checks (M5).
+**Deferred:** None.
 
 ## M2 — Live map and visibility rules
 
@@ -145,22 +145,22 @@ Specified in full in [m4-spec.md](m4-spec.md).
 
 **Goal:** A round can begin, run, pause and end.
 
+Specified in full in [m5-spec.md](m5-spec.md).
+
 **Features**
 
 - **House rules:** host-authored free-text rules ("no image searching train stations"), attached to the game and readable at any time
-- **Ready check:** every team explicitly marks ready
-- **Area comfort confirmation:** at ready check, each team confirms they're comfortable playing in the defined area, with a way to raise a concern to the host instead
-- Rules acknowledgement as part of readiness
 - **Rounds are the unit of play, and roles belong to a round.** A game is a series of them, with hider and seeker teams swapping between rounds. A round runs _hiding phase → seeking phase → ended_, and questions, answers and constraints all belong to a round rather than to the game
 - **Hiding phase:** a host-set countdown, visible to all, during which the hiders travel to wherever they intend to hide. They move freely and without restriction for its whole duration. Seekers are travelling too, and pass through non-hiding areas on the way; none of that is a special case
 - **Hider commits a hiding zone** — not a spot. Warning (not a block) if the chosen zone isn't a valid one. The exact spot within it stays undeclared.
 - **Once the hiding phase ends, a hider stays inside their committed zone.** If their position leaves it, their own device says so — _"looks like you left your hiding zone"_ — and that is the entire feature. The notice is local, never sent anywhere, never recorded, and no other player is told. It is a helpful nudge to someone who wandered, not a report
-- Round timer, pause/resume with a reason, manual end
-- Mark hider found, optional photo, recorded hiding time per hider team
+- Round timer, pause/resume with a reason, manual end. Pausing pauses the hiding countdown too
+- **A blob store** for the found photo, reused by M9's photo questions: bytes on a volume, content-addressed, metadata in Postgres, EXIF stripped on upload
+- **Mark hider found**, by anyone and correctable, with an optional photo. One duration is recorded per (seeker, hider) pair — measured from the start of seeking, excluding paused stretches, and null when a hider was never found. Whether the shortest seeker time or the longest hider time wins is the players' call, not the app's
 
-**Reviewable when:** A full round is played end to end with paper cards and paper questions — setup, ready check, hide, seek, found — and the recorded time matches a stopwatch.
+**Reviewable when:** A full round is played end to end with paper cards and paper questions — setup, hide, seek, found — and the recorded time matches a stopwatch.
 
-**Deferred:** Hider-side help with _where_ to hide — suggesting candidate spots inside the committed zone from POI and building data. Genuinely useful, not needed to play, and much cheaper once M18 has the footprint data.
+**Deferred:** Hider-side help with _where_ to hide — suggesting candidate spots inside the committed zone from POI and building data. Genuinely useful, not needed to play, and much cheaper once M18 has the footprint data. A server-side timer that advances the hiding phase when the countdown expires is **M15's**, where a background process is the subject rather than a dependency invented for one feature.
 
 ---
 
@@ -229,7 +229,7 @@ Specified in full in [m4-spec.md](m4-spec.md).
 
 **Features**
 
-- **Two paths in:** capture in-app, or upload a photo taken on any camera
+- **Two paths in:** capture in-app, or upload a photo taken on any camera. The blob store and the EXIF stripping both exist from M5; what M9 adds is everything a *question* needs on top of them
 - **The server strips all location and identifying metadata on ingest**, and the original is never served to any client
 - Redaction tool for censoring identifying text before or after upload
 - Per-photo framing rules displayed on the capture/upload screen; extended deadline
