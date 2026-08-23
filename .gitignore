@@ -39,6 +39,10 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Source data — the GTFS feed is ~2.2 GB and is imported into the catalog
+# database rather than tracked. m4-spec.md §4 records where it came from.
+gtfs/
+
 # Turbo
 .turbo
 .nx

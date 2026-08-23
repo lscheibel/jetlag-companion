@@ -123,21 +123,23 @@ Specified in full in [m3-spec.md](m3-spec.md).
 
 **Goal:** A host can define a real, playable map in a couple of minutes, at any scale.
 
+Specified in full in [m4-spec.md](m4-spec.md).
+
 **Features**
 
-- **One area, and it constrains hiding rather than travel.** The valid hiding area is the union of enabled station radii, and is the seed of every deduction fold in M13. It is not a fence: seekers move through it and outside it as their search requires, and hiders move freely during the hiding phase. What it constrains is where a hiding _spot_ may be — and once the hiding phase ends, which zone its hider stays inside (M5). The area pack's station inventory is only a candidate list; what this builder outputs is what the game actually uses
-- **Berlin as the seed dataset**, with the builder designed so adding areas is data, not code
-- **Scale presets:** single Bezirk / district · city · metropolitan region · state · ticket-validity area (Deutschlandticket, Euroticket) — each with sensible default radii and question distances
-- Area selection by administrative boundary as well as by drawn shape
-- Auto-suggested transit inventory: **all subway, tram, train and bus lines**, grouped by mode and operator
-- Enable/disable by mode, by line, or by individual stop; bulk operations that stay usable with tens of thousands of stops
-- Hiding radius, set globally or per mode
-- Live preview: resulting hiding-area geometry, its size, and its share of the game boundary, updating as lines and stops are toggled
+- **One area, and it constrains hiding rather than travel.** The valid hiding area is **a single polygon the host chooses**, and is the seed of every deduction fold in M13. It is not a fence: seekers move through it and outside it as their search requires, and hiders move freely during the hiding phase. What it constrains is where a hiding _spot_ may be — and once the hiding phase ends, which zone its hider stays inside (M5)
+- Area selection by administrative boundary, or by a drawn shape where no boundary fits. Selecting several boundaries is normal
+- **Two conditions make a hiding spot valid, and both are advisory:** it is inside the area, and it is within the hiding radius of a station in play. The second is a distance query over the stops the game carries — not a polygon — which is why it survives the union being deferred
+- **Hiding radius, set globally.** One number, and it does two jobs: it sizes a committed hiding zone and it decides whether a spot is near enough to a station
+- **A transit catalog for all of Germany**, imported from an open GTFS feed into the database, queried by the server. Adding an area is data, not code — and there is nothing to add, because the country is already in there
+- Transit inventory materialised onto the map — **all subway, tram, train and bus lines**, grouped by mode and operator — so a playing phone never queries the catalog. It feeds place search, the hider's zone commitment, the validity check above and M6's transit questions; it contributes no geometry to the area
+- **Scale presets:** single Bezirk / district · city · metropolitan region · state · ticket-validity area (Deutschlandticket, Euroticket). Each sets a default hiding radius and is recorded on the map, so M6 can derive question distances from it
+- Live preview: the resulting area, its size and the number of stations inside it, updating as the host picks or draws
 - Save, name, duplicate a map; share by code or link
 
-**Reviewable when:** A host builds "U-Bahn + S-Bahn only, 400 m radius, minus three outlying lines" in under two minutes, sees the station count update as they toggle, and shares a code that reproduces the map byte-identically on another device. The same builder produces a one-Bezirk map and a nationwide regional-rail map without the UI collapsing at either end.
+**Reviewable when:** A host builds "Mitte plus Friedrichshain-Kreuzberg, 500 m radius" in under two minutes, sees the station count update as they add and remove boundaries, and shares a code that reproduces the map byte-identically on another device. The same builder produces a one-Bezirk map and a nationwide regional-rail map without the UI collapsing at either end.
 
-**Deferred:** Custom Overpass queries, exclusion polygons, imports (M18). Cities beyond Berlin (M19).
+**Deferred:** **Hiding radius per mode, enable/disable by mode, line or stop, and the union of station radii that turns them into geometry — one feature, deferred whole (M18).** What that costs is not the station rule, which the validity check above keeps: it is that M13's deduction map is seeded with the whole area rather than with the union, making it coarser and never wrong. Also custom Overpass queries, exclusion polygons, imports (M18); an automated catalog refresh (M20, where feed freshness first matters); areas beyond Germany (M19).
 
 ## M5 — Game lifecycle v1
 
@@ -360,11 +362,11 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 
 ## M18 — Zone builder power tools
 
-Custom Overpass queries with saved snippets and templates · inclusion and exclusion polygons · GeoJSON/KML import · water and no-go masking · POI-based zones · building footprints for judging what's actually enterable.
+**Hiding radius per mode, and enable/disable by mode, line or stop — with the union of enabled station radii as the game area, which is the rule M4 defers.** Also: custom Overpass queries with saved snippets and templates · inclusion and exclusion polygons · GeoJSON/KML import · water and no-go masking · POI-based zones · building footprints for judging what's actually enterable.
 
-## M19 — Beyond Berlin
+## M19 — Beyond Germany
 
-Area catalog with per-area defaults · offline area packs · community-shared map presets with browsing and ratings · cross-border areas for ticket-scale games.
+Per-area defaults · community-shared map presets with browsing and ratings · cross-border areas for ticket-scale games, which is where a second national feed first has to coexist with Germany's.
 
 ## M20 — Transit departures
 
@@ -378,7 +380,7 @@ User-authored questions and curses · custom decks and rule packs, shareable by 
 
 # Sequencing notes
 
-- **M4 is the adoption bottleneck.** If building a map is slow or the station list is wrong, nothing downstream matters. Budget generously and test with hosts who did not build the app. Test the extremes early: one Bezirk and one nationwide map, not just city-sized ones.
+- **M4's bottleneck is the data, not the geometry.** With the area reduced to one polygon, building a map is a boundary picker and the geometry is free; what is left to get wrong is the catalog. The German feed classifies every S-Bahn, RE and ICE as one route type, so the mode split is a heuristic over line names — and a heuristic that drifts produces a map which looks entirely plausible and is wrong. It is a labelled table with a test over the real feed for that reason. Administrative boundaries are a second import the feed does not carry at all, and they are the primary way an area gets chosen, so they are the first thing to settle. Test the extremes early: one Bezirk and one nationwide map, not just city-sized ones, and test with hosts who did not build the app.
 - **Multi-hider targeting is one per-question flag, off by default.** Each targeted hider team answers and draws independently, gets its own fold and its own search area, and the map shows one hider team at a time. Define the flag in M6 so M7 and M13 simply inherit it.
 - **The zone/position distinction must be settled before M5 ships.** The committed zone is the record; the answering player's live position resolves location questions; the exact spot is a late, optional, correctable declaration. Conflating any two of these will show up as bugs three milestones later.
 - **M8 depends on M7 only for UI, not for correctness.** The answer-time evaluation model should be settled before M7 ships, since it shapes what the question log stores.

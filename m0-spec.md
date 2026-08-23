@@ -653,9 +653,10 @@ type MapConfig = {
 
   validHidingArea: MultiPolygon; // stored, not derived on demand — the seed of every fold
                                  // WGS84 lng/lat, like everything else (§9)
+                                 // M4: drawn or boundary-selected, not a union — see below
 
-  enabledStopIds: string[];
-  hidingRadiusByMode: Record<string, Meters>;
+  enabledStopIds: string[];      // dropped in M4 — see below
+  hidingRadiusByMode: Record<string, Meters>;  // dropped in M4 — see below
   contentHash: string;
 };
 ```
@@ -665,6 +666,14 @@ type MapConfig = {
 The area pack's stop list is a _candidate_ inventory; what the builder emits is what the game uses.
 
 **`validHidingArea` is stored, not recomputed from `enabledStopIds`.** It will often be heavily hand-customised — drawn additions, carve-outs, imported geometry by M18 — so it is not reproducible from the stop list plus a radius, and treating it as derived would silently discard a host's work.
+
+**Amended by M4: it is not derived from stations at all.** The area a host builds is a single polygon — an administrative boundary, several of them, or a drawn shape — and no station contributes geometry to it. This section anticipated the change without knowing it: an area that is stored precisely *because* it cannot be reproduced from the stop list is an area whose relationship to the stop list was already incidental. The union of station radii, the per-mode radii that fed it and the stop toggles that selected it are one feature, deferred whole to M18. See [m4-spec.md](m4-spec.md) §1 and §3.
+
+**What that does _not_ defer is the rule that a hiding spot should be near a station**, and §9's own duality is why. `satisfies(p, c) === regionContains(applyConstraint(WORLD, c), p)`: *is this point near a station* and *what region is near a station* are two readings of one definition. A fold needs the region reading, because a fold consumes regions. A warning needs only the point reading — a distance query over the stop list, measured at 0.77 ms over the 4,473 stations a Berlin-sized game carries, with no index. From M4 a hiding spot is valid when it is inside the area **and** within `hidingRadiusMeters` of a station in play, and both conditions warn rather than block, exactly as this section already required of the first. What the missing union actually costs is that M13's fold is seeded with the whole area rather than with the lace of station discs, which makes the deduction map coarser and never wrong.
+
+Two fields go with the union. **`enabledStopIds` is dropped** in favour of `mapStop` rows, which carry the same list with the name, position and modes attached — one representation instead of two that drift. **`hidingRadiusByMode` collapses to a single global `hidingRadiusMeters`**, which sizes a committed zone and decides station proximity, because in the game those are one number. Both return in their original shapes whenever the union does.
+
+The stop list itself does *not* go anywhere, and from M4 it is a catalog of every station in Germany, imported into its own database and queried by the server. What reaches a phone is only the stops its own game materialised, which is what keeps place search working, keeps a hider's committed zone anchored to a station, and gives M6's transit questions an inventory to be written against.
 
 The only movement rule anywhere in the game is a hider staying in their committed zone once the hiding phase ends, and that one is enforced by nobody and recorded nowhere (§5).
 
@@ -703,7 +712,7 @@ Test 6 is worth keeping even under the good-faith assumption. Not because a frie
 2. **Token lifetime** — long, 90 days, with a note in §4 on staying compatible with a later account concept for reviewing past games.
 3. **Join codes** — globally unique, six characters from an unambiguous alphabet (no `0/O`, `1/I`). Simplest to reason about, and the collision domain is nowhere near a problem at this scale.
 4. **Debug harness** — kept, provided it stays cheap. A tool that can drive a synthetic game with scripted movement is worth a great deal by the time M13 needs to be verified against a hand calculation, and it doubles as the fixture generator for the Playwright suite.
-5. **`validHidingArea`** — stored (§11).
+5. **`validHidingArea`** — stored (§11), and from M4 drawn or boundary-selected rather than derived from stations at all. `enabledStopIds` and `hidingRadiusByMode` go with the union that needed them. The stop inventory stays, and so does the rule that a hiding spot should be near a station — as the point reading of §9's duality rather than as a region.
 6. **One coordinate system: WGS84 lng/lat, with no stored projection anywhere** (§9). This reverses an earlier decision to fold in UTM 33N. Booleans are topological and need no metric; the metre enters only when constructing geometry from a distance, when measuring, and when choosing a tolerance. Construction and measurement take their scale from the latitude they happen at, which is both simpler and correct at national scale, where one UTM zone is not.
 7. **Tolerances are read at a fixed reference latitude** (§9), because a normal form cannot depend on a quantity it changes — and a threshold read 1% coarse is a threshold, while a radius read 1% coarse is a bug.
 

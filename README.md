@@ -8,6 +8,7 @@ n seeker teams against m hider teams, one to three players per team.
 - [m1-spec.md](m1-spec.md) — teams and the lobby
 - [m2-spec.md](m2-spec.md) — the live map and visibility rules
 - [m3-spec.md](m3-spec.md) — the map toolkit
+- [m4-spec.md](m4-spec.md) — the game area builder
 
 **Status: M3.** M0 built the contracts — sync topology, the event log,
 first-to-the-server-wins, the constraint engine with radar as its proof, the
