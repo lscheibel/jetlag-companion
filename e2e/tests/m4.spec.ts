@@ -2,25 +2,33 @@ import { expect, test } from "@playwright/test";
 import {
 	areaSquareMeters,
 	closeDb,
+	committedZone,
 	currentMapConfig,
+	currentRoundId,
 	gameIdForCode,
 	mapEvents,
 	mapStops,
+	serverSearchAreaHash,
+	teamIdForName,
 	templateCount,
 } from "./db";
 import {
 	BOWTIE,
 	BOX,
 	createGame,
+	createTeam,
 	drawRing,
 	joinGame,
+	joinTeam,
 	LARGE_BOX,
 	nameAndApply,
 	nameAndSave,
 	openBuilder,
+	openDebug,
 	openLobby,
 	openMap,
 	openPhone,
+	type Phone,
 	SMALL_BOX,
 	stationsInside,
 	waitForSync,
@@ -247,3 +255,179 @@ test("9. two hosts saving is last write wins, and the log holds both", async ({
 function escapeRegExp(value: string): RegExp {
 	return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 }
+
+/**
+ * Wait for a commitment to reach the database.
+ *
+ * `commitZone` is a Zero mutator and applies optimistically (m3-spec §10): a
+ * hider committing in a station basement should see it take effect. So the
+ * panel showing "Committed to…" means the *local* store has it, and reading
+ * Postgres immediately afterwards is a race the test loses about half the time.
+ */
+async function committedZoneEventually(roundId: string, hiderTeamId: string) {
+	await expect
+		.poll(async () => (await committedZone(roundId, hiderTeamId)) !== null, {
+			timeout: 20_000,
+		})
+		.toBe(true);
+	const zone = await committedZone(roundId, hiderTeamId);
+	if (!zone) throw new Error("the commitment vanished after arriving");
+	return zone;
+}
+
+/**
+ * A running round with roles assigned, driven from the M0 debug harness — the
+ * only screen that carries the round controls until M5 gives them a real one.
+ */
+async function runningRound(host: Phone, hider: Phone, code: string) {
+	await waitForSync(host);
+	await waitForSync(hider);
+	await openDebug(host, code);
+	await openDebug(hider, code);
+
+	await createTeam(host, "Hiders");
+	await createTeam(host, "Seekers");
+	await joinTeam(host, "Seekers");
+	await expect(hider.page.getByTestId("team-Hiders")).toBeVisible();
+	await joinTeam(hider, "Hiders");
+
+	await host.page
+		.getByTestId("hider-team")
+		.selectOption({ label: "Hiders hides" });
+	await host.page.getByTestId("create-round").click();
+	await expect(host.page.getByTestId("my-role")).toHaveText("seeker");
+	await expect(hider.page.getByTestId("my-role")).toHaveText("hider");
+
+	return {
+		roundId: await currentRoundId(await gameIdForCode(code)),
+		hiderTeamId: await teamIdForName(code, "Hiders"),
+	};
+}
+
+test("5. both scale extremes build and render", async ({ browser }) => {
+	const host = await openPhone(browser, "Host");
+	const code = await createGame(host);
+	const gameId = await gameIdForCode(code);
+
+	await openBuilder(host, code);
+	await drawRing(host, BOX);
+	await nameAndApply(host, "District map");
+	const district = await currentMapConfig(gameId);
+	const districtStops = await mapStops(district.id);
+
+	// The same ring at the widest preset. The area is identical; what changes is
+	// the materialisation margin, which is 100 km rather than 5.
+	await openBuilder(host, code);
+	await drawRing(host, BOX);
+	await host.page.getByTestId("map-preset").selectOption("ticket");
+	await expect(host.page.getByTestId("map-radius")).toHaveValue("5000");
+	await nameAndApply(host, "Ticket map");
+	const ticket = await currentMapConfig(gameId);
+	const ticketStops = await mapStops(ticket.id);
+
+	expect(district.scalePreset).toBe("district");
+	expect(ticket.scalePreset).toBe("ticket");
+	expect(district.hidingRadiusMeters).toBe(300);
+	expect(ticket.hidingRadiusMeters).toBe(5000);
+
+	// A wider margin can only ever add stops, never drop one — and every stop
+	// inside the area is the same set, because the area is the same polygon.
+	expect(ticketStops.length).toBeGreaterThanOrEqual(districtStops.length);
+	expect(ticketStops.filter((s) => s.insideArea)).toEqual(
+		districtStops.filter((s) => s.insideArea),
+	);
+	expect(ticket.validHidingArea).toEqual(district.validHidingArea);
+
+	// And the builder still renders a readout at its largest.
+	await expect(host.page.getByTestId("builder-readout")).toBeVisible();
+
+	await host.close();
+});
+
+test("7. a zone outside the area warns and commits anyway", async ({
+	browser,
+}) => {
+	const host = await openPhone(browser, "Host");
+	const hider = await openPhone(browser, "Hider");
+	const code = await createGame(host);
+	await joinGame(hider, code);
+
+	// A small ring, so most of what the map carries sits in the margin outside it.
+	await openBuilder(host, code);
+	await drawRing(host, SMALL_BOX);
+	await nameAndApply(host, "Small area");
+
+	const { roundId, hiderTeamId } = await runningRound(host, hider, code);
+
+	// The picker sorts inside-first and labels the rest, so the last option is
+	// outside the area by construction.
+	const options = hider.page.getByTestId("hiding-stop").locator("option");
+	const outside = options.filter({ hasText: "outside the area" }).first();
+	await expect(outside).toBeAttached();
+	const value = await outside.getAttribute("value");
+	if (!value) throw new Error("no stop outside the area to pick");
+
+	await hider.page.getByTestId("hiding-stop").selectOption(value);
+	await expect(hider.page.getByTestId("hiding-outside-area")).toBeVisible();
+
+	// Warned, never blocked. m4-spec §3, and the build plan's third principle.
+	await expect(hider.page.getByTestId("commit-zone")).toBeEnabled();
+	await hider.page.getByTestId("commit-zone").click();
+	await expect(hider.page.getByTestId("committed-stop")).toBeVisible();
+
+	const committed = await committedZoneEventually(roundId, hiderTeamId);
+	expect(committed.stopId).toBe(value);
+
+	await hider.close();
+	await host.close();
+});
+
+test("8. applying a map mid-round is warned, and moves no committed zone", async ({
+	browser,
+}) => {
+	const host = await openPhone(browser, "Host");
+	const hider = await openPhone(browser, "Hider");
+	const code = await createGame(host);
+	await joinGame(hider, code);
+	const gameId = await gameIdForCode(code);
+
+	await openBuilder(host, code);
+	await drawRing(host, BOX);
+	await nameAndApply(host, "First map");
+
+	const { roundId, hiderTeamId } = await runningRound(host, hider, code);
+	await hider.page.getByTestId("commit-zone").click();
+	await expect(hider.page.getByTestId("committed-stop")).toBeVisible();
+
+	const before = await committedZoneEventually(roundId, hiderTeamId);
+	const seedBefore = await serverSearchAreaHash(gameId);
+
+	// A different board, applied while the round runs.
+	await openBuilder(host, code);
+	await drawRing(host, LARGE_BOX);
+	await host.page.getByTestId("map-name").fill("Second map");
+
+	// The warning names both effects before the host commits to it.
+	const warning = host.page.getByTestId("apply-warning");
+	await expect(warning).toBeVisible();
+	await expect(warning).toContainText("search area");
+	await expect(warning).toContainText("Committed hiding zones do not move");
+
+	await host.page.getByTestId("map-apply").click();
+	await expect(host.page.getByTestId("map-applied")).toBeVisible();
+
+	const config = await currentMapConfig(gameId);
+	expect(config.name).toBe("Second map");
+	expect(config.supersedesConfigId).not.toBeNull();
+
+	// m0-spec §5 materialises the zone at commit time for exactly this case.
+	const after = await committedZoneEventually(roundId, hiderTeamId);
+	expect(after.zone).toEqual(before.zone);
+	expect(after.stopId).toBe(before.stopId);
+
+	// And the seed every fold hangs off did change, so search areas refold.
+	expect(await serverSearchAreaHash(gameId)).not.toBe(seedBefore);
+
+	await hider.close();
+	await host.close();
+});

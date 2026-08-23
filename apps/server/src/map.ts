@@ -2,6 +2,9 @@ import { type BuiltMap, buildMap, drawnSelection } from "@zero-lag/catalog";
 import { loadCatalog } from "./catalog";
 import { drizzleSchema } from "./db";
 
+/** Eight columns per row, comfortably inside Postgres's 65,535 parameter cap. */
+const STOP_INSERT_CHUNK = 1_000;
+
 type Tx = Parameters<Parameters<typeof import("./db").db.transaction>[0]>[0];
 
 /**
@@ -38,19 +41,31 @@ export async function writeMapConfig(
 		contentHash: map.contentHash,
 	});
 
-	if (map.stops.length > 0) {
-		await tx.insert(drizzleSchema.mapStop).values(
-			map.stops.map((stop) => ({
-				id: `${mapConfigId}:${stop.stopId}`,
-				mapConfigId,
-				stopId: stop.stopId,
-				name: stop.name,
-				lng: stop.lng,
-				lat: stop.lat,
-				modeIds: [...stop.modeIds],
-				insideArea: stop.insideArea,
-			})),
-		);
+	const rows = map.stops.map((stop) => ({
+		id: `${mapConfigId}:${stop.stopId}`,
+		mapConfigId,
+		stopId: stop.stopId,
+		name: stop.name,
+		lng: stop.lng,
+		lat: stop.lat,
+		modeIds: [...stop.modeIds],
+		insideArea: stop.insideArea,
+	}));
+
+	/**
+	 * Chunked, because a single statement binds one parameter per column per row
+	 * and Postgres stops at 65,535 of them. At eight columns that is a ceiling of
+	 * 8,191 stops — which a `state` map (7,791 in the test that found this) slips
+	 * under and a `ticket` map does not.
+	 *
+	 * The build plan's sequencing note says to test the extremes early for
+	 * exactly this reason: a nationwide map is not a bigger version of a city
+	 * one, it is the case where a different limit applies.
+	 */
+	for (let i = 0; i < rows.length; i += STOP_INSERT_CHUNK) {
+		await tx
+			.insert(drizzleSchema.mapStop)
+			.values(rows.slice(i, i + STOP_INSERT_CHUNK));
 	}
 
 	return mapConfigId;

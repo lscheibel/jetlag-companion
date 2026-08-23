@@ -1,5 +1,4 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { nearestStationMeters } from "@zero-lag/catalog";
 import {
 	circleRegion,
 	normalizeRegion,
@@ -76,9 +75,6 @@ export function Hiding({ role }: HidingProps) {
 	if (role.role !== "hider") return null;
 
 	const selected = choices.find((stop) => stop.stopId === selectedId);
-	const distanceToStation = selected
-		? nearestStationMeters([selected.lng, selected.lat], choices)
-		: null;
 
 	return (
 		<Panel testId="hiding" title="Hiding">
@@ -110,11 +106,6 @@ export function Hiding({ role }: HidingProps) {
 				<p data-testid="hiding-outside-area">
 					{selected.name} is outside the game area. You can still hide here —
 					this is a reminder, not a rule.
-				</p>
-			)}
-			{distanceToStation !== null && distanceToStation > 0 && (
-				<p data-testid="hiding-station-distance">
-					{Math.round(distanceToStation)} m from the nearest other station
 				</p>
 			)}
 			{mine && <p data-testid="committed-stop">Committed to {mine.stopId}</p>}

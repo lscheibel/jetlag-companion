@@ -42,9 +42,17 @@ export async function closeDb(): Promise<void> {
 }
 
 export async function serverSearchAreaHash(gameId: string): Promise<string> {
+	// Through game.mapConfigId, not by gameId: since M4 a game keeps its
+	// superseded configs so a replay can reconstruct which board was in force
+	// when, and picking whichever row came back first would be picking at random.
 	const config = await db().query<{
 		validHidingArea: MultiPolygon;
-	}>('SELECT "validHidingArea" FROM "mapConfig" WHERE "gameId" = $1', [gameId]);
+	}>(
+		`SELECT c."validHidingArea"
+		 FROM "game" g JOIN "mapConfig" c ON c.id = g."mapConfigId"
+		 WHERE g.id = $1`,
+		[gameId],
+	);
 	const row = config.rows[0];
 	if (!row) throw new Error(`no map config for game ${gameId}`);
 
@@ -282,4 +290,17 @@ export async function mapEvents(
 /** The area's size on the ground, for the bowtie assertion. m4-spec §3. */
 export function areaSquareMeters(area: MultiPolygon): number {
 	return regionArea(multiPolygonToRegion(area));
+}
+
+/** The zone a hider team committed, for asserting it did not move. */
+export async function committedZone(
+	roundId: string,
+	hiderTeamId: string,
+): Promise<{ stopId: string; zone: MultiPolygon } | null> {
+	const result = await db().query<{ stopId: string; zone: MultiPolygon }>(
+		`SELECT "stopId", zone FROM "hidingCommitment"
+		 WHERE "roundId" = $1 AND "hiderTeamId" = $2`,
+		[roundId, hiderTeamId],
+	);
+	return result.rows[0] ?? null;
 }

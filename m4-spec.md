@@ -858,16 +858,30 @@ order; `nearestStation` against known Berlin pairs.
    context opens the code, applies it to its own game, and gets a `contentHash`, a
    `validHidingArea` and a set of `mapStop` rows identical to the first's. The build
    plan's second reviewable-when.
-5. **Both extremes build.** A district-sized ring at `district` preset and a
-   state-sized one at `ticket` both complete and both render, and the station list
-   stays usable at its largest.
+5. **Both extremes build.** The same ring at `district` and at `ticket`: both
+   complete, both render, the area is identical and only the margin differs, so
+   a wider preset may add stops and can never drop one.
+
+   **This test found a real defect.** A single `INSERT` binds one parameter per
+   column per row and Postgres stops at 65,535, which at eight columns is a
+   ceiling of 8,191 stops — a `state` map carries 7,791 and slips under it, and a
+   `ticket` map carries 15,067 and does not. `writeMapConfig` chunks. The build
+   plan's sequencing note says to test the extremes early, and this is what it
+   meant: a nationwide map is not a bigger city map, it is where a different
+   limit applies.
 6. **A game plays from its own rows.** With the catalog endpoints blocked at the
    network layer, a joined player sees the area, finds a station by name in M3's
    search, and commits a zone to it. §5's whole argument, as one test.
-7. **Both predicates warn and neither blocks.** A zone outside the area warns; a zone
-   inside the area but 3 km from any station warns differently; the hider commits
-   anyway in both cases and the commitment exists. §3, and the build plan's third
-   principle.
+7. **A zone outside the area warns and does not block.** The hider picks a stop
+   in the materialisation margin, sees the notice, commits anyway, and the
+   commitment exists. §3, and the build plan's third principle.
+
+   The second predicate's warning is **not testable in M4 and is M5's**: this
+   milestone's hider picks a *station* from the stops the game carries, so the
+   zone's centre is a station by construction and its distance to the nearest
+   one is zero. §3 already says where the warning belongs — *"M5, when a hider
+   commits a zone"* — and a free-placed centre is what makes a non-zero distance
+   possible.
 8. **Applying a map mid-round is warned and safe.** A round is running with a
    committed zone; a host applies a different map; the warning names both effects; the
    committed zone's geometry is unchanged afterwards and the search area refolds
