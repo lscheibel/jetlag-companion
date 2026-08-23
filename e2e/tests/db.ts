@@ -1,6 +1,7 @@
 import {
 	type MultiPolygon,
 	multiPolygonToRegion,
+	regionArea,
 	regionHash,
 } from "@zero-lag/geo";
 import { type Constraint, foldConstraints } from "@zero-lag/rules";
@@ -212,4 +213,73 @@ export async function currentRoundId(gameId: string): Promise<string> {
 	const id = result.rows[0]?.id;
 	if (!id) throw new Error(`no round for game ${gameId}`);
 	return id;
+}
+
+// --- M4 -------------------------------------------------------------------
+
+export type StoredMapConfig = {
+	readonly id: string;
+	readonly name: string;
+	readonly scalePreset: string;
+	readonly hidingRadiusMeters: number;
+	readonly contentHash: string;
+	readonly catalogVersion: string;
+	readonly validHidingArea: MultiPolygon;
+	readonly supersedesConfigId: string | null;
+};
+
+/** The board a game is currently on — the config `game.mapConfigId` points at. */
+export async function currentMapConfig(
+	gameId: string,
+): Promise<StoredMapConfig> {
+	const result = await db().query<StoredMapConfig>(
+		`SELECT c.id, c.name, c."scalePreset", c."hidingRadiusMeters", c."contentHash",
+		        c."catalogVersion", c."validHidingArea", c."supersedesConfigId"
+		 FROM "game" g JOIN "mapConfig" c ON c.id = g."mapConfigId"
+		 WHERE g.id = $1`,
+		[gameId],
+	);
+	const config = result.rows[0];
+	if (!config) throw new Error(`game ${gameId} has no map config`);
+	return config;
+}
+
+/** Every stop the board carries, in the order the config wrote them. */
+export async function mapStops(
+	mapConfigId: string,
+): Promise<{ stopId: string; name: string; insideArea: boolean }[]> {
+	const result = await db().query<{
+		stopId: string;
+		name: string;
+		insideArea: boolean;
+	}>(
+		`SELECT "stopId", "name", "insideArea" FROM "mapStop"
+		 WHERE "mapConfigId" = $1 ORDER BY "stopId"`,
+		[mapConfigId],
+	);
+	return result.rows;
+}
+
+export async function templateCount(): Promise<number> {
+	const result = await db().query<{ count: string }>(
+		`SELECT count(*)::text AS count FROM "mapTemplate"`,
+	);
+	return Number(result.rows[0]?.count ?? 0);
+}
+
+/** `map.applied` and `map.changed`, with the seq the log gave them. */
+export async function mapEvents(
+	gameId: string,
+): Promise<{ type: string; seq: number; name: string }[]> {
+	const result = await db().query<{ type: string; seq: number; name: string }>(
+		`SELECT type, seq, payload->>'name' AS name FROM "event"
+		 WHERE "gameId" = $1 AND type LIKE 'map.%' ORDER BY seq`,
+		[gameId],
+	);
+	return result.rows;
+}
+
+/** The area's size on the ground, for the bowtie assertion. m4-spec §3. */
+export function areaSquareMeters(area: MultiPolygon): number {
+	return regionArea(multiPolygonToRegion(area));
 }

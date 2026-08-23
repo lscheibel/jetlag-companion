@@ -1,5 +1,4 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { BERLIN_VBB_PACK } from "@zero-lag/area-packs";
 import { type LngLat, multiPolygonBBox } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
@@ -31,13 +30,18 @@ import {
 	visibleMarkers,
 } from "../map/players";
 import { SearchZoneLayer } from "../map/search-zone-layer";
-import type { MapTool, SearchResult } from "../map/toolkit";
+import {
+	type MapTool,
+	type SearchableStop,
+	type SearchResult,
+	stopPosition,
+} from "../map/toolkit";
 import { useBlindness } from "../map/use-blindness";
 import { useCompassHeading } from "../map/use-compass-heading";
 import { useNow } from "../map/use-now";
 import { useWakeLock } from "../map/use-wake-lock";
 
-/** Berlin, from the fixture area pack, for a map that has nothing else to go on. */
+/** Berlin, for a map that has nothing else to go on. */
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
 
 /**
@@ -58,6 +62,10 @@ export default function MapRoute() {
 	const [players] = useQuery(queries.players());
 	const [teams] = useQuery(queries.teams());
 	const [games] = useQuery(queries.game());
+	// The board everybody plays on: no visibility filter, because there has never
+	// been a version of this feature where one team sees a different board than
+	// another. m4-spec §2.
+	const [mapStops] = useQuery(queries.mapStops());
 	const [pins] = useQuery(queries.pins());
 	const [searchZones] = useQuery(queries.searchZones());
 
@@ -186,48 +194,20 @@ export default function MapRoute() {
 			setTool({ kind: "placingPin" });
 			return;
 		}
-		if (result.kind === "stop") {
-			setFlyTarget({ kind: "point", point: result.stop.position });
-			return;
-		}
-		if (result.kind === "boundary") {
-			const bounds = multiPolygonBBox(result.boundary.polygons);
-			if (bounds) setFlyTarget({ kind: "bounds", bounds });
-			return;
-		}
-		const stops = result.line.stopIds.flatMap((id) => {
-			const stop = BERLIN_VBB_PACK.stops.find(
-				(candidate) => candidate.id === id,
-			);
-			return stop ? [stop.position] : [];
-		});
-		if (stops.length > 0) {
-			const lngs = stops.map((point) => point[0]);
-			const lats = stops.map((point) => point[1]);
-			setFlyTarget({
-				kind: "bounds",
-				bounds: [
-					Math.min(...lngs),
-					Math.min(...lats),
-					Math.max(...lngs),
-					Math.max(...lats),
-				],
-			});
-		}
+		setFlyTarget({ kind: "point", point: stopPosition(result.stop) });
 	};
 
-	const handleSearchStopZone = (
-		stop: (typeof BERLIN_VBB_PACK.stops)[number],
-	) => {
-		const config = games[0]?.mapConfig;
-		const mode = stop.modeIds[0];
-		const radius = (mode ? config?.hidingRadiusByMode[mode] : undefined) ?? 500;
-		setFlyTarget({ kind: "point", point: stop.position });
+	const handleSearchStopZone = (stop: SearchableStop) => {
+		// One radius rather than one per mode: in the game they are one thing,
+		// and per-mode radii return with the toggles in M18. m4-spec §3.
+		const radius = games[0]?.mapConfig?.hidingRadiusMeters ?? 500;
+		const point = stopPosition(stop);
+		setFlyTarget({ kind: "point", point });
 		setTool({
 			kind: "placingZone",
-			center: stop.position,
+			center: point,
 			radiusMeters: radius,
-			stopId: stop.id,
+			stopId: stop.stopId,
 		});
 	};
 
@@ -417,7 +397,7 @@ export default function MapRoute() {
 					}
 					draftPoint={draftPoint}
 					editingPin={editingPin}
-					enabledStopIds={games[0]?.mapConfig?.enabledStopIds ?? []}
+					stops={mapStops}
 					onCancel={cancelTool}
 					onClearZone={clearZone}
 					onDeletePin={() => {

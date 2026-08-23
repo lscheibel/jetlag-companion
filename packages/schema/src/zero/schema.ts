@@ -24,7 +24,8 @@ import type {
 	QuestionStatus,
 	QuestionType,
 	RoundStatus,
-	StoredHidingRadii,
+	ScalePreset,
+	Selection,
 	StoredMultiPolygon,
 	TeamRole,
 } from "../types";
@@ -55,12 +56,34 @@ const mapConfig = table("mapConfig")
 	.columns({
 		id: string(),
 		gameId: string(),
-		areaPackId: string(),
-		areaPackVersion: string(),
+		catalogVersion: string(),
+		name: string(),
+		scalePreset: enumeration<ScalePreset>(),
+		selection: json<Selection>(),
 		validHidingArea: json<StoredMultiPolygon>(),
-		enabledStopIds: json<string[]>(),
-		hidingRadiusByMode: json<StoredHidingRadii>(),
+		hidingRadiusMeters: number(),
+		sourceTemplateId: string().optional(),
+		supersedesConfigId: string().optional(),
 		contentHash: string(),
+	})
+	.primaryKey("id");
+
+/**
+ * `mapTemplate` is deliberately absent: a template belongs to no game, and
+ * Zero's query context is a game. It is read over plain HTTP, and
+ * `schema.test.ts` names it as the one table allowed to be Drizzle-only.
+ * m4-spec §7.
+ */
+const mapStop = table("mapStop")
+	.columns({
+		id: string(),
+		mapConfigId: string(),
+		stopId: string(),
+		name: string(),
+		lng: number(),
+		lat: number(),
+		modeIds: json<string[]>(),
+		insideArea: boolean(),
 	})
 	.primaryKey("id");
 
@@ -256,6 +279,35 @@ const gameRelationships = relationships(game, ({ many, one }) => ({
 	}),
 }));
 
+const mapConfigRelationships = relationships(mapConfig, ({ many }) => ({
+	stops: many({
+		sourceField: ["id"],
+		destField: ["mapConfigId"],
+		destSchema: mapStop,
+	}),
+}));
+
+const mapStopRelationships = relationships(mapStop, ({ one }) => ({
+	config: one({
+		sourceField: ["mapConfigId"],
+		destField: ["id"],
+		destSchema: mapConfig,
+	}),
+	/**
+	 * The game this stop's config is *currently* the board for.
+	 *
+	 * Not the same as `config.game`: §8 keeps superseded configs and their rows
+	 * so a replay can reconstruct which board was in force when, and a phone
+	 * playing now wants only the board in force now. Joining on `mapConfigId` in
+	 * both directions is what says "current" without a flag column to keep true.
+	 */
+	currentGame: one({
+		sourceField: ["mapConfigId"],
+		destField: ["mapConfigId"],
+		destSchema: game,
+	}),
+}));
+
 const teamRelationships = relationships(team, ({ many }) => ({
 	members: many({
 		sourceField: ["id"],
@@ -416,6 +468,7 @@ export const schema = createSchema({
 	tables: [
 		game,
 		mapConfig,
+		mapStop,
 		player,
 		team,
 		teamMember,
@@ -432,6 +485,8 @@ export const schema = createSchema({
 	],
 	relationships: [
 		gameRelationships,
+		mapConfigRelationships,
+		mapStopRelationships,
 		teamRelationships,
 		teamMemberRelationships,
 		roundRelationships,

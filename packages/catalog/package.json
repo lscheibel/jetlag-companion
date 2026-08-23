@@ -12,10 +12,16 @@
 	},
 	"dependencies": {
 		"@zero-lag/geo": "*",
+		"@zero-lag/schema": "*",
+		"pg": "^8.23.0",
+		"pg-copy-streams": "^7.0.0",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@types/pg": "^8.23.1",
+		"@types/pg-copy-streams": "^1.2.5",
 		"@zero-lag/config": "*",
+		"tsx": "^4.23.12",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.10"
 	}

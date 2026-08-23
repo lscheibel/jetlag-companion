@@ -144,6 +144,17 @@ function Lobby() {
 				>
 					Map
 				</Link>
+				{/* Building the board is a host act, and the builder is reachable
+				    only from here — the map is the playing surface. m4-spec §9. */}
+				{amHost && (
+					<Link
+						className="min-h-11 rounded border px-3 py-2"
+						data-testid="open-builder"
+						to={`/g/${session.code}/build`}
+					>
+						Game area
+					</Link>
+				)}
 				<Link
 					className="rounded border px-3 py-2"
 					data-testid="open-debug"

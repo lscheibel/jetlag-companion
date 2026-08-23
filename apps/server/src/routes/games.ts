@@ -1,10 +1,10 @@
-import { berlinFixtureMapConfig } from "@zero-lag/area-packs";
 import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { issueGameToken } from "../auth";
 import { db, drizzleSchema } from "../db";
 import { appendEvent, generateJoinCode } from "../game-log";
+import { mapEventPayload, starterMap, writeMapConfig } from "../map";
 
 /**
  * Joining is plain HTTP rather than a Zero mutator, because a token has to
@@ -39,9 +39,9 @@ games.post("/", async (c) => {
 	const playerId = crypto.randomUUID();
 	const roundId = crypto.randomUUID();
 	const now = Date.now();
-	const mapConfig = berlinFixtureMapConfig(gameId);
+	const map = starterMap();
 
-	const code = await db.transaction(async (tx) => {
+	const created = await db.transaction(async (tx) => {
 		const code = await allocateCode(tx);
 
 		await tx.insert(drizzleSchema.game).values({
@@ -49,7 +49,7 @@ games.post("/", async (c) => {
 			code,
 			status: "lobby",
 			createdByPlayerId: playerId,
-			mapConfigId: mapConfig.id,
+			mapConfigId: null,
 			eventSeq: 0,
 			positionIntervalMs: 30_000,
 			createdAt: now,
@@ -57,17 +57,22 @@ games.post("/", async (c) => {
 			endedAt: null,
 		});
 
-		// M0 hand-writes one map config as a fixture; M4 generates them.
-		await tx.insert(drizzleSchema.mapConfig).values({
-			id: mapConfig.id,
+		/**
+		 * A game opens on a starter board so the map, hiding and question screens
+		 * have something to draw. The builder replaces it, and the host is
+		 * expected to — this is a starting point, not a default anybody should
+		 * play on. m4-spec §9.
+		 */
+		const mapConfigId = await writeMapConfig(tx, {
 			gameId,
-			areaPackId: mapConfig.areaPackId,
-			areaPackVersion: mapConfig.areaPackVersion,
-			validHidingArea: mapConfig.validHidingArea,
-			enabledStopIds: [...mapConfig.enabledStopIds],
-			hidingRadiusByMode: mapConfig.hidingRadiusByMode,
-			contentHash: mapConfig.contentHash,
+			map,
+			sourceTemplateId: null,
+			supersedesConfigId: null,
 		});
+		await tx
+			.update(drizzleSchema.game)
+			.set({ mapConfigId })
+			.where(eq(drizzleSchema.game.id, gameId));
 
 		await tx.insert(drizzleSchema.player).values({
 			id: playerId,
@@ -106,7 +111,13 @@ games.post("/", async (c) => {
 			gameId,
 			type: "game.created",
 			actorPlayerId: playerId,
-			payload: { code, mapConfigId: mapConfig.id },
+			payload: { code, mapConfigId },
+		});
+		await appendEvent(tx, {
+			gameId,
+			type: "map.applied",
+			actorPlayerId: playerId,
+			payload: { ...mapEventPayload(mapConfigId, map), templateId: null },
 		});
 		await appendEvent(tx, {
 			gameId,
@@ -121,12 +132,13 @@ games.post("/", async (c) => {
 			payload: { roundId, ordinal: 1, roles: [] },
 		});
 
-		return code;
+		return { code, mapConfigId };
 	});
 
 	return c.json({
 		gameId,
-		code,
+		code: created.code,
+		mapConfigId: created.mapConfigId,
 		playerId,
 		token: await issueGameToken({ playerId, gameId, deviceId }),
 	});

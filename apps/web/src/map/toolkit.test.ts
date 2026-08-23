@@ -1,11 +1,26 @@
-import { BERLIN_VBB_PACK } from "@zero-lag/area-packs";
+import { BERLIN_FIXTURE_CATALOG } from "@zero-lag/catalog";
 import { describe, expect, it } from "vitest";
 import {
 	formatCoordinates,
 	formatDistance,
 	parseCoordinates,
-	searchAreaPack,
+	type SearchableStop,
+	searchStops,
 } from "./toolkit";
+
+/**
+ * The twelve-station fixture as a game would carry it. Everything is inside the
+ * area except Westkreuz, which is here to prove that a stop outside the area is
+ * still findable — a seeker changing there needs it. m4-spec §5.
+ */
+const STOPS: SearchableStop[] = BERLIN_FIXTURE_CATALOG.stops.map((stop) => ({
+	stopId: stop.id,
+	name: stop.name,
+	lng: stop.lng,
+	lat: stop.lat,
+	modeIds: stop.modeIds,
+	insideArea: stop.id !== "westkreuz",
+}));
 
 describe("distance formatting", () => {
 	it.each([
@@ -43,29 +58,36 @@ describe("coordinates", () => {
 	});
 });
 
-describe("area-pack search", () => {
+describe("place search", () => {
 	const origin = [13.4, 52.52] as const;
 
+	function firstName(query: string): string | undefined {
+		const result = searchStops(STOPS, query, origin)[0];
+		return result?.kind === "stop" ? result.stop.name : undefined;
+	}
+
 	it("folds German transliterations", () => {
-		const result = searchAreaPack(BERLIN_VBB_PACK, "suedkreuz", origin)[0];
-		expect(result?.kind).toBe("stop");
-		if (result?.kind === "stop") expect(result.stop.name).toBe("Südkreuz");
-		const unmarked = searchAreaPack(BERLIN_VBB_PACK, "sudkreuz", origin)[0];
-		expect(unmarked?.kind).toBe("stop");
-		if (unmarked?.kind === "stop") expect(unmarked.stop.name).toBe("Südkreuz");
+		expect(firstName("suedkreuz")).toBe("Südkreuz");
+		expect(firstName("sudkreuz")).toBe("Südkreuz");
 	});
 
 	it("expands common aliases", () => {
-		const result = searchAreaPack(BERLIN_VBB_PACK, "hbf", origin)[0];
-		expect(result?.kind).toBe("stop");
-		if (result?.kind === "stop") expect(result.stop.name).toBe("Hauptbahnhof");
+		expect(firstName("hbf")).toBe("Hauptbahnhof");
 	});
 
 	it("ranks prefix matches before substrings", () => {
-		const results = searchAreaPack(BERLIN_VBB_PACK, "ost", origin);
-		expect(results[0]?.kind).toBe("stop");
-		if (results[0]?.kind === "stop") {
-			expect(results[0].stop.name).toBe("Ostkreuz");
-		}
+		expect(firstName("ost")).toBe("Ostkreuz");
+	});
+
+	/** m4-spec §5: seekers travel outside the area constantly. */
+	it("finds a stop outside the game area", () => {
+		const result = searchStops(STOPS, "westkreuz", origin)[0];
+		expect(result?.kind).toBe("stop");
+		if (result?.kind === "stop") expect(result.stop.insideArea).toBe(false);
+	});
+
+	it("still reads a coordinate pair rather than searching for it", () => {
+		const result = searchStops(STOPS, "52.52, 13.4", origin)[0];
+		expect(result?.kind).toBe("coordinate");
 	});
 });

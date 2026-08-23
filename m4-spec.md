@@ -122,8 +122,8 @@ type CatalogStop = {
 };
 ```
 
-**There is no catalog database.** All 251,741 German stations serialise to **22.4 MB
-of compact JSON, 5.3 MB gzipped**, and §5's only query over them is a bounding box.
+**There is no catalog database.** All 251,741 German stations serialise to **24.7 MB
+of compact JSON, 6.9 MB gzipped**, and §5's only query over them is a bounding box.
 Held in the server process that is a linear scan measured in tens of milliseconds,
 on a screen a host opens once. An indexed table, a second Postgres database and a
 connection pool are a great deal of apparatus for a filter over 22 MB.
@@ -330,9 +330,9 @@ previous draft of this section predicted.
 | File | Size | Rows |
 | --- | --- | --- |
 | `stops.txt` | 40 MB | 695,621 |
-| `routes.txt` | 467 KB | 24,829 |
-| `trips.txt` | 32 MB | 1,788,241 |
-| `stop_times.txt` | **2.09 GB** | **36,321,019** |
+| `routes.txt` | 467 KB | 24,828 |
+| `trips.txt` | 32 MB | 1,788,240 |
+| `stop_times.txt` | **2.09 GB** | **36,321,018** |
 
 ### Stations and platforms: better than hoped
 
@@ -375,7 +375,13 @@ It is recoverable from `route_short_name`, which is clean:
 | --- | --- | --- |
 | `RB` · `RE` · `RS` · `MEX` | 661 | regional |
 | `S` | 146 | **s-bahn** |
-| `ICE` · `IC` · `EC` · `ECE` · `RJ` · `NJ` · `EN` · `CD` | ~120 | long-distance |
+| `ICE` · `IC` · `EC` · `ECE` · `RJ` · `NJ` · `EN` · `CD` | 123 | long-distance |
+| anything else, and 43 with no short name at all | 128 | regional, by fallback |
+
+The fallback is the honest guess: an unrecognised rail prefix is almost always a
+small private operator — `DRF`, `DWE`, `MBB` — and a local train run by a company
+nobody outside the Landkreis has heard of is a regional train. Calling it S-Bahn or
+long-distance would both be worse.
 
 So the mode mapping is `route_type` for tram, subway, bus, ferry and funicular, and
 a **short-name prefix table for rail**. That is a heuristic and it is labelled one:
@@ -518,6 +524,21 @@ npm run catalog:build -- --gtfs ./assets/gtfs
 `stops.catalog.json` and drop the database. The same shape as `npm run osm:extract`:
 a heavyweight tool doing one offline pass and leaving a compact file behind.
 
+**The whole build takes 33 seconds**, of which 21 is copying `stop_times.txt` and 9
+is the join:
+
+| Step | Rows | Time |
+| --- | --- | --- |
+| `COPY stops` | 695,621 | 0.3 s |
+| `COPY trips` | 1,788,240 | 0.4 s |
+| `COPY routes` | 24,828 | 0.0 s |
+| `COPY stop_times` | 36,321,018 | 20.6 s |
+| the join | — | 9.0 s |
+| fold, classify, write | 251,741 stations | ~2 s |
+
+Every station in Germany turns out to be served by something — the mode rollup
+covers all 251,741 — so there are no serviceless entries to decide about.
+
 Reproducible, and tested as such: stops are written in id order, so the artifact's
 content hash is a function of the feed alone, and a second build over the same feed
 produces a byte-identical file. That hash *is* `catalogVersion` — there is no
@@ -612,6 +633,12 @@ A preset sets two numbers and records one fact.
 | `metro` | 60–120 km | 25 km | 1 km |
 | `state` | 200–400 km | 50 km | 2.5 km |
 | `ticket` | 800 km+ | 100 km | 5 km |
+
+The suggestion is made from the area's bounding-box **diagonal**, not from the
+span quoted above, and the thresholds are calibrated against real draws rather
+than converted from that column: Berlin's city limits are a 59 km diagonal and
+have to read as `city`, which is what sets the city/metro line. A host who draws
+the boundary of the city they live in has drawn a city.
 
 The fact it records is `scalePreset` itself, which M6 reads to pick question
 distances. Both numbers are host-overridable, and overriding them does not change
@@ -762,6 +789,13 @@ weaken when there are two screens.
 feature list should lose it: the area *is* the boundary now, so the share is always
 100%. What replaces it is the station count, which is the number a host actually uses
 to judge whether a map is a game.
+
+**A game opens on a starter board.** Creating a game writes a `city`-preset map
+around Berlin and emits `map.applied`, because the map, hiding and question screens
+all need geometry to draw and a lobby whose every screen says "no map yet" is a worse
+first five minutes than one the host redraws. It is a real map built from the real
+catalog rather than the old fixture in a new hat, and replacing it is one visit to
+the builder.
 
 **Reachable from the lobby, by anyone wearing the host hat**, next to the round
 controls. Not from the map route: the map is the playing surface and m3-spec §9
@@ -917,6 +951,11 @@ needs a station's name in a hurry.
 28. **The OSM boundary extract is built in M4 and consumed by M6** (§4). Two osmium
     passes, no Overpass. Nothing in M4 reads the output; it is here because the
     measurement was cheap now and the levels it settles are M6's to rely on.
+29. **A game opens on a starter board rather than on no board** (§9), replaced by
+    one visit to the builder.
+30. **The acceptance suite asks for the Berlin fixture catalog explicitly** (§11),
+    via `STOP_CATALOG_PATH=fixture`. A suite whose station counts depend on which
+    feed the machine happens to hold fails for reasons nobody can read.
 
 ### Still open
 

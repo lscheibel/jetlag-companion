@@ -372,3 +372,105 @@ export async function joinTeam(phone: Phone, name: string): Promise<void> {
 	await phone.page.getByTestId(`join-${name}`).click();
 	await expect(phone.page.getByTestId(`leave-${name}`)).toBeVisible();
 }
+
+// --- M4: the game area builder --------------------------------------------
+
+/** The builder, reachable from the lobby by anyone wearing the host hat. m4-spec §9. */
+export async function openBuilder(phone: Phone, code: string): Promise<void> {
+	await phone.page.goto(`/g/${code}/build`);
+	await expect(phone.page.getByTestId("map-canvas")).toBeVisible();
+	// The draw tool captures taps only once MapLibre is alive *and* React has
+	// mounted the handler underneath it. Tapping before that silently drops
+	// vertices, which is a slow and confusing way for a test to fail.
+	await expect(phone.page.getByTestId("draw-hint")).toBeAttached();
+	await expect(phone.page.getByTestId("builder-map-ready")).toBeAttached();
+}
+
+/**
+ * Tap a ring onto the map, in fractions of the canvas.
+ *
+ * Fractions rather than pixels so a test says "a box across the top of the
+ * view" rather than a number that means nothing and breaks when the viewport
+ * moves.
+ *
+ * **Keep `fy` between roughly 0.12 and 0.28.** The readout sits across the top
+ * and the draw and save panels fill everything below about 0.33, and a tap that
+ * lands on one of those is swallowed. The vertex count is checked at the end
+ * because the failure is otherwise silent: a bowtie that lost one corner is a
+ * triangle, which has a perfectly good non-zero area and fails four assertions
+ * later for reasons that look like a geometry bug.
+ */
+export async function drawRing(
+	phone: Phone,
+	corners: readonly (readonly [number, number])[],
+): Promise<void> {
+	const canvas = phone.page.getByTestId("map-canvas");
+	const box = await canvas.boundingBox();
+	if (!box) throw new Error("the map canvas has no box to tap in");
+	const count = phone.page.getByTestId("draw-vertex-count");
+	for (const [index, corner] of corners.entries()) {
+		const [fx, fy] = corner;
+		await canvas.click({
+			position: { x: box.width * fx, y: box.height * fy },
+		});
+		// One at a time, and waited for. Two taps in the same animation frame get
+		// read as a double-click and MapLibre zooms instead of passing the second
+		// one on, and this also makes a swallowed tap name the corner that was
+		// lost rather than the total.
+		await expect(count).toHaveText(String(index + 1));
+	}
+}
+
+/** A rectangle, tapped corner to corner in order. */
+export const BOX: readonly (readonly [number, number])[] = [
+	[0.3, 0.13],
+	[0.7, 0.13],
+	[0.7, 0.27],
+	[0.3, 0.27],
+];
+
+/** The same four corners in crossing order — a bowtie. m4-spec §3. */
+export const BOWTIE: readonly (readonly [number, number])[] = [
+	[0.3, 0.13],
+	[0.7, 0.13],
+	[0.3, 0.27],
+	[0.7, 0.27],
+];
+
+/** A small ring and a large one, for "the count follows the area". */
+export const SMALL_BOX: readonly (readonly [number, number])[] = [
+	[0.47, 0.18],
+	[0.53, 0.18],
+	[0.53, 0.23],
+	[0.47, 0.23],
+];
+
+export const LARGE_BOX: readonly (readonly [number, number])[] = [
+	[0.12, 0.12],
+	[0.88, 0.12],
+	[0.88, 0.28],
+	[0.12, 0.28],
+];
+
+export async function nameAndApply(phone: Phone, name: string): Promise<void> {
+	await phone.page.getByTestId("map-name").fill(name);
+	await phone.page.getByTestId("map-apply").click();
+	await expect(phone.page.getByTestId("map-applied")).toBeVisible();
+}
+
+export async function nameAndSave(phone: Phone, name: string): Promise<string> {
+	await phone.page.getByTestId("map-name").fill(name);
+	await phone.page.getByTestId("map-save").click();
+	await expect(phone.page.getByTestId("map-code")).toBeVisible();
+	const text = (await phone.page.getByTestId("map-code").textContent()) ?? "";
+	const code = text.replace(/^.*:\s*/, "").trim();
+	if (!code) throw new Error(`no share code in ${text}`);
+	return code;
+}
+
+/** How many stations the readout says are inside the drawn area. */
+export async function stationsInside(phone: Phone): Promise<number> {
+	const text =
+		(await phone.page.getByTestId("readout-stations").textContent()) ?? "";
+	return Number(text.replace(/\D+/g, ""));
+}

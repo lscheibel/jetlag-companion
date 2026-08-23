@@ -1,7 +1,0 @@
-{
-	"extends": "@zero-lag/config/tsconfig.base.json",
-	"compilerOptions": {
-		"types": []
-	},
-	"include": ["src/**/*.ts"]
-}

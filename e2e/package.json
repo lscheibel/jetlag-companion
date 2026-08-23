@@ -10,7 +10,6 @@
 	"devDependencies": {
 		"@playwright/test": "^1.62.1",
 		"@types/node": "^22.20.1",
-		"@zero-lag/area-packs": "*",
 		"@zero-lag/config": "*",
 		"@zero-lag/geo": "*",
 		"@zero-lag/rules": "*",

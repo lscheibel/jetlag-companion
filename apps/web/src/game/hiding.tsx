@@ -1,5 +1,5 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { BERLIN_VBB_PACK, HIDING_RADIUS_BY_MODE } from "@zero-lag/area-packs";
+import { nearestStationMeters } from "@zero-lag/catalog";
 import {
 	circleRegion,
 	normalizeRegion,
@@ -22,28 +22,39 @@ interface HidingProps {
 export function Hiding({ role }: HidingProps) {
 	const zero = useZero();
 	const [games] = useQuery(queries.game());
+	const [mapStops] = useQuery(queries.mapStops());
 	const [commitments] = useQuery(queries.commitments());
-	const [stopId, setStopId] = useState(BERLIN_VBB_PACK.stops[0]?.id ?? "");
+	const [stopId, setStopId] = useState("");
 
 	const mapConfig = games[0]?.mapConfig;
 	const mine = commitments.find(
 		(commitment) => commitment.hiderTeamId === role.teamId,
 	);
 
+	/**
+	 * Inside the area first, then by name. Stops outside the area are carried so
+	 * a seeker can find the station they are changing at (m4-spec §5), and a
+	 * hider picking one gets §3's advisory notice rather than a locked control.
+	 */
+	const choices = [...mapStops].sort(
+		(a, b) =>
+			Number(b.insideArea) - Number(a.insideArea) ||
+			a.name.localeCompare(b.name, "de"),
+	);
+	// Derived, not synced: the first choice is the selection until the hider
+	// picks otherwise, and the list arriving later must not need an effect.
+	const selectedId = stopId || (choices[0]?.stopId ?? "");
+
 	function commit() {
 		if (!role.roundId || !role.teamId || !mapConfig) return;
-		const stop = BERLIN_VBB_PACK.stops.find(
-			(candidate) => candidate.id === stopId,
-		);
+		const stop = choices.find((candidate) => candidate.stopId === selectedId);
 		if (!stop) return;
 
-		const radius = stop.modeIds.reduce(
-			(largest, modeId) =>
-				Math.max(largest, HIDING_RADIUS_BY_MODE[modeId] ?? 0),
-			0,
-		);
+		// One radius, doing both of its jobs. m4-spec §3.
 		const zone = regionToMultiPolygon(
-			normalizeRegion(circleRegion(stop.position, radius)),
+			normalizeRegion(
+				circleRegion([stop.lng, stop.lat], mapConfig.hidingRadiusMeters),
+			),
 		);
 
 		void zero.mutate(
@@ -52,7 +63,7 @@ export function Hiding({ role }: HidingProps) {
 				commitmentId: crypto.randomUUID(),
 				roundId: role.roundId,
 				hiderTeamId: role.teamId,
-				stopId: stop.id,
+				stopId: stop.stopId,
 				zone: zone.map((polygon) =>
 					polygon.map((ring) =>
 						ring.map(([lng, lat]) => [lng, lat] as [number, number]),
@@ -64,6 +75,11 @@ export function Hiding({ role }: HidingProps) {
 
 	if (role.role !== "hider") return null;
 
+	const selected = choices.find((stop) => stop.stopId === selectedId);
+	const distanceToStation = selected
+		? nearestStationMeters([selected.lng, selected.lat], choices)
+		: null;
+
 	return (
 		<Panel testId="hiding" title="Hiding">
 			<div className="flex gap-2">
@@ -71,11 +87,12 @@ export function Hiding({ role }: HidingProps) {
 					className="flex-1 rounded border p-1"
 					data-testid="hiding-stop"
 					onChange={(event) => setStopId(event.target.value)}
-					value={stopId}
+					value={selectedId}
 				>
-					{BERLIN_VBB_PACK.stops.map((stop) => (
-						<option key={stop.id} value={stop.id}>
+					{choices.map((stop) => (
+						<option key={stop.stopId} value={stop.stopId}>
 							{stop.name}
+							{stop.insideArea ? "" : " · outside the area"}
 						</option>
 					))}
 				</select>
@@ -89,6 +106,17 @@ export function Hiding({ role }: HidingProps) {
 					Commit
 				</button>
 			</div>
+			{selected && !selected.insideArea && (
+				<p data-testid="hiding-outside-area">
+					{selected.name} is outside the game area. You can still hide here —
+					this is a reminder, not a rule.
+				</p>
+			)}
+			{distanceToStation !== null && distanceToStation > 0 && (
+				<p data-testid="hiding-station-distance">
+					{Math.round(distanceToStation)} m from the nearest other station
+				</p>
+			)}
 			{mine && <p data-testid="committed-stop">Committed to {mine.stopId}</p>}
 		</Panel>
 	);

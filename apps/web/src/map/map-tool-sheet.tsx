@@ -1,4 +1,3 @@
-import { BERLIN_VBB_PACK, type TransitStop } from "@zero-lag/area-packs";
 import type { LngLat } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { useState } from "react";
@@ -9,8 +8,9 @@ import {
 	formatDistance,
 	type MapTool,
 	pathSegments,
+	type SearchableStop,
 	type SearchResult,
-	searchAreaPack,
+	searchStops,
 } from "./toolkit";
 
 interface MapToolSheetProps {
@@ -20,7 +20,8 @@ interface MapToolSheetProps {
 	readonly editingPin: MapPin | null;
 	readonly teamColor: string;
 	readonly canPlaceZone: boolean;
-	readonly enabledStopIds: readonly string[];
+	/** The stops this game carries — what place search runs over. m4-spec §5. */
+	readonly stops: readonly SearchableStop[];
 	readonly onToolChange: (tool: MapTool) => void;
 	readonly onCancel: () => void;
 	readonly onUndoMeasure: () => void;
@@ -35,7 +36,7 @@ interface MapToolSheetProps {
 	readonly onSaveZone: (note: string) => void;
 	readonly onClearZone: () => void;
 	readonly onSearchResult: (result: SearchResult) => void;
-	readonly onSearchStopZone: (stop: TransitStop) => void;
+	readonly onSearchStopZone: (stop: SearchableStop) => void;
 }
 
 export function MapToolSheet(props: MapToolSheetProps) {
@@ -59,10 +60,7 @@ export function MapToolSheet(props: MapToolSheetProps) {
 
 function ToolMenu(props: MapToolSheetProps) {
 	const [query, setQuery] = useState("");
-	const results = searchAreaPack(BERLIN_VBB_PACK, query, props.origin).slice(
-		0,
-		8,
-	);
+	const results = searchStops(props.stops, query, props.origin).slice(0, 8);
 	return (
 		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
 			<div className="flex gap-2 overflow-x-auto pb-2">
@@ -118,8 +116,9 @@ function ToolMenu(props: MapToolSheetProps) {
 				<span className="sr-only">Search places or coordinates</span>
 				<input
 					className="min-h-11 w-full rounded border px-3"
+					data-testid="map-search"
 					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search stops, lines, areas, coordinates"
+					placeholder="Search stops or coordinates"
 					type="search"
 					value={query}
 				/>
@@ -135,8 +134,8 @@ function ToolMenu(props: MapToolSheetProps) {
 							>
 								{searchLabel(result)}
 								{result.kind === "stop" &&
-									props.enabledStopIds.includes(result.stop.id) &&
-									" · hiding stop"}
+									!result.stop.insideArea &&
+									" · outside the area"}
 							</button>
 							{result.kind === "stop" && props.canPlaceZone && (
 								<button
@@ -400,18 +399,14 @@ function toolName(tool: MapTool): string {
 function searchKey(result: SearchResult): string {
 	if (result.kind === "coordinate")
 		return formatCoordinates(result.parsed.point);
-	if (result.kind === "stop") return `stop:${result.stop.id}`;
-	if (result.kind === "line") return `line:${result.line.id}`;
-	return `boundary:${result.boundary.id}`;
+	return `stop:${result.stop.stopId}`;
 }
 
 function searchLabel(result: SearchResult): string {
 	if (result.kind === "coordinate") {
 		return `${formatCoordinates(result.parsed.point)} — fly there and drop pin`;
 	}
-	if (result.kind === "stop") return result.stop.name;
-	if (result.kind === "line") return result.line.name;
-	return result.boundary.name;
+	return result.stop.name;
 }
 
 export function CoordinateCopy({ point }: { readonly point: LngLat }) {

@@ -12,6 +12,13 @@ import { schema } from "./zero/schema";
  * as a row that silently stops syncing.
  */
 
+/**
+ * The one table Drizzle owns and Zero does not mirror. A template belongs to no
+ * game and Zero's query context is a game, so it is read over plain HTTP.
+ * m4-spec §7. Anything else missing from the Zero schema is drift, not design.
+ */
+const DRIZZLE_ONLY_TABLES = ["mapTemplate"];
+
 const drizzleTables = Object.values(drizzleSchema).map((table) => {
 	const config = getTableConfig(table);
 	return {
@@ -30,21 +37,30 @@ const zeroTables = Object.entries(schema.tables).map(([name, table]) => ({
 	primaryKey: [...table.primaryKey].sort(),
 }));
 
+const syncedTables = drizzleTables.filter(
+	(table) => !DRIZZLE_ONLY_TABLES.includes(table.name),
+);
+
 describe("the Zero schema tracks the Drizzle schema", () => {
 	it("declares the same tables", () => {
 		expect(zeroTables.map((t) => t.name).sort()).toEqual(
-			drizzleTables.map((t) => t.name).sort(),
+			syncedTables.map((t) => t.name).sort(),
 		);
 	});
 
-	it.each(drizzleTables)("declares the same columns for $name", (table) => {
+	it.each(syncedTables)("declares the same columns for $name", (table) => {
 		const zeroTable = zeroTables.find((t) => t.name === table.name);
 		expect(zeroTable?.columns).toEqual(table.columns);
 	});
 
-	it.each(drizzleTables)("declares the same primary key for $name", (table) => {
+	it.each(syncedTables)("declares the same primary key for $name", (table) => {
 		const zeroTable = zeroTables.find((t) => t.name === table.name);
 		expect(zeroTable?.primaryKey).toEqual(table.primaryKey);
+	});
+
+	it("keeps the Drizzle-only list to tables that actually exist", () => {
+		const names = drizzleTables.map((table) => table.name);
+		for (const only of DRIZZLE_ONLY_TABLES) expect(names).toContain(only);
 	});
 });
 
@@ -117,6 +133,60 @@ describe("the M3 map toolkit schema", () => {
 				"pin.deleted",
 				"searchZone.declared",
 				"searchZone.cleared",
+			]),
+		);
+	});
+});
+
+describe("the M4 map schema", () => {
+	it("indexes materialised stops by their config", () => {
+		const mapStop = getTableConfig(drizzleSchema.mapStop);
+		const configIndex = mapStop.indexes.find(
+			(index) => index.config.name === "mapStop_config_idx",
+		);
+		expect(
+			configIndex?.config.columns.map((c) => ("name" in c ? c.name : c)),
+		).toEqual(["mapConfigId"]);
+	});
+
+	/** A share code that resolved to two maps would be worse than one that failed. */
+	it("allows one template per share code", () => {
+		const mapTemplate = getTableConfig(drizzleSchema.mapTemplate);
+		const unique = mapTemplate.indexes.find(
+			(index) => index.config.name === "mapTemplate_code_idx",
+		);
+		expect(unique?.config.unique).toBe(true);
+		expect(
+			unique?.config.columns.map((c) => ("name" in c ? c.name : c)),
+		).toEqual(["code"]);
+	});
+
+	it("declares both map events", () => {
+		expect(EVENT_TYPES).toEqual(
+			expect.arrayContaining(["map.applied", "map.changed"]),
+		);
+	});
+
+	/**
+	 * The two m0-spec §11 columns M4 drops. `enabledStopIds` became `mapStop`
+	 * rows and `hidingRadiusByMode` collapsed to one number; leaving either
+	 * behind would give the same list two representations to drift apart.
+	 */
+	it("no longer carries the pack columns or the per-mode radii", () => {
+		const columns = getTableConfig(drizzleSchema.mapConfig).columns.map(
+			(column) => column.name,
+		);
+		expect(columns).not.toContain("areaPackId");
+		expect(columns).not.toContain("areaPackVersion");
+		expect(columns).not.toContain("enabledStopIds");
+		expect(columns).not.toContain("hidingRadiusByMode");
+		expect(columns).toEqual(
+			expect.arrayContaining([
+				"catalogVersion",
+				"scalePreset",
+				"selection",
+				"hidingRadiusMeters",
+				"supersedesConfigId",
 			]),
 		);
 	});

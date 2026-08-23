@@ -124,6 +124,14 @@ export const EVENT_TYPES = [
 	"game.created",
 	"game.stateChanged",
 	/**
+	 * The board a game is played on. Two types rather than one because the
+	 * questions differ: the first is *what board is this*, the second is *the
+	 * board changed under a running round*, which a replay marks rather than
+	 * infers from a repeated event. m4-spec §10.
+	 */
+	"map.applied",
+	"map.changed",
+	/**
 	 * Host is a hat rather than a rank: any player can claim or release it and
 	 * more than one can wear it, so there is nothing to transfer. m1-spec §6.
 	 * This replaces `host.transferred`, which M0 declared and never emitted —
@@ -193,6 +201,35 @@ export type Json =
 
 // --- map config -------------------------------------------------------------
 
-export type StoredHidingRadii = Readonly<Record<string, number>>;
-
 export type StoredMultiPolygon = MultiPolygon;
+
+/**
+ * The scale a map was built at. m4-spec §6.
+ *
+ * Recorded rather than derived. A host who builds a `city` map and then sets a
+ * 5 km hiding radius has a `city` map with big zones, and M6 offering them
+ * city-scale question distances is the correct reading of what they did.
+ */
+export const SCALE_PRESETS = [
+	"district",
+	"city",
+	"metro",
+	"state",
+	"ticket",
+] as const;
+
+export type ScalePreset = (typeof SCALE_PRESETS)[number];
+
+/**
+ * What the host picked, stored beside the geometry it produced. m4-spec §3.
+ *
+ * One arm today, and a discriminated union anyway: M18's stop toggles and a
+ * boundary-shaped area both arrive as a new arm rather than as a migration. The
+ * pair is stored because `selection` is the host's own vertices and
+ * `validHidingArea` is the normalised result, and reopening the builder wants
+ * the former.
+ */
+export type Selection = {
+	readonly kind: "drawn";
+	readonly polygon: StoredMultiPolygon;
+};

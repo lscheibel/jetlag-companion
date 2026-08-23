@@ -1,10 +1,24 @@
-import type {
-	AdminBoundary,
-	AreaPack,
-	TransitLine,
-	TransitStop,
-} from "@zero-lag/area-packs";
-import { distanceMeters, type LngLat, multiPolygonBBox } from "@zero-lag/geo";
+import { distanceMeters, type LngLat } from "@zero-lag/geo";
+
+/**
+ * What place search runs over: the stops the game carries. m4-spec §5.
+ *
+ * A structural type rather than an import of the Zero row, so the search is
+ * testable against a literal and does not need a database to exercise.
+ */
+export interface SearchableStop {
+	readonly stopId: string;
+	readonly name: string;
+	readonly lng: number;
+	readonly lat: number;
+	readonly modeIds: readonly string[];
+	/** Outside the area is normal and searchable — m4-spec §5. */
+	readonly insideArea: boolean;
+}
+
+export function stopPosition(stop: SearchableStop): LngLat {
+	return [stop.lng, stop.lat];
+}
 
 export type Measure =
 	| { readonly kind: "path"; readonly points: readonly LngLat[] }
@@ -66,22 +80,17 @@ export function parseCoordinates(input: string): ParsedCoordinates | null {
 	return { point: [lng, lat], swapped };
 }
 
-type NamedSearchResult =
-	| {
-			readonly kind: "stop";
-			readonly stop: TransitStop;
-			readonly distance: number;
-	  }
-	| {
-			readonly kind: "line";
-			readonly line: TransitLine;
-			readonly distance: number;
-	  }
-	| {
-			readonly kind: "boundary";
-			readonly boundary: AdminBoundary;
-			readonly distance: number;
-	  };
+/**
+ * Lines and administrative boundaries were searchable when the area pack
+ * carried them. M4 carries neither: a game's stops come from the catalog with
+ * their modes and nothing else, line-level data returns with the toggles in
+ * M18, and boundaries are M6's question data. m4-spec §2.
+ */
+type NamedSearchResult = {
+	readonly kind: "stop";
+	readonly stop: SearchableStop;
+	readonly distance: number;
+};
 
 export type SearchResult =
 	| NamedSearchResult
@@ -119,14 +128,8 @@ function searchForms(value: string): readonly string[] {
 	return [...new Set([folded, expanded, plain])];
 }
 
-function centerOfBounds(
-	bounds: readonly [number, number, number, number],
-): LngLat {
-	return [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
-}
-
-export function searchAreaPack(
-	pack: AreaPack,
+export function searchStops(
+	stops: readonly SearchableStop[],
 	input: string,
 	origin: LngLat,
 ): readonly SearchResult[] {
@@ -135,7 +138,6 @@ export function searchAreaPack(
 
 	const queryForms = searchForms(input);
 	if (queryForms[0] === "") return [];
-	const stopById = new Map(pack.stops.map((stop) => [stop.id, stop]));
 	const matches: Array<NamedSearchResult & { rank: number; name: string }> = [];
 
 	const rankName = (name: string): number | null => {
@@ -157,40 +159,15 @@ export function searchAreaPack(
 		return null;
 	};
 
-	for (const stop of pack.stops) {
+	for (const stop of stops) {
 		const rank = rankName(stop.name);
 		if (rank === null) continue;
 		matches.push({
 			kind: "stop",
 			stop,
-			distance: distanceMeters(origin, stop.position),
+			distance: distanceMeters(origin, stopPosition(stop)),
 			rank,
 			name: stop.name,
-		});
-	}
-	for (const line of pack.lines) {
-		const rank = rankName(line.name);
-		if (rank === null) continue;
-		const stops = line.stopIds
-			.map((id) => stopById.get(id))
-			.filter((stop): stop is TransitStop => stop !== undefined);
-		const distance = Math.min(
-			...stops.map((stop) => distanceMeters(origin, stop.position)),
-		);
-		matches.push({ kind: "line", line, distance, rank, name: line.name });
-	}
-	for (const boundary of pack.boundaries) {
-		const rank = rankName(boundary.name);
-		if (rank === null) continue;
-		const bounds = multiPolygonBBox(boundary.polygons);
-		if (!bounds) continue;
-		const center = centerOfBounds(bounds);
-		matches.push({
-			kind: "boundary",
-			boundary,
-			distance: distanceMeters(origin, center),
-			rank,
-			name: boundary.name,
 		});
 	}
 

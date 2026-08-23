@@ -7,9 +7,17 @@ import { useEffect, useRef } from "react";
 import type { FeatureData } from "./geojson";
 import { useMapInstance } from "./map-canvas";
 
+/**
+ * One declared order for two screens. The builder never mounts the play layers
+ * and the map route never mounts the builder's, but they share this list
+ * because m3-spec §9's argument against discovering layer order from React's
+ * mount order does not weaken when there are two screens. m4-spec §9.
+ */
 const LAYER_ORDER = [
+	"area-fill",
 	"game-area-outline",
 	"buildings-3d",
+	"builder-stops",
 	"search-zone-fill",
 	"search-zone-outline",
 	"pin-radius-fill",
@@ -19,6 +27,8 @@ const LAYER_ORDER = [
 	"measure-vertices",
 	"own-accuracy-fill",
 	"own-accuracy-outline",
+	"draw-line",
+	"draw-vertices",
 ] as const;
 
 function beforeLayer(

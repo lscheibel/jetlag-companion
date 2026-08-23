@@ -30,6 +30,9 @@ export default defineConfig({
 			cwd: "..",
 			reuseExistingServer: true,
 			timeout: 60_000,
+			// Twelve known Berlin stations rather than whichever German feed this
+			// machine happens to hold. m4-spec §11.
+			env: { STOP_CATALOG_PATH: "fixture" },
 		},
 		{
 			command: "npm run dev --workspace web",

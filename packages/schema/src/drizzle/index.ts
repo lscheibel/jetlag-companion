@@ -24,7 +24,8 @@ import type {
 	QuestionStatus,
 	QuestionType,
 	RoundStatus,
-	StoredHidingRadii,
+	ScalePreset,
+	Selection,
 	StoredMultiPolygon,
 	TeamRole,
 } from "../types";
@@ -79,8 +80,13 @@ export const game = pgTable(
 export const mapConfig = pgTable("mapConfig", {
 	id: text("id").primaryKey(),
 	gameId: text("gameId").notNull(),
-	areaPackId: text("areaPackId").notNull(),
-	areaPackVersion: text("areaPackVersion").notNull(),
+	/** Which catalog artifact `mapStop` was materialised from. m4-spec §7. */
+	catalogVersion: text("catalogVersion").notNull(),
+	name: text("name").notNull(),
+	/** M6 reads this and never recomputes it. m4-spec §6. */
+	scalePreset: text("scalePreset").$type<ScalePreset>().notNull(),
+	/** The host's own vertices, so the builder can be reopened. m4-spec §3. */
+	selection: jsonb("selection").$type<Selection>().notNull(),
 	/**
 	 * Stored, not derived on demand — the seed of every fold. m0-spec §11.
 	 *
@@ -91,12 +97,80 @@ export const mapConfig = pgTable("mapConfig", {
 	validHidingArea: jsonb("validHidingArea")
 		.$type<StoredMultiPolygon>()
 		.notNull(),
-	enabledStopIds: jsonb("enabledStopIds").$type<string[]>().notNull(),
-	hidingRadiusByMode: jsonb("hidingRadiusByMode")
-		.$type<StoredHidingRadii>()
-		.notNull(),
+	/**
+	 * One number doing two jobs: it sizes a committed hiding zone and it decides
+	 * whether a spot is near enough to a station. In the game they are one
+	 * thing. Per-mode radii return with the toggles in M18. m4-spec §3.
+	 */
+	hidingRadiusMeters: doublePrecision("hidingRadiusMeters").notNull(),
+	sourceTemplateId: text("sourceTemplateId"),
+	/** m4-spec §8: a map change is a new row, never an update in place. */
+	supersedesConfigId: text("supersedesConfigId"),
 	contentHash: text("contentHash").notNull(),
 });
+
+/**
+ * The stops a game carries, copied off the catalog at apply time so a playing
+ * phone never queries it. m4-spec §5.
+ *
+ * Copied rather than referenced on purpose: the feed's stop ids are integers
+ * assigned by gtfs.de and nothing promises they survive a rebuild, so a catalog
+ * that renumbers every station in Germany cannot damage a map already in play.
+ */
+export const mapStop = pgTable(
+	"mapStop",
+	{
+		/** `${mapConfigId}:${stopId}` — stable, and unique without a composite key. */
+		id: text("id").primaryKey(),
+		mapConfigId: text("mapConfigId").notNull(),
+		/** The catalog's id, kept for provenance and re-editing. */
+		stopId: text("stopId").notNull(),
+		name: text("name").notNull(),
+		lng: doublePrecision("lng").notNull(),
+		lat: doublePrecision("lat").notNull(),
+		modeIds: jsonb("modeIds").$type<string[]>().notNull(),
+		/**
+		 * Inside the polygon, rather than merely inside the materialisation
+		 * margin. Recorded because the readout wants an honest count and M5's
+		 * station picker wants to sort by it — never because anything is
+		 * forbidden outside. m4-spec §5.
+		 */
+		insideArea: boolean("insideArea").notNull(),
+	},
+	(table) => [index("mapStop_config_idx").on(table.mapConfigId)],
+);
+
+/**
+ * A map that belongs to no game. m4-spec §7.
+ *
+ * Immutable: saving writes a row and never updates one, so a code you gave
+ * somebody cannot change under them. Renaming or editing produces a new row
+ * with a new code, which is why "duplicate" is not a feature — it is opening a
+ * template in the builder and saving.
+ *
+ * Carries no stops. They rematerialise at apply time from the pinned catalog
+ * version, which keeps a template a few kilobytes and makes byte-identity on
+ * another device hold by construction rather than by luck.
+ */
+export const mapTemplate = pgTable(
+	"mapTemplate",
+	{
+		id: text("id").primaryKey(),
+		code: text("code").notNull(),
+		name: text("name").notNull(),
+		createdByPlayerId: text("createdByPlayerId").notNull(),
+		createdAt: epochMs("createdAt").notNull(),
+		catalogVersion: text("catalogVersion").notNull(),
+		scalePreset: text("scalePreset").$type<ScalePreset>().notNull(),
+		selection: jsonb("selection").$type<Selection>().notNull(),
+		hidingRadiusMeters: doublePrecision("hidingRadiusMeters").notNull(),
+		validHidingArea: jsonb("validHidingArea")
+			.$type<StoredMultiPolygon>()
+			.notNull(),
+		contentHash: text("contentHash").notNull(),
+	},
+	(table) => [uniqueIndex("mapTemplate_code_idx").on(table.code)],
+);
 
 export const player = pgTable(
 	"player",
@@ -401,6 +475,8 @@ export const event = pgTable(
 export const drizzleSchema = {
 	game,
 	mapConfig,
+	mapStop,
+	mapTemplate,
 	player,
 	team,
 	teamMember,

@@ -26,6 +26,19 @@ export const queries = defineQueries({
 		return zql.game.where("id", gameId).related("mapConfig");
 	}),
 
+	/**
+	 * The board everybody plays on, so no visibility filter: there has never
+	 * been a version of this feature where one team sees a different board than
+	 * another. Scoped to the config currently in force rather than every config
+	 * the game has ever had. m4-spec §2.
+	 */
+	mapStops: defineQuery(({ ctx }) => {
+		const { gameId } = requireContext(ctx);
+		return zql.mapStop.where(({ exists }) =>
+			exists("currentGame", (game) => game.where("id", gameId)),
+		);
+	}),
+
 	players: defineQuery(({ ctx }) => {
 		const { gameId } = requireContext(ctx);
 		return zql.player.where("gameId", gameId);
