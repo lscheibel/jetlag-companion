@@ -69,13 +69,13 @@ export function HidingSheet({ role }: HidingSheetProps) {
 
 	return (
 		<section
-			className="space-y-2 rounded-xl border bg-background/95 p-3 shadow-lg"
+			className="space-y-2 rounded-xl border bg-surface/95 p-3 shadow-lg"
 			data-testid="hiding-sheet"
 		>
 			<h2 className="font-medium">Choose your hiding station</h2>
 			<div className="pointer-events-auto flex gap-2">
 				<select
-					className="min-h-11 min-w-0 flex-1 rounded border bg-background px-2"
+					className="min-h-11 min-w-0 flex-1 rounded border bg-surface px-2"
 					data-testid="hiding-stop"
 					onChange={(event) => setStopId(event.target.value)}
 					value={selectedId}
@@ -113,10 +113,7 @@ export function HidingSheet({ role }: HidingSheetProps) {
 				</p>
 			)}
 			{mine && (
-				<p
-					className="text-muted-foreground text-sm"
-					data-testid="committed-stop"
-				>
+				<p className="text-ink-dim text-sm" data-testid="committed-stop">
 					Zone committed.
 				</p>
 			)}

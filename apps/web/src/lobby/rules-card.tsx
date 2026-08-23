@@ -43,7 +43,7 @@ export function RulesContents({ amHost }: RulesCardProps) {
 	return (
 		<div className="space-y-2">
 			<textarea
-				className="min-h-28 w-full rounded border bg-background p-2 text-base"
+				className="min-h-28 w-full rounded border bg-surface p-2 text-base"
 				data-testid="rules-input"
 				onChange={(event) => setDraft(event.target.value)}
 				placeholder="No image searching train stations…"

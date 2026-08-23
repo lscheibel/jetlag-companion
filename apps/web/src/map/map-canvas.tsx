@@ -168,7 +168,7 @@ export function MapCanvas({
 			 * little "i" button on a narrow screen. m2-spec §3.
 			 */}
 			<p
-				className="pointer-events-none absolute right-0 bottom-0 z-10 bg-background/80 px-1 text-[10px] text-muted-foreground"
+				className="pointer-events-none absolute right-0 bottom-0 z-10 bg-surface/80 px-1 text-[10px] text-ink-dim"
 				data-testid="map-attribution"
 			>
 				{ATTRIBUTION}

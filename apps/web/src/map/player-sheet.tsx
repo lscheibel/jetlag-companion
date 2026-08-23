@@ -28,7 +28,7 @@ export function PlayerSheet({ player, onClose }: PlayerSheetProps) {
 
 	return (
 		<section
-			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-xl border-t bg-background p-4 shadow-lg"
+			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-xl border-t bg-surface p-4 shadow-lg"
 			data-testid={`player-sheet-${player.displayName}`}
 		>
 			<header className="flex items-center gap-3">

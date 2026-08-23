@@ -210,7 +210,7 @@ export default function BuildRoute() {
 
 			<div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3">
 				<Link
-					className="pointer-events-auto min-h-11 rounded bg-background/95 px-3 py-2 shadow"
+					className="pointer-events-auto min-h-11 rounded bg-surface/95 px-3 py-2 shadow"
 					data-testid="build-back"
 					to={`/g/${session.code}`}
 				>

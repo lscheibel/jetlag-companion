@@ -103,7 +103,7 @@ function ToolMenu(props: MapToolSheetProps) {
 	const [query, setQuery] = useState("");
 	const results = searchStops(props.stops, query, props.origin).slice(0, 8);
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex gap-2 overflow-x-auto pb-2">
 				<button
 					className="min-h-11 shrink-0 rounded border px-3"
@@ -236,7 +236,7 @@ function ToolMenu(props: MapToolSheetProps) {
 					{results.map((result, index) => (
 						<li className="flex gap-1" key={searchKey(result)}>
 							<button
-								className="min-h-11 flex-1 rounded px-2 text-left hover:bg-muted"
+								className="min-h-11 flex-1 rounded px-2 text-left hover:bg-surface-raised"
 								onClick={() => props.onSearchResult(result)}
 								type="button"
 							>
@@ -274,7 +274,7 @@ function MeasureSheet(props: MapToolSheetProps) {
 	const segments = measure.kind === "path" ? pathSegments(measure.points) : [];
 	const total = segments.reduce((sum, segment) => sum + segment, 0);
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex items-center justify-between">
 				<strong>
 					{measure.kind === "path" ? "Measure path" : "Measure radius"}
@@ -311,7 +311,7 @@ function MeasureSheet(props: MapToolSheetProps) {
 					)}
 					{segments.map((segment, index) => (
 						<span
-							className="rounded bg-muted px-2 py-1 text-sm"
+							className="rounded bg-surface-raised px-2 py-1 text-sm"
 							key={`${measure.points[index]?.join(",")}:${measure.points[index + 1]?.join(",")}`}
 						>
 							{index + 1}: {formatDistance(segment)}
@@ -361,7 +361,7 @@ function PinForm(props: MapToolSheetProps) {
 			: (pin?.radiusMeters ?? null);
 	return (
 		<form
-			className="pointer-events-auto space-y-2 rounded bg-background/95 p-3 shadow"
+			className="pointer-events-auto space-y-2 rounded bg-surface/95 p-3 shadow"
 			onSubmit={(event) => {
 				event.preventDefault();
 				props.onSavePin({ label, note, color, radiusMeters: radius });
@@ -394,7 +394,7 @@ function PinForm(props: MapToolSheetProps) {
 				{TEAM_COLORS.map((choice) => (
 					<button
 						aria-label={`Use ${choice}`}
-						className={`size-11 rounded-full border-4 ${choice === color ? "border-foreground" : "border-transparent"}`}
+						className={`size-11 rounded-full border-4 ${choice === color ? "border-ink" : "border-transparent"}`}
 						key={choice}
 						onClick={() => setColor(choice)}
 						style={{ backgroundColor: choice }}
@@ -426,7 +426,7 @@ function ZoneForm(props: MapToolSheetProps) {
 	const zone = props.tool;
 	return (
 		<form
-			className="pointer-events-auto space-y-2 rounded bg-background/95 p-3 shadow"
+			className="pointer-events-auto space-y-2 rounded bg-surface/95 p-3 shadow"
 			onSubmit={(event) => {
 				event.preventDefault();
 				props.onSaveZone(note);
@@ -487,7 +487,7 @@ function ActivePrompt({
 	readonly onCancel: () => void;
 }) {
 	return (
-		<div className="pointer-events-auto flex items-center justify-between rounded bg-background/95 p-3 shadow">
+		<div className="pointer-events-auto flex items-center justify-between rounded bg-surface/95 p-3 shadow">
 			<strong>{name}: tap the map</strong>
 			<button className="min-h-11 px-3" onClick={onCancel} type="button">
 				Cancel
@@ -508,7 +508,7 @@ function ConstraintConfirmSheet(props: MapToolSheetProps) {
 	}
 	const [name, setName] = useState(suggestedName);
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex items-center justify-between">
 				<strong>They are…</strong>
 				<button
@@ -599,7 +599,7 @@ function BoundaryPickerSheet(props: MapToolSheetProps) {
 			)
 		: props.boundaries;
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex items-center justify-between">
 				<strong>{title}</strong>
 				<button
@@ -629,7 +629,7 @@ function BoundaryPickerSheet(props: MapToolSheetProps) {
 					{rows.map((row) => (
 						<li key={row.id}>
 							<button
-								className="min-h-11 w-full rounded px-2 text-left hover:bg-muted"
+								className="min-h-11 w-full rounded px-2 text-left hover:bg-surface-raised"
 								data-testid={`boundary-${row.adminLevel}-${boundarySlug(row.name)}`}
 								onClick={() => props.onSelectBoundary(row.id)}
 								type="button"
@@ -649,7 +649,7 @@ function PolygonConstraintPrompt(props: MapToolSheetProps) {
 	const count =
 		props.tool.kind === "drawingPolygonConstraint" ? props.tool.ring.length : 0;
 	return (
-		<div className="pointer-events-auto flex items-center justify-between gap-2 rounded bg-background/95 p-3 shadow">
+		<div className="pointer-events-auto flex items-center justify-between gap-2 rounded bg-surface/95 p-3 shadow">
 			<strong>
 				Tap to add, tap an edge to insert
 				<span
@@ -682,7 +682,7 @@ function PolygonConstraintPrompt(props: MapToolSheetProps) {
 
 function ConstraintListSheet(props: MapToolSheetProps) {
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex items-center justify-between">
 				<strong>Constraints</strong>
 				<button

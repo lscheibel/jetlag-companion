@@ -20,7 +20,7 @@ interface ReadoutBarProps {
 export function ReadoutBar(props: ReadoutBarProps) {
 	return (
 		<section
-			className="pointer-events-auto flex flex-wrap gap-x-4 gap-y-1 rounded bg-background/95 px-3 py-2 text-sm shadow"
+			className="pointer-events-auto flex flex-wrap gap-x-4 gap-y-1 rounded bg-surface/95 px-3 py-2 text-sm shadow"
 			data-testid="builder-readout"
 		>
 			<span data-testid="readout-stations">

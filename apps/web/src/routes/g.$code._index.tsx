@@ -9,10 +9,10 @@ import {
 	useLobbyRejection,
 } from "../lobby/actions";
 import { HostBanner } from "../lobby/host-banner";
+import { OutcomeList } from "../lobby/outcome-list";
 import type { LobbyPlayer } from "../lobby/player-row";
 import { RolePanel } from "../lobby/role-panel";
 import { RosterPanel } from "../lobby/roster-panel";
-import { OutcomeList } from "../lobby/outcome-list";
 import { RoundControls } from "../lobby/round-controls";
 import { RulesCard } from "../lobby/rules-card";
 import { ShareCard } from "../lobby/share-card";

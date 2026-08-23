@@ -7,7 +7,7 @@ export function NorthReset() {
 	if (Math.abs(bearing) < 0.01 && Math.abs(pitch) < 0.01) return null;
 	return (
 		<button
-			className="absolute top-16 left-1/2 z-20 min-h-11 -translate-x-1/2 rounded border bg-background px-4 shadow"
+			className="absolute top-16 left-1/2 z-20 min-h-11 -translate-x-1/2 rounded border bg-surface px-4 shadow"
 			data-testid="reset-north"
 			onClick={() => map?.easeTo({ bearing: 0, pitch: 0 })}
 			type="button"

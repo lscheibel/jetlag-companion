@@ -3,8 +3,8 @@ import type {
 	PositionSnapshot,
 	TeamRole,
 } from "@zero-lag/schema";
+import type { TeamIdentity } from "@zero-lag/ui/components/team-badge";
 import type { PresenceEntry } from "../ephemeral";
-import type { TeamIdentity } from "../lobby/team-badge";
 import { ageOf, type Staleness } from "./staleness";
 
 /**

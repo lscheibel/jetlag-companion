@@ -57,7 +57,7 @@ export function PinLayer({ pins, disabled, onSelect }: PinLayerProps) {
 			{pins.map((pin, index) => (
 				<MapMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
 					<button
-						className="flex min-h-11 items-center gap-1 rounded-full bg-background/90 pr-2 font-semibold text-xs shadow"
+						className="flex min-h-11 items-center gap-1 rounded-full bg-surface/90 pr-2 font-semibold text-xs shadow"
 						data-testid={`pin-${pin.id}`}
 						disabled={disabled}
 						onClick={() => onSelect(pin.id)}

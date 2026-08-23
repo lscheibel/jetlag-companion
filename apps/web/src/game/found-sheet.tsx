@@ -67,7 +67,7 @@ export function FoundSheet({ role, token }: FoundSheetProps) {
 
 	return (
 		<section
-			className="space-y-2 rounded-xl border bg-background/95 p-3 shadow-lg"
+			className="space-y-2 rounded-xl border bg-surface/95 p-3 shadow-lg"
 			data-testid="found-sheet"
 		>
 			<h2 className="font-medium">Found a hider</h2>
@@ -75,7 +75,7 @@ export function FoundSheet({ role, token }: FoundSheetProps) {
 				<label className="text-sm">
 					Hider team
 					<select
-						className="mt-1 min-h-11 w-full rounded border bg-background px-2"
+						className="mt-1 min-h-11 w-full rounded border bg-surface px-2"
 						data-testid="found-hider-team"
 						onChange={(event) => setHiderId(event.target.value)}
 						value={selectedHiderId}
@@ -91,7 +91,7 @@ export function FoundSheet({ role, token }: FoundSheetProps) {
 				<label className="text-sm">
 					Seeker team
 					<select
-						className="mt-1 min-h-11 w-full rounded border bg-background px-2"
+						className="mt-1 min-h-11 w-full rounded border bg-surface px-2"
 						data-testid="found-seeker-team"
 						onChange={(event) => setSeekerId(event.target.value)}
 						value={selectedSeekerId}
@@ -155,7 +155,7 @@ export function FoundSheet({ role, token }: FoundSheetProps) {
 				</button>
 			)}
 			{error && (
-				<p className="text-destructive text-sm" role="alert">
+				<p className="text-danger text-sm" role="alert">
 					{error}
 				</p>
 			)}

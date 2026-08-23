@@ -121,7 +121,7 @@ function UnassignedList({
 				))}
 			</ul>
 			{players.length === 0 && (
-				<p className="text-muted-foreground text-sm">Everyone has a team.</p>
+				<p className="text-ink-dim text-sm">Everyone has a team.</p>
 			)}
 		</section>
 	);

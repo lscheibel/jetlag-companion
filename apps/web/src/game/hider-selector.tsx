@@ -1,4 +1,7 @@
-import { TeamBadge, type TeamIdentity } from "../lobby/team-badge";
+import {
+	TeamBadge,
+	type TeamIdentity,
+} from "@zero-lag/ui/components/team-badge";
 
 export type HiderOption = TeamIdentity & { readonly id: string };
 
@@ -28,7 +31,7 @@ export function HiderSelector({
 				return (
 					<button
 						aria-pressed={selected}
-						className={`shrink-0 rounded-full ${selected ? "ring-2 ring-foreground" : "opacity-70"}`}
+						className={`shrink-0 rounded-full ${selected ? "ring-2 ring-ink" : "opacity-70"}`}
 						data-testid={`hider-selector-${hider.id}`}
 						key={hider.id}
 						onClick={() => onSelect(hider.id)}

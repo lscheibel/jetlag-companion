@@ -76,9 +76,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 				{openPause ? ` · paused: ${openPause.reason}` : ""}
 			</p>
 			{!amHost && (
-				<p className="text-muted-foreground text-sm">
-					A host controls the round.
-				</p>
+				<p className="text-ink-dim text-sm">A host controls the round.</p>
 			)}
 			{amHost && round.status === "pending" && (
 				<div className="space-y-2">
@@ -113,7 +111,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 			{amHost && round.status === "hiding" && !openPause && (
 				<button
 					className={`min-h-11 w-full rounded border px-4 font-semibold ${
-						hidingTimeUp ? "bg-primary text-primary-foreground" : ""
+						hidingTimeUp ? "bg-action text-action-ink" : ""
 					}`}
 					data-testid="start-seeking"
 					onClick={() =>
@@ -180,7 +178,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 			{amHost && round.status === "seeking" && !openPause && (
 				<button
 					className={`min-h-11 w-full rounded border px-4 font-semibold ${
-						allHidersFound ? "bg-primary text-primary-foreground" : ""
+						allHidersFound ? "bg-action text-action-ink" : ""
 					}`}
 					data-testid="end-round"
 					onClick={() =>

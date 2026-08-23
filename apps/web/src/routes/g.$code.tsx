@@ -6,8 +6,8 @@ import {
 import { queries } from "@zero-lag/schema";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
-import type { GameShell } from "../game/shell";
 import { RulesLink } from "../game/rules-link";
+import type { GameShell } from "../game/shell";
 import { useBatteryBroadcast } from "../game/use-battery-broadcast";
 import { useEphemeralChannel } from "../game/use-ephemeral";
 import { usePositionTracking } from "../game/use-position-tracking";
@@ -114,7 +114,7 @@ function Connected({ session }: { session: Session }) {
 		<>
 			<div className="fixed top-2 right-3 z-50 flex items-start gap-2">
 				<p
-					className="px-2 py-3 text-right text-muted-foreground text-xs"
+					className="px-2 py-3 text-right text-ink-dim text-xs"
 					data-testid="connection-state"
 				>
 					{connection.name}

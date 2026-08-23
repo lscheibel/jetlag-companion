@@ -26,13 +26,13 @@ export function StopSheet({ stop, onClose }: StopSheetProps) {
 
 	return (
 		<section
-			className="absolute inset-x-0 bottom-0 z-30 max-h-[70%] space-y-2 overflow-y-auto rounded-t-xl border-t bg-background p-4 shadow-lg"
+			className="absolute inset-x-0 bottom-0 z-30 max-h-[70%] space-y-2 overflow-y-auto rounded-t-xl border-t bg-surface p-4 shadow-lg"
 			data-testid="stop-sheet"
 		>
 			<header className="flex items-start gap-3">
 				<div className="min-w-0">
 					<h2 className="font-semibold text-lg">{stop.name}</h2>
-					<p className="text-muted-foreground text-sm">
+					<p className="text-ink-dim text-sm">
 						{stop.insideArea ? "Inside the game area" : "Outside the game area"}
 					</p>
 				</div>
@@ -47,14 +47,14 @@ export function StopSheet({ stop, onClose }: StopSheetProps) {
 			</header>
 
 			{groups.length === 0 ? (
-				<p className="text-muted-foreground text-sm">
+				<p className="text-ink-dim text-sm">
 					No named lines in the catalog for this stop.
 				</p>
 			) : (
 				<dl className="space-y-3">
 					{groups.map((group) => (
 						<div key={group.modeId} data-testid={`stop-lines-${group.modeId}`}>
-							<dt className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+							<dt className="font-medium text-ink-dim text-xs uppercase tracking-wide">
 								{MODE_LABELS[group.modeId]}
 							</dt>
 							<dd className="text-sm">{group.names.join(" · ")}</dd>

@@ -1,4 +1,4 @@
-import { TeamBadge } from "../lobby/team-badge";
+import { TeamBadge } from "@zero-lag/ui/components/team-badge";
 import { MapMarker } from "./map-canvas";
 import type { MapPlayer } from "./players";
 import { positionLabel, type Staleness } from "./staleness";
@@ -55,7 +55,7 @@ export function PlayerMarker({ player, onSelect }: PlayerMarkerProps) {
 					{player.team && <span aria-hidden> {player.team.emoji}</span>}
 				</span>
 				<span
-					className="rounded bg-white/80 px-1 text-[10px] text-muted-foreground"
+					className="rounded bg-white/80 px-1 text-[10px] text-ink-dim"
 					data-testid={`marker-age-${player.displayName}`}
 				>
 					{positionLabel({

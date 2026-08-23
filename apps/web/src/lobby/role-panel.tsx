@@ -1,6 +1,6 @@
 import type { TeamRole } from "@zero-lag/schema";
+import { TeamBadge } from "@zero-lag/ui/components/team-badge";
 import { useLobbyActions } from "./actions";
-import { TeamBadge } from "./team-badge";
 import type { LobbyTeam } from "./team-card";
 
 interface RolePanelProps {
@@ -53,7 +53,7 @@ export function RolePanel({
 						<div className="ml-auto flex gap-2">
 							{(["hider", "seeker"] as const).map((option) => (
 								<button
-									className={`min-h-11 rounded border px-3 text-sm ${role === option ? "border-foreground font-semibold" : ""}`}
+									className={`min-h-11 rounded border px-3 text-sm ${role === option ? "border-ink font-semibold" : ""}`}
 									data-testid={`${option}-${team.name}`}
 									disabled={!amHost || !roundId}
 									key={option}

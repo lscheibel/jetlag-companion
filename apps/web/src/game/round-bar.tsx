@@ -34,7 +34,7 @@ export function RoundBar({ clockOffsetMs = 0 }: RoundBarProps) {
 
 	return (
 		<div
-			className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded bg-background/90 px-3 font-semibold shadow"
+			className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded bg-surface/90 px-3 font-semibold shadow"
 			data-testid="round-bar"
 		>
 			<span className="capitalize" data-testid="round-phase">

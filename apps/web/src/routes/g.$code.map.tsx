@@ -642,7 +642,7 @@ export default function MapRoute() {
 				<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
 			)}
 
-			<header className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-background/90 p-3 pr-24 text-sm">
+			<header className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-surface/90 p-3 pr-24 text-sm">
 				<Link
 					className="min-h-11 rounded border px-3 py-2"
 					data-testid="back-to-lobby"
@@ -683,7 +683,7 @@ export default function MapRoute() {
 			 * network; a hider who wants to know whether they have drifted is served
 			 * by a coordinate when they cannot be served by a map. m2-spec §11.
 			 */}
-			<div className="absolute top-16 right-3 z-10 rounded bg-background/90 px-2 py-1 text-xs shadow">
+			<div className="absolute top-16 right-3 z-10 rounded bg-surface/90 px-2 py-1 text-xs shadow">
 				<OwnPositionReadout fix={ownFix} />
 				{ownFix && ownFix.source !== "unavailable" && (
 					<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
@@ -820,12 +820,12 @@ export default function MapRoute() {
 function OfflineSurface({ onRetry }: { onRetry: () => void }) {
 	return (
 		<div
-			className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-3 bg-muted/60 p-6 text-center text-sm"
+			className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-3 bg-surface-raised/60 p-6 text-center text-sm"
 			data-testid="map-unavailable"
 		>
 			<p>Map unavailable offline. Your own position is still shown.</p>
 			<button
-				className="min-h-11 rounded border bg-background px-4"
+				className="min-h-11 rounded border bg-surface px-4"
 				data-testid="retry-map"
 				onClick={onRetry}
 				type="button"
@@ -850,7 +850,7 @@ function AbsentPlayers({ players }: { players: readonly MapPlayer[] }) {
 
 	return (
 		<p
-			className="absolute top-16 left-3 z-10 rounded bg-background/90 px-2 py-1 text-xs shadow"
+			className="absolute top-16 left-3 z-10 rounded bg-surface/90 px-2 py-1 text-xs shadow"
 			data-testid="absent-players"
 		>
 			No position: {absent.map((player) => player.displayName).join(", ")}

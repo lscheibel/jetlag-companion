@@ -80,6 +80,18 @@
 							"Notification": "Browser capability APIs are reachable only from packages/platform (m0-spec \u00a710). Use PlatformAdapter.notifications."
 						}
 					}
+				},
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"paths": {
+							"shadcn": "The component kit was removed in favour of @zero-lag/ui. Build the primitive there instead of re-adding one.",
+							"@shadcn/react": "The component kit was removed in favour of @zero-lag/ui. Build the primitive there instead of re-adding one.",
+							"class-variance-authority": "Variants are plain records in @zero-lag/ui; cva was removed with the shadcn kit.",
+							"next-themes": "Theme preference lives in @zero-lag/ui/hooks/use-theme, which the pre-paint ThemeScript agrees with.",
+							"sonner": "Transient messages use @zero-lag/ui/components/notice, which is dismissible and never becomes a game event."
+						}
+					}
 				}
 			}
 		}

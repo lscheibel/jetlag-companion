@@ -1,0 +1,168 @@
+/**
+ * Motion tokens and the ambient loops.
+ *
+ * The split: continuous, decorative motion that never needs to know about
+ * state lives here as CSS keyframes — an accuracy ring pulsing, a marching
+ * dash, a live dot breathing. Motion that reacts to state, sequences, or has
+ * to survive an element being removed lives in Motion (lib/motion.ts), which
+ * can animate an exit and CSS cannot.
+ *
+ * Both take their easings and durations from the same tokens, which is what
+ * keeps a screenful of small animations reading as one system rather than as
+ * fifteen separately tuned cubic-beziers.
+ */
+
+:root {
+	/* Overshoot. The house curve — presses, pops, cards landing. */
+	--ease-pop: linear(
+		0 0%,
+		0.22 4.5%,
+		0.86 15.5%,
+		1.05 22.5%,
+		1.08 28%,
+		1 39%,
+		0.998 50%,
+		1 100%
+	);
+	/* Decisive entrances and exits, no bounce. */
+	--ease-out-soft: cubic-bezier(0.2, 0.9, 0.25, 1);
+	--ease-in-soft: cubic-bezier(0.6, 0, 0.9, 0.3);
+	/* Continuous loops. */
+	--ease-breathe: cubic-bezier(0.45, 0, 0.55, 1);
+
+	--dur-press: 120ms;
+	--dur-tap: 160ms;
+	--dur-move: 240ms;
+	--dur-enter: 320ms;
+	--dur-sheet: 420ms;
+	--dur-breathe: 1900ms;
+	--dur-pulse: 3200ms;
+	--dur-sweep: 4500ms;
+
+	/* Stagger step for lists that deal in rather than appear at once. */
+	--stagger: 60ms;
+}
+
+/* ── ambient loops ────────────────────────────────────────────────────── */
+
+@keyframes zl-breathe {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.42;
+		transform: scale(0.82);
+	}
+}
+
+@keyframes zl-pulse-ring {
+	0% {
+		opacity: 0.55;
+		transform: scale(0.6);
+	}
+	70% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 0;
+		transform: scale(2.4);
+	}
+}
+
+@keyframes zl-sweep {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes zl-march {
+	to {
+		stroke-dashoffset: -26;
+	}
+}
+
+@keyframes zl-sheen {
+	0%,
+	72% {
+		transform: translateX(-120%);
+	}
+	92%,
+	100% {
+		transform: translateX(120%);
+	}
+}
+
+@keyframes zl-drain {
+	from {
+		transform: scaleX(1);
+	}
+	to {
+		transform: scaleX(0);
+	}
+}
+
+@utility zl-breathe {
+	animation: zl-breathe var(--dur-breathe) var(--ease-breathe) infinite;
+}
+
+@utility zl-pulse-ring {
+	animation: zl-pulse-ring var(--dur-pulse) var(--ease-out-soft) infinite;
+	transform-origin: center;
+}
+
+@utility zl-sweep {
+	animation: zl-sweep var(--dur-sweep) linear infinite;
+	transform-origin: center;
+}
+
+@utility zl-march {
+	animation: zl-march 1.4s linear infinite;
+}
+
+/**
+ * The sheen that crosses a primary action every few seconds. It is the one
+ * piece of purely decorative motion in the kit, and it earns its place by
+ * making the single most important control on a screen findable in peripheral
+ * vision while someone is walking.
+ */
+@utility zl-sheen {
+	position: relative;
+	overflow: hidden;
+
+	&::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			105deg,
+			transparent 38%,
+			rgb(255 255 255 / 0.55) 50%,
+			transparent 62%
+		);
+		transform: translateX(-120%);
+		animation: zl-sheen 3.6s var(--ease-out-soft) infinite;
+		pointer-events: none;
+	}
+}
+
+/**
+ * One guard, at the bottom of the cascade, covering CSS animation everywhere.
+ * Motion's own components read the same preference through useReducedMotion,
+ * so the two paths agree.
+ */
+@media (prefers-reduced-motion: reduce) {
+	/* biome-ignore-start lint/complexity/noImportantStyles: a preference the
+	   player set has to outrank every animation in the app, including inline
+	   ones, which is what !important is for */
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+	/* biome-ignore-end lint/complexity/noImportantStyles: see above */
+}

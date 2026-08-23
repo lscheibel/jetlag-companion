@@ -40,7 +40,7 @@ export function SaveSheet(props: SaveSheetProps) {
 
 	return (
 		<section
-			className="pointer-events-auto rounded bg-background/95 p-3 shadow"
+			className="pointer-events-auto rounded bg-surface/95 p-3 shadow"
 			data-testid="save-sheet"
 		>
 			<label className="block text-sm" htmlFor="map-name">

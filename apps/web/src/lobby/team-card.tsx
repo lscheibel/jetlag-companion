@@ -1,9 +1,12 @@
 import type { TeamRole } from "@zero-lag/schema";
+import {
+	TeamBadge,
+	type TeamIdentity,
+} from "@zero-lag/ui/components/team-badge";
 import { useState } from "react";
 import { useLobbyActions } from "./actions";
 import type { LobbyPlayer } from "./player-row";
 import { PlayerRow } from "./player-row";
-import { TeamBadge, type TeamIdentity } from "./team-badge";
 import { TeamEditor } from "./team-editor";
 
 export interface LobbyTeam extends TeamIdentity {

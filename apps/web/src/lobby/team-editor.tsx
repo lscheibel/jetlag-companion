@@ -1,7 +1,7 @@
+import type { TeamIdentity } from "@zero-lag/ui/components/team-badge";
 import { useState } from "react";
 import { useLobbyActions } from "./actions";
 import { TEAM_COLORS, TEAM_EMOJI } from "./palette";
-import type { TeamIdentity } from "./team-badge";
 
 interface TeamEditorProps {
 	teamId: string;
@@ -51,7 +51,7 @@ export function TeamEditor({ teamId, team, teams, onDone }: TeamEditorProps) {
 				{TEAM_COLORS.map((color) => (
 					<button
 						aria-label={`Colour ${color}`}
-						className={`size-11 rounded-full border-2 ${color === team.color ? "border-foreground" : "border-transparent"} disabled:opacity-30`}
+						className={`size-11 rounded-full border-2 ${color === team.color ? "border-ink" : "border-transparent"} disabled:opacity-30`}
 						data-testid={`color-${color}`}
 						disabled={takenColors.has(color)}
 						key={color}
@@ -65,7 +65,7 @@ export function TeamEditor({ teamId, team, teams, onDone }: TeamEditorProps) {
 			<div className="flex flex-wrap gap-2">
 				{TEAM_EMOJI.map((emoji) => (
 					<button
-						className={`size-11 rounded border text-xl ${emoji === team.emoji ? "border-foreground" : "border-transparent"} disabled:opacity-30`}
+						className={`size-11 rounded border text-xl ${emoji === team.emoji ? "border-ink" : "border-transparent"} disabled:opacity-30`}
 						data-testid={`emoji-${emoji}`}
 						disabled={takenEmoji.has(emoji)}
 						key={emoji}

@@ -22,7 +22,7 @@ export function MapControls({
 		<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 space-y-2 p-3">
 			{trackingNotice && (
 				<p
-					className="pointer-events-auto rounded bg-background/90 px-3 py-2 text-xs shadow"
+					className="pointer-events-auto rounded bg-surface/90 px-3 py-2 text-xs shadow"
 					data-testid="tracking-notice"
 				>
 					{trackingNotice}
@@ -31,7 +31,7 @@ export function MapControls({
 
 			{blindness?.blind && (
 				<p
-					className="pointer-events-auto rounded border border-amber-500 bg-background/90 px-3 py-2 text-sm shadow"
+					className="pointer-events-auto rounded border border-amber-500 bg-surface/90 px-3 py-2 text-sm shadow"
 					data-testid="blindness-notice"
 				>
 					Other teams are hidden on your map.
@@ -45,7 +45,7 @@ export function MapControls({
 				 * `followHeading` appears only where there is a compass. m2-spec §12.
 				 */}
 				<button
-					className="min-h-11 rounded border bg-background px-4 shadow"
+					className="min-h-11 rounded border bg-surface px-4 shadow"
 					data-camera-mode={camera.mode}
 					data-testid="cycle-camera"
 					onClick={onCycleCamera}
@@ -56,7 +56,7 @@ export function MapControls({
 
 				{blindness && (
 					<button
-						className="ml-auto min-h-11 rounded border bg-background px-4 shadow"
+						className="ml-auto min-h-11 rounded border bg-surface px-4 shadow"
 						data-testid="toggle-blindness"
 						onClick={blindness.toggle}
 						type="button"

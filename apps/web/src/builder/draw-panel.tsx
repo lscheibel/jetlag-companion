@@ -15,7 +15,7 @@ interface DrawPanelProps {
  */
 export function DrawPanel(props: DrawPanelProps) {
 	return (
-		<section className="pointer-events-auto rounded bg-background/95 p-3 shadow">
+		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
 			<div className="flex items-center gap-2">
 				<button
 					className="min-h-11 flex-1 rounded border px-3"

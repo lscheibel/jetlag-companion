@@ -1,0 +1,251 @@
+/**
+ * Zero Lag's colour system, in two layers.
+ *
+ * The palette is raw material: transit signage colours and the team identity
+ * set, identical in every theme because a U-Bahn line is not a lighter blue
+ * indoors. The roles below are what components reference, and they are the
+ * only thing that changes between light and dark.
+ *
+ * Components must never reach past a role to a palette value. If a component
+ * needs a colour no role provides, the missing thing is a role.
+ */
+
+:root {
+	/* ── palette ──────────────────────────────────────────────────────── */
+	--signal-yellow: #ffe01f;
+	--signal-yellow-deep: #f5d400;
+	--u-bahn-blue: #3e88e8;
+	--u-bahn-blue-deep: #0f5fc2;
+	--s-bahn-green: #22c179;
+	--s-bahn-green-deep: #00794a;
+	--tram-amber: #e8b93e;
+	--tram-amber-deep: #8a6a00;
+	--alert-vermillion: #ff5a3c;
+	--alert-vermillion-deep: #c7300f;
+	--warn-amber: #ffa426;
+	--warn-amber-deep: #9a6100;
+	--curse-magenta: #e86bb4;
+	--curse-magenta-deep: #c13f94;
+
+	/**
+	 * Team identity, mirrored from apps/web/src/lobby/palette.ts. Okabe–Ito, so
+	 * the eight stay distinguishable under all three common colour vision
+	 * deficiencies. Colour never carries meaning alone: a team is always its
+	 * emoji, its name and its colour together.
+	 */
+	--team-vermillion: #d55e00;
+	--team-cobalt: #0072b2;
+	--team-jade: #009e73;
+	--team-orchid: #cc79a7;
+	--team-amber: #e69f00;
+	--team-sky: #56b4e9;
+	--team-citron: #f0e442;
+	--team-slate: #4b4b4b;
+
+	/* ── shape ────────────────────────────────────────────────────────── */
+	--radius-chip: 999px;
+	--radius-control: 16px;
+	--radius-tile: 18px;
+	--radius-sheet: 26px;
+
+	/**
+	 * Touch floors. The primary action of a screen is thumb-sized and lives in
+	 * the bottom third; nothing interactive is smaller than --tap-min. Values
+	 * rather than guidance, because a number in a token survives a redesign and
+	 * a sentence in a document does not.
+	 */
+	--tap-min: 44px;
+	--tap-comfortable: 52px;
+	--tap-primary: 60px;
+}
+
+/* ── light ────────────────────────────────────────────────────────────── */
+:root {
+	color-scheme: light;
+
+	--ground: #f0f3f7;
+	--surface: #ffffff;
+	--surface-raised: #e6ecf3;
+	--surface-sunken: #dbe3ec;
+	--scrim: rgb(8 17 28 / 0.45);
+
+	--ink: #08111c;
+	--ink-dim: #4a5869;
+	--ink-faint: #6b7a8e;
+	--hairline: rgb(8 17 28 / 0.14);
+	--hairline-strong: rgb(8 17 28 / 0.26);
+
+	--action: var(--signal-yellow-deep);
+	--action-ink: #12160b;
+	--action-press: #b39b00;
+	--focus: var(--u-bahn-blue-deep);
+
+	--live: var(--s-bahn-green-deep);
+	--stale: var(--warn-amber-deep);
+	--offline: var(--alert-vermillion-deep);
+	--danger: var(--alert-vermillion-deep);
+	--curse: var(--curse-magenta-deep);
+
+	--transit-u: var(--u-bahn-blue-deep);
+	--transit-s: var(--s-bahn-green-deep);
+	--transit-tram: var(--tram-amber-deep);
+
+	/**
+	 * Map roles. The basemap is theme-aware too — a dark map under a light UI
+	 * reads as a bug rather than a style.
+	 */
+	--map-land: #e9eff5;
+	--map-block: #dae3ec;
+	--map-water: #b6d4ee;
+	--map-park: #c7e4c6;
+	--map-station: #08111c;
+	--map-hiding-area: #e0ae00;
+	--map-eliminated: rgb(8 17 28 / 0.16);
+}
+
+/* ── dark ─────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+
+		--ground: #0a0d14;
+		--surface: #141b26;
+		--surface-raised: #1d2634;
+		--surface-sunken: #05070c;
+		--scrim: rgb(5 8 14 / 0.62);
+
+		--ink: #f3f6fa;
+		--ink-dim: #93a1b6;
+		--ink-faint: #7a8798;
+		--hairline: rgb(255 255 255 / 0.09);
+		--hairline-strong: rgb(255 255 255 / 0.2);
+
+		--action: var(--signal-yellow);
+		--action-ink: #12160b;
+		--action-press: #b39b00;
+		--focus: var(--u-bahn-blue);
+
+		--live: var(--s-bahn-green);
+		--stale: var(--warn-amber);
+		--offline: var(--alert-vermillion);
+		--danger: var(--alert-vermillion);
+		--curse: var(--curse-magenta);
+
+		--transit-u: var(--u-bahn-blue);
+		--transit-s: var(--s-bahn-green);
+		--transit-tram: var(--tram-amber);
+
+		--map-land: #0e1420;
+		--map-block: #131c29;
+		--map-water: #153450;
+		--map-park: #123020;
+		--map-station: #e7edf6;
+		--map-hiding-area: var(--signal-yellow);
+		--map-eliminated: rgb(5 8 14 / 0.74);
+	}
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+
+	--ground: #0a0d14;
+	--surface: #141b26;
+	--surface-raised: #1d2634;
+	--surface-sunken: #05070c;
+	--scrim: rgb(5 8 14 / 0.62);
+
+	--ink: #f3f6fa;
+	--ink-dim: #93a1b6;
+	--ink-faint: #7a8798;
+	--hairline: rgb(255 255 255 / 0.09);
+	--hairline-strong: rgb(255 255 255 / 0.2);
+
+	--action: var(--signal-yellow);
+	--action-ink: #12160b;
+	--action-press: #b39b00;
+	--focus: var(--u-bahn-blue);
+
+	--live: var(--s-bahn-green);
+	--stale: var(--warn-amber);
+	--offline: var(--alert-vermillion);
+	--danger: var(--alert-vermillion);
+	--curse: var(--curse-magenta);
+
+	--transit-u: var(--u-bahn-blue);
+	--transit-s: var(--s-bahn-green);
+	--transit-tram: var(--tram-amber);
+
+	--map-land: #0e1420;
+	--map-block: #131c29;
+	--map-water: #153450;
+	--map-park: #123020;
+	--map-station: #e7edf6;
+	--map-hiding-area: var(--signal-yellow);
+	--map-eliminated: rgb(5 8 14 / 0.74);
+}
+
+/**
+ * The bridge into Tailwind. Every role above becomes a utility — bg-surface,
+ * text-ink-dim, border-hairline — so screens keep being written in utilities
+ * rather than bespoke CSS, and a theme change stays a token change.
+ */
+@theme inline {
+	--font-sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+	--font-display:
+		"Bricolage Grotesque Variable", "Archivo Variable", system-ui, sans-serif;
+	--font-mono:
+		"Azeret Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--color-ground: var(--ground);
+	--color-surface: var(--surface);
+	--color-surface-raised: var(--surface-raised);
+	--color-surface-sunken: var(--surface-sunken);
+	--color-scrim: var(--scrim);
+
+	--color-ink: var(--ink);
+	--color-ink-dim: var(--ink-dim);
+	--color-ink-faint: var(--ink-faint);
+	--color-hairline: var(--hairline);
+	--color-hairline-strong: var(--hairline-strong);
+
+	--color-action: var(--action);
+	--color-action-ink: var(--action-ink);
+	--color-action-press: var(--action-press);
+	--color-focus: var(--focus);
+
+	--color-live: var(--live);
+	--color-stale: var(--stale);
+	--color-offline: var(--offline);
+	--color-danger: var(--danger);
+	--color-curse: var(--curse);
+
+	--color-transit-u: var(--transit-u);
+	--color-transit-s: var(--transit-s);
+	--color-transit-tram: var(--transit-tram);
+
+	--color-map-land: var(--map-land);
+	--color-map-block: var(--map-block);
+	--color-map-water: var(--map-water);
+	--color-map-park: var(--map-park);
+	--color-map-station: var(--map-station);
+	--color-map-hiding-area: var(--map-hiding-area);
+	--color-map-eliminated: var(--map-eliminated);
+
+	--color-team-vermillion: var(--team-vermillion);
+	--color-team-cobalt: var(--team-cobalt);
+	--color-team-jade: var(--team-jade);
+	--color-team-orchid: var(--team-orchid);
+	--color-team-amber: var(--team-amber);
+	--color-team-sky: var(--team-sky);
+	--color-team-citron: var(--team-citron);
+	--color-team-slate: var(--team-slate);
+
+	--radius-chip: var(--radius-chip);
+	--radius-control: var(--radius-control);
+	--radius-tile: var(--radius-tile);
+	--radius-sheet: var(--radius-sheet);
+
+	--spacing-tap: var(--tap-min);
+	--spacing-tap-comfortable: var(--tap-comfortable);
+	--spacing-tap-primary: var(--tap-primary);
+}
