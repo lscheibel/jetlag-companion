@@ -20,10 +20,9 @@ it. M4 is where the fixture stops being the game.
 
 **In scope**
 
-- A **transit catalog for all of Germany**, imported from an open GTFS feed into
-  Postgres, queried by the server and never shipped to a phone
-- The game area as **one polygon**, chosen by administrative boundary or drawn by
-  hand
+- A **transit catalog for all of Germany**, built once from an open GTFS feed into a
+  generated file the server holds and never ships to a phone
+- The game area as **one polygon**, drawn by hand
 - The stops a game carries: materialised onto the map config, so a playing phone
   needs nothing but its own rows
 - A global hiding radius, and the two advisory predicates that make a hiding spot
@@ -39,7 +38,7 @@ it. M4 is where the fixture stops being the game.
   those needed. See below
 - Custom Overpass queries, exclusion polygons, GeoJSON/KML import, water and no-go
   masking, POI zones, building footprints (M18)
-- An automated catalog refresh. M4 imports by hand; §4 says why that is the right
+- An automated catalog refresh. M4 builds it by hand; §4 says why that is the right
   end of the milestone to stop at
 - Question distances themselves (M6). M4 stores the scale a map was built at; M6
   reads it and derives its own defaults
@@ -99,42 +98,50 @@ a map produces.
 
 ### The catalog
 
-**In its own Postgres database, not the game's.** `zero-cache` replicates its
-upstream database through a logical replication slot, and a quarter of a million
-static reference rows have no business in a sync engine's replica. Logical
-replication is per-database, so a separate database is a guarantee rather than a
-configuration — and it costs one extra connection pool on the server.
+**Not in Postgres at all.** `zero-cache` replicates its upstream database through a
+logical replication slot, and a quarter of a million static reference rows have no
+business in a sync engine's replica. An earlier draft bought that guarantee with a
+second database, logical replication being per-database. A file in the server
+process is the same guarantee for none of the apparatus: data that is not in any
+database cannot be replicated out of one.
 
 ```ts
-catalogVersion: {
-  id: string;              // 'de-2026-08'
+type StopCatalog = {
+  version: string;         // content hash of the artifact
   feedPublisher: string;   // 'gtfs.de — data from DELFI e.V.'
-  feedVersion: string;
-  importedAt: number;
-  stopCount: number;
-  routeCount: number;
-}
+  builtAt: number;
+  stops: CatalogStop[];    // stations only — children folded away at build time
+};
 
-catalogStop: {             // stations only — children are folded away at import
+type CatalogStop = {
   id: string;              // the feed's stop_id — see §4 on stability
-  versionId: string;
   name: string;
   lng: number;
   lat: number;
   modeIds: string[];       // rolled up from the routes that call there
-}
-index("catalogStop_pos_idx").on(versionId, lat, lng)
-
-catalogRoute:    { id, versionId, modeId, operatorId, shortName, longName }
-catalogStopRoute:{ versionId, stopId, routeId }
-catalogOperator: { id, versionId, name }
-catalogBoundary: { id, versionId, name, adminLevel: number, polygons }
+};
 ```
 
-A plain composite index on `(versionId, lat, lng)` is all the geo indexing this
-needs: §5's only spatial query is a bounding box, and PostGIS for a `BETWEEN` is a
-dependency bought for nothing. Point-in-polygon refinement happens in JS with
-`regionContains`, over the few thousand rows the box returns.
+**There is no catalog database.** All 251,741 German stations serialise to **22.4 MB
+of compact JSON, 5.3 MB gzipped**, and §5's only query over them is a bounding box.
+Held in the server process that is a linear scan measured in tens of milliseconds,
+on a screen a host opens once. An indexed table, a second Postgres database and a
+connection pool are a great deal of apparatus for a filter over 22 MB.
+
+The 36-million-row join that computes `modeIds` still wants SQL and still gets it —
+from a **throwaway database the build script creates, fills, queries and drops**
+(§4). Postgres being the right tool to *compute* the artifact never implied it was
+the right place to *keep* it. An earlier draft of §4 argued exactly that, and the
+step it was defending is unchanged; only where the result lands has moved.
+
+**Route, operator and line-membership tables go with it.** Nothing in M4 reads one:
+§5 materialises `modeIds` and nothing else, and enable/disable by line is M18's.
+They exist inside the build as intermediates and do not survive it.
+
+**There is no `catalogBoundary` either.** Administrative boundaries are M6's data —
+they answer *are you in the same Bezirk as me*, and nothing in M4 reads them. The
+extract that produces them is built and measured (§4); the storage and the import
+that fills it belong to the milestone that has a use for them.
 
 ### The game side
 
@@ -156,11 +163,10 @@ index("mapStop_config_idx").on(mapConfigId)
 mapConfig: {
   id, gameId, validHidingArea, contentHash,     // unchanged from m0-spec §11
 
-  catalogVersionId: string;           // replaces areaPackId + areaPackVersion
+  catalogVersion: string;             // replaces areaPackId + areaPackVersion
   name: string;                       // 'Berlin — Mitte + Friedrichshain'
   scalePreset: ScalePreset;           // M6 reads this and never recomputes it
-  selection: Selection;               // jsonb — what was picked, for re-editing
-  boundaries: StoredBoundary[];       // jsonb — the boundaries in play, for M6
+  selection: Selection;               // jsonb — what was drawn, for re-editing
   hidingRadiusMeters: number;         // §3 — one number doing two jobs
   sourceTemplateId: string | null;
   supersedesConfigId: string | null;  // §8
@@ -186,7 +192,7 @@ worse error than being incomplete.
 ```ts
 mapTemplate: {
   id, code, name, createdByPlayerId, createdAt, contentHash,
-  catalogVersionId: string;     // pinned — §7
+  catalogVersion: string;     // pinned — §7
   scalePreset: ScalePreset;
   selection: Selection;
   hidingRadiusMeters: number;
@@ -206,9 +212,10 @@ plays on, and there has never been a version of this feature where one team sees
 different board than another.
 
 **`packages/area-packs` becomes `packages/catalog`.** There are no packs any more —
-there is an importer, a set of catalog queries the server calls, the shared types,
-and the small Berlin fixture the unit tests want. Keeping a package named for a
-concept the milestone deleted is how a codebase starts lying about itself.
+there is a build script, the loader and bbox filter the server calls, the shared
+types, the OSM boundary parser M6 will use, and the small Berlin fixture the unit
+tests want. Keeping a package named for a concept the milestone deleted is how a
+codebase starts lying about itself.
 
 ---
 
@@ -221,30 +228,28 @@ concept the milestone deleted is how a codebase starts lying about itself.
 ### Choosing the area
 
 ```ts
-type Selection =
-  | { kind: "boundary"; boundaryIds: string[] }
-  | { kind: "drawn"; polygon: StoredMultiPolygon };
+type Selection = { kind: "drawn"; polygon: StoredMultiPolygon };
 ```
 
-**By administrative boundary.** The catalog carries Bundesländer, Kreise, Gemeinden
-and Stadtbezirke (§4); the host picks one or several and their union is the area.
-This is the path that makes the build plan's two-minute claim true, and it produces
-the best possible boundary — the real one, rather than a shape somebody traced at
-zoom 11 while holding a coffee.
+**The host draws it.** Tap to add vertices, drag one to move it, tap the first to
+close. That is the whole of it: there is no boundary picker, no search, no list of
+Gemeinden to scroll.
 
-Selecting several is normal and useful — *Mitte plus Friedrichshain-Kreuzberg* is a
-perfectly good game — and it is what keeps `validHidingArea` a genuine
-`MultiPolygon` in practice rather than only in the type.
+An earlier draft made administrative boundaries the primary path and drawing the
+fallback. That had it backwards. Boundaries answer *are you in the same Bezirk as
+me* — they are M6 question data, and a game area is not obliged to agree with one.
+Most real games do not: a Deutschlandticket game, a game bounded by the Ringbahn, a
+game that is "roughly Kreuzberg plus the bit of Neukölln we like" are all shapes
+nobody has drawn an administrative line around.
 
-**By drawing.** Tap to add vertices, drag one to move it, tap the first to close.
-The fallback for "no boundary matches what we want", which is most Deutschlandticket
-games and any game defined by a river or a Ringbahn.
+`Selection` stays a discriminated union with one arm rather than a bare object. When
+M18 returns stop toggles and per-mode radii, or M6 wants a boundary-shaped area for
+free, the addition is a new arm rather than a migration.
 
-**Both are stored twice, and that is deliberate.** `selection` records *what was
-picked* so the builder can be reopened; `validHidingArea` records *the geometry
-that resulted*. Same reason m0-spec materialises `hidingCommitment.zone`: a catalog
-re-import that nudges a boundary must not silently move the area a game is being
-played in.
+**It is still stored twice, and that is still deliberate.** `selection` records the
+ring the host actually drew; `validHidingArea` records the normalised geometry that
+resulted. The two differ whenever a drawn ring self-intersects — see below — and
+reopening the builder wants the host's vertices back, not the repaired ones.
 
 ### A drawn ring is normalised through a union with itself
 
@@ -318,9 +323,9 @@ union is not the union.
 
 The source is **gtfs.de's `de_full` feed** — all of Germany, published by gtfs.de
 from DELFI e.V. data, with OpenStreetMap contributors credited in
-`attributions.txt`. It is already in `gtfs/`. What follows is measured from that
-copy, not assumed, because three of the five things below are not what the previous
-draft of this section predicted.
+`attributions.txt`. It is already in `assets/gtfs/`. What follows is measured from
+that copy, not assumed, because three of the five things below are not what the
+previous draft of this section predicted.
 
 | File | Size | Rows |
 | --- | --- | --- |
@@ -382,9 +387,12 @@ quietly becoming a train.
 
 A stop carries no mode of its own. Knowing that a station is served by S-Bahn means
 joining stops ← `stop_times` ← `trips` ← `routes`, and `stop_times` is the 2 GB
-file. **This is why the catalog lives in Postgres rather than in a JSON artifact:
-`COPY` plus one `SELECT DISTINCT` is the right tool, and a streaming parse in
-JavaScript is not.**
+file. **`COPY` plus one `SELECT DISTINCT` is the right tool for that, and a
+streaming parse in JavaScript is not** — so the build runs in Postgres.
+
+What that argues for is Postgres *during the build*, which an earlier draft
+overstated into Postgres *forever*. The join is a step, not a home: it runs once per
+feed, against tables that are dropped when it finishes.
 
 ```sql
 CREATE UNLOGGED TABLE stop_route AS
@@ -395,9 +403,10 @@ JOIN gtfs_trips  t ON t.trip_id = st.trip_id
 JOIN gtfs_stops  s ON s.stop_id = st.stop_id;
 ```
 
-One statement does the platform fold and the line membership together, and the
-staging tables are dropped afterwards. **It needs roughly 3 GB of transient disk**,
-which is a fact about the import script's host and not about anything that ships.
+One statement does the platform fold and the line membership together. **It needs
+roughly 3 GB of transient disk**, which is a fact about the build host and not about
+anything that ships — and every table involved, `stop_route` included, is dropped
+when the artifact is written.
 
 ### Stop ids are the feed's own, and they are not DHIDs
 
@@ -412,25 +421,107 @@ a map that already exists.** What it can do is make *reopening* an old template
 resolve fewer stops, which is a builder-side inconvenience with a visible message,
 not silent data loss in a running game.
 
-### Boundaries are not in GTFS, and this is the open dependency
+### Boundaries come from OSM, and they belong to M6
 
-§3 makes administrative boundaries the *primary* way an area gets chosen, and this
-feed has none. They are a second import — OSM `boundary=administrative` at the
-levels that correspond to Bundesland, Kreis, Gemeinde and Stadtbezirk, or the
-official BKG dataset. **Which source, and which admin levels map to which of those,
-is verified before the importer is written** (§12). Until boundaries land, drawing
-is the only path to an area, and the two-minute claim is not testable.
+Administrative boundaries answer exactly one question: *are you in the same
+Bezirk — or Ortsteil — as me.* That is an M6 matching constraint, and **nothing in
+M4 reads a boundary**; §3's area is drawn. The extract is documented here because the
+catalog is documented here, and because settling it cost an afternoon rather than a
+milestone.
 
-### Importing, and when to automate it
+The source is **Geofabrik's `germany-latest.osm.pbf`** — 4.5 GB, in `assets/osm`,
+refreshed quarterly. The BKG's official dataset was the alternative and loses on one
+point: it stops at Gemeinde level, and Ortsteile are half of the question.
+
+**Overpass is not involved.** It is a query server over a database that has to be
+built from the pbf first — hours of import, tens of GB, maintained to answer one
+query four times a year. Two osmium passes do the same job in under a minute:
+
+| Pass | Output | Time |
+| --- | --- | --- |
+| `tags-filter r/boundary=administrative` | 43 MB pbf | 44 s |
+| `export --geometry-types=polygon` | 465 MB GeoJSON-seq, 35,021 features | 5 s |
+
+`npm run osm:extract`, both passes inside the version-pinned container in
+`infra/docker/docker-compose.yml`. Six relations in all of Germany fail to assemble
+into closed rings; they are dropped and reported, never dropped silently.
+
+**The second pass is what earns a native dependency.** A boundary relation is an
+unordered bag of ways with `outer`/`inner` roles, arbitrary direction, holes and real
+exclaves, and libosmium's area assembler already resolves all of it. Everything
+downstream of the extract is TypeScript.
+
+`--geometry-types=polygon` is load-bearing rather than tidy: boundary relations carry
+their `admin_centre` and `label` **nodes** as members, and without the flag osmium
+exports those as Point features that an importer reads as very small boundaries.
+`parseBoundaryLine` rejects them a second time regardless.
+
+### The levels are not what their names suggest
+
+| Level | Count | `name:prefix` | official key | avg vertices |
+| --- | --- | --- | --- | --- |
+| 2 Staat | 2 | 0% | 0% | 79,630 |
+| 4 Bundesland | 25 | 60% | 64% | 19,101 |
+| 5 Regierungsbezirk | 19 | 0% | 100% | 24,444 |
+| 6 Kreis | 460 | 33% | 87% | 4,743 |
+| 7 Amt | 1,329 | 62% | 90% | 1,454 |
+| 8 Gemeinde | 11,214 | 18% | 97% | 668 |
+| 9 Stadtbezirk | 10,600 | 18% | **0.4%** | 341 |
+| 10 Ortsteil | 9,666 | 19% | **0.4%** | 338 |
+| 11 Quartier | 1,607 | 10% | 0% | 185 |
+| 12 | 15 | 53% | 0% | 231 |
+
+19.9 million vertices in total. Level 3 does not occur in Germany.
+
+**Berlin's twelve Bezirke sit at level 9, not 6**, carrying `name:prefix=Bezirk`,
+while Berlin itself is at 4 — a Bundesland that is also a single Gemeinde. Hamburg
+has the same shape. Elsewhere a Landkreis and a kreisfreie Stadt are both 6, and
+level 7 exists in some Länder and not others.
+
+So "Bezirk" is a word that lands on a different level depending on where you are,
+and **M6 cannot define its question as `admin_level = 9`.** In Berlin that is the
+Bezirk; elsewhere level 9 is a Stadtbezirk of a Gemeinde that is itself level 8.
+Whether *same Bezirk* means "the smallest boundary containing both points", "the
+largest one strictly inside the game area" or something named per region is M6's
+decision, and this table is what it decides with.
+
+`name:prefix` is OSM's own word for a specific object and beats the level table
+wherever it exists, but at 18% coverage on the levels that matter it is the
+exception rather than the rule. The display-only fallback table in
+`packages/catalog` carries the rest, labelled as the heuristic it is.
+
+`de:regionalschluessel` and `de:amtlicher_gemeindeschluessel` are captured where
+present. They cover 97% of Gemeinden and **0.4% of Stadtbezirke and Ortsteile**, so
+they are stored where they exist and nothing is allowed to depend on them.
+
+### The parser, measured
+
+`parseBoundaryLine` reads all 35,021 features in **3.4 s** and accepts 34,131. The
+890 skips are 813 boundaries with no `name` and 77 with an empty `admin_level`, each
+reported with its OSM id and reason rather than counted. No region came out with zero
+or negative area — the cheap check that ring nesting survived the crossing into
+`packages/geo`, where index 0 is the outer ring and the rest are holes.
+
+Boundaries are stored at **full detail**. M6 asks which one contains a point, and a
+simplified boundary answers that question wrongly near its own edge — which is
+precisely where two players standing either side of a street care about the answer.
+Adjacent boundaries also share ways, so thinning them individually opens slivers
+between neighbours.
+
+### Building the catalog, and when to automate it
 
 ```bash
-npm run catalog:import -- --gtfs ./gtfs
+npm run catalog:build -- --gtfs ./assets/gtfs
 ```
 
-`COPY` the four files into staging tables, run the join, fold, classify and write
-the catalog tables inside one transaction, drop the staging. Reproducible: every
-collection is written in id order, and the importer has a test that a second run
-over the same feed produces identical rows.
+`COPY` the four files into a scratch database, run the join, fold, classify, write
+`stops.catalog.json` and drop the database. The same shape as `npm run osm:extract`:
+a heavyweight tool doing one offline pass and leaving a compact file behind.
+
+Reproducible, and tested as such: stops are written in id order, so the artifact's
+content hash is a function of the feed alone, and a second build over the same feed
+produces a byte-identical file. That hash *is* `catalogVersion` — there is no
+separate version registry to keep in step with anything.
 
 **The scheduled refresh is not M4.** Nothing in a running game reads the catalog —
 §5 copied what it needed — so a stale catalog means only that a station opened last
@@ -471,10 +562,10 @@ at is the most ordinary thing in the game.
 So materialisation is a bounding box, expanded by a margin from the scale preset
 (§6), refined in JS:
 
-```sql
-SELECT id, name, lng, lat, "modeIds" FROM "catalogStop"
-WHERE "versionId" = $1
-  AND lat BETWEEN $2 AND $3 AND lng BETWEEN $4 AND $5;
+```ts
+catalog.stops.filter(
+  (s) => s.lat >= minLat && s.lat <= maxLat && s.lng >= minLng && s.lng <= maxLng,
+);
 ```
 
 ```ts
@@ -491,16 +582,12 @@ sort by it — not because anything is forbidden outside.
 
 Zero carries only the per-game materialised set: a few thousand rows, scoped by
 `mapConfigId`, bounded by the game area and therefore by the size of a playable
-game. Whether `zero-cache` would happily sync an unfiltered query over a
+game. Berlin's AB zones sit well inside the bounding box measured in §4, which folds
+to 4,473 stations.
+
+Whether `zero-cache` would happily sync an unfiltered query over a
 quarter-million-row national stop table is a question **nobody has to answer**,
-because the catalog is in a different database and no such query exists.
-
-### Boundaries come too
-
-Every catalog boundary that intersects the area, not only the ones selected. M6's
-matching questions ask *which Bezirk are you in*, and the answer set is all of them.
-Berlin's twelve Bezirke are a few thousand vertices; this is cheap and it saves M6 a
-migration.
+because there is no such table — in this database or any other.
 
 ### The count is live while the host works
 
@@ -551,7 +638,7 @@ therefore not a feature: it is opening a template in the builder and saving.
 
 ### The catalog version is pinned, and the stops rematerialise
 
-A template stores `catalogVersionId` and no stops. Applying it runs §5's query
+A template stores `catalogVersion` and no stops. Applying it runs §5's query
 against that version, which is a pure function of (polygon, margin, catalog
 version) — so two devices applying the same code get identical rows, and the build
 plan's byte-identity requirement holds by construction rather than by luck. The area
@@ -569,7 +656,7 @@ either way, which is the whole reason this degrades gracefully.
 POST /maps               → { id, code }        save a builder session
 GET  /maps/:code         → the template        open or import one
 POST /games/:id/map      → { mapConfigId }     apply a template to a game
-GET  /catalog/stops?bbox= · /catalog/boundaries?q=   the builder's reads
+GET  /catalog/stops?bbox=              the builder's one catalog read
 ```
 
 Zero's query context is a game (`requireContext(ctx)` needs a `gameId`), and a
@@ -640,17 +727,16 @@ a map that turned out wrong at the start of a round".
 One new route.
 
 ```
-/g/:code/build     the builder — full-screen map, boundary picker, readouts
+/g/:code/build     the builder — full-screen map, draw tool, readouts
 ```
 
 ```
 BuildRoute                   session state: selection, preset, radius, name
   BuilderMap                 MapCanvas, reused wholesale from M2/M3
-    BoundaryLayer            selectable boundaries, the picked ones filled
     AreaLayer                the resulting area — fill and outline
     DrawLayer                the in-progress ring and its vertices
     StopsLayer               catalog stops in view, dimmed outside the area
-  SelectionPanel             boundary search and list · switch to drawing
+  DrawPanel                  draw · undo vertex · clear · close ring
   ReadoutBar                 stations · area km² · modes present
   SaveSheet                  name, preset, hiding radius, save, share, apply
 ```
@@ -666,8 +752,8 @@ named on screen with a cancel next to it.**
 the app that talks to the catalog. It is debounced on map idle rather than on every
 frame — not for compute, which is trivial, but because it is a network call.
 
-The declared layer order gains `boundary-fill`, `boundary-outline`, `area-fill`,
-`draw-line`, `draw-vertices` and `builder-stops`. The builder never mounts the play
+The declared layer order gains `area-fill`, `draw-line`, `draw-vertices` and
+`builder-stops`. The builder never mounts the play
 layers and the map route never mounts these, but they share one list because m3-spec
 §9's argument against discovering layer order from React's mount order does not
 weaken when there are two screens.
@@ -693,7 +779,7 @@ a platform.
 
 | Type | Payload |
 | --- | --- |
-| `map.applied` | `{ mapConfigId, templateId, name, scalePreset, hidingRadiusMeters, stopCount, areaSquareMeters, catalogVersionId, contentHash }` |
+| `map.applied` | `{ mapConfigId, templateId, name, scalePreset, hidingRadiusMeters, stopCount, areaSquareMeters, catalogVersion, contentHash }` |
 | `map.changed` | `{ mapConfigId, supersedesConfigId, … same fields }` |
 
 Two types rather than one because the questions they answer differ: the first is
@@ -726,21 +812,21 @@ order; `nearestStation` against known Berlin pairs.
 
 **Playwright acceptance.** Each is a spec, and M4 is done when they pass.
 
-1. **A host builds a map in under two minutes.** Open the builder, search for a
-   Bezirk, add a second, set the hiding radius, name it, save, apply. The build
+1. **A host builds a map in under two minutes.** Open the builder, draw a ring
+   around central Berlin, set the hiding radius, name it, save, apply. The build
    plan's first reviewable-when, with the timing asserted — not as a performance test
    but as a guard on how many interactions the flow costs.
-2. **The station count follows the area.** Adding a second boundary raises the count;
-   removing it lowers it to the previous value exactly.
+2. **The station count follows the area.** Dragging a vertex outward raises the
+   count; dragging it back lowers it to the previous value exactly.
 3. **A drawn bowtie is accepted and fixed.** The host taps four vertices in the
    crossing order; the stored area is valid and its size matches §3's figure.
 4. **A share code reproduces the map byte-identically on another device.** A second
    context opens the code, applies it to its own game, and gets a `contentHash`, a
    `validHidingArea` and a set of `mapStop` rows identical to the first's. The build
    plan's second reviewable-when.
-5. **Both extremes build.** A one-Bezirk boundary selection and a drawn state-sized
-   area at `ticket` preset both complete and both render, and the station list stays
-   usable at its largest.
+5. **Both extremes build.** A district-sized ring at `district` preset and a
+   state-sized one at `ticket` both complete and both render, and the station list
+   stays usable at its largest.
 6. **A game plays from its own rows.** With the catalog endpoints blocked at the
    network layer, a joined player sees the area, finds a station by name in M3's
    search, and commits a zone to it. §5's whole argument, as one test.
@@ -779,7 +865,8 @@ needs a station's name in a hurry.
 3. **A hiding spot is valid if it is inside the area and near a station, both
    advisory** (§3), with one `hidingRadiusMeters` doing both jobs because in the game
    they are one thing.
-4. **The area is chosen by administrative boundary first, drawn second** (§3).
+4. **The area is drawn, and only drawn** (§3). Administrative boundaries are M6's
+   question data, not M4's input; the earlier draft had this backwards.
 5. **`selection` and `validHidingArea` are both stored** (§3), so the builder can be
    reopened and a re-import cannot move a board already in play.
 6. **A drawn ring is normalised by a union with itself** (§3), verified against a
@@ -791,7 +878,8 @@ needs a station's name in a hurry.
 9. **`enabledStopIds` is dropped in favour of `mapStop` rows**, and
    `hidingRadiusByMode` collapses to one global `hidingRadiusMeters` (§2). Both amend
    m0-spec §11; the build plan's "globally or per mode" keeps its global half.
-10. **The catalog is all of Germany, in Postgres, in its own database** (§2, §4).
+10. **The catalog is all of Germany, in a generated 22 MB file, not a database**
+    (§2, §4). Postgres builds it and is dropped; the server holds the result.
     Logical replication is per-database, so `zero-cache` cannot pick up a quarter of a
     million static rows by accident — a guarantee rather than a configuration.
 11. **`COPY` and SQL, not a streaming parse** (§4). Modes-per-stop needs a
@@ -809,7 +897,7 @@ needs a station's name in a hurry.
 15. **Stop ids are the feed's integers and are not assumed stable** (§4). §5's copying
     is what makes a re-import unable to damage an existing map.
 16. **A phone that is playing never queries the catalog** (§5). The config carries the
-    stops and boundaries the game needs, in rows.
+    stops the game needs, in rows.
 17. **Stops are materialised by bounding box plus a scale margin, not by containment**
     (§5). This corrects an earlier decision that reasoned from the union model.
 18. **A bounding box rather than a polygon buffer** (§5).
@@ -822,23 +910,26 @@ needs a station's name in a hurry.
     for.
 23. **Two hosts saving is last-write-wins, not first-to-the-server-wins** (§7).
 24. **A map change is a new config row, warned and never blocked** (§8).
-25. **The catalog import is hand-run in M4; the scheduled refresh is M20's** (§4),
+25. **The catalog build is hand-run in M4; the scheduled refresh is M20's** (§4),
     where next departures make the feed's currency part of the product.
 26. **`packages/area-packs` becomes `packages/catalog`** (§2). There are no packs.
 27. **Two events, `map.applied` and `map.changed`, neither carrying geometry** (§10).
+28. **The OSM boundary extract is built in M4 and consumed by M6** (§4). Two osmium
+    passes, no Overpass. Nothing in M4 reads the output; it is here because the
+    measurement was cheap now and the levels it settles are M6's to rely on.
 
 ### Still open
 
-**Administrative boundaries: which source, and which admin levels** (§4). This is the
-one open dependency of §3's primary path, and it blocks the build plan's two-minute
-claim rather than merely delaying it. OSM `boundary=administrative` from a Germany
-extract is the default assumption; the BKG's official dataset is the alternative.
-Both the source and the level-to-name mapping are settled before the importer is
-written, and this is the first task in the milestone.
+**Nothing in M4 blocks on boundaries any more.** Two questions move to M6 with them:
+whether they share `catalogVersion` with GTFS — OSM refreshes quarterly and gtfs.de
+does not, so a shared version row means every boundary refresh re-imports a
+quarter-million stops — and how a *same-Bezirk* answer is computed, which is a point
+lookup against `catalogBoundary` rather than anything M4 has an opinion about.
 
 **Whether `zero-cache`'s default publication would have picked up catalog tables in
-the game database** (§2). The separate database makes it moot, and the answer is
-worth knowing anyway before anything else static is ever added.
+the game database** (§2). There are no catalog tables now, so this is moot twice
+over — but the answer is still worth knowing before anything large and static is
+ever added to the game database.
 
 **What a second catalog version does to open templates** (§7). The fallback is
 specified; nothing has been tested against two versions because there has only ever
