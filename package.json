@@ -17,6 +17,7 @@
 		"db:studio": "turbo run db:studio -F @zero-lag/schema --",
 		"db:generate": "turbo run db:generate -F @zero-lag/schema --",
 		"db:migrate": "turbo run db:migrate -F @zero-lag/schema --",
+		"osm:extract": "bash infra/osm/extract-boundaries.sh",
 		"db:start": "docker compose -f infra/docker/docker-compose.yml up -d postgres",
 		"db:watch": "docker compose -f infra/docker/docker-compose.yml up postgres",
 		"db:stop": "docker compose -f infra/docker/docker-compose.yml stop postgres",

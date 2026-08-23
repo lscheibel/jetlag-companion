@@ -39,9 +39,12 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Source data — the GTFS feed is ~2.2 GB and is imported into the catalog
-# database rather than tracked. m4-spec.md §4 records where it came from.
-gtfs/
+# Source data — imported into the catalog database rather than tracked.
+# assets/README.md records where each of these came from.
+#   assets/gtfs/ is the 2.0 GB gtfs.de de_full feed
+#   assets/osm/  is the 4.5 GB Geofabrik .pbf and the extract derived from it
+assets/gtfs/
+assets/osm/
 
 # Turbo
 .turbo

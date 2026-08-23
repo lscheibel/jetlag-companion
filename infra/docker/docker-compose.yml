@@ -110,6 +110,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # One-shot runner for the quarterly OSM boundary extract. m4-spec §4.
+  #
+  # Not a server: `docker compose run --rm osmium <args>` invokes the osmium
+  # binary once and exits, which is why it sits behind a profile and never
+  # starts with `docker compose up`. Built rather than pulled so the version is
+  # pinned here and nobody needs osmium-tool on their host.
+  #
+  # /data is assets/osm — the multi-GB pbf and the extract derived from it,
+  # both gitignored. /config is the tracked export config.
+  osmium:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: osmium.Dockerfile
+    image: zero-lag-osmium
+    volumes:
+      - ../../assets/osm:/data
+      - ../osm:/config:ro
+    working_dir: /data
+
 volumes:
   postgres_data:
   zero_replica:

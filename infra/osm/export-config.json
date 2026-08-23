@@ -1,0 +1,17 @@
+{
+	"attributes": {
+		"type": "@type",
+		"id": "@id"
+	},
+	"include_tags": [
+		"boundary",
+		"admin_level",
+		"name",
+		"name:prefix",
+		"official_name",
+		"de:regionalschluessel",
+		"de:amtlicher_gemeindeschluessel",
+		"ref:nuts",
+		"wikidata"
+	]
+}
