@@ -34,16 +34,27 @@ export {
 } from "./osm/query";
 export { BERLIN_FIXTURE_CATALOG } from "./stops/fixture";
 export {
+	compareLineNames,
+	groupLinesByMode,
+	modeIdsFromLines,
+} from "./stops/lines";
+export {
 	bboxContains,
 	expandBBox,
 	materialiseStops,
 	nearestStationMeters,
 	stopsInBBox,
 } from "./stops/materialise";
+export { MODE_IDS, type ModeId } from "./stops/modes";
 export {
 	SCALE_SETTINGS,
 	type ScaleSettings,
 	spanMeters,
 	suggestScalePreset,
 } from "./stops/scale";
-export type { CatalogStop, MaterialisedStop, StopCatalog } from "./stops/types";
+export type {
+	CatalogStop,
+	MaterialisedStop,
+	StopCatalog,
+	StopLine,
+} from "./stops/types";

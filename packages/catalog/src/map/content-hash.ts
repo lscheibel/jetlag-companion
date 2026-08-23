@@ -34,6 +34,10 @@ export function stopCatalogVersion(stops: readonly CatalogStop[]): string {
 			lng: stop.lng,
 			lat: stop.lat,
 			modeIds: [...stop.modeIds],
+			lines: stop.lines.map((line) => ({
+				name: line.name,
+				modeId: line.modeId,
+			})),
 		})),
 	);
 }

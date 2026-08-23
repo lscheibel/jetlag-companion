@@ -6,8 +6,9 @@ import { Client } from "pg";
 import { from as copyFrom } from "pg-copy-streams";
 import { stopCatalogVersion } from "../map/content-hash";
 import { parseCsv, splitCsvLine } from "./csv";
+import { modeIdsFromLines } from "./lines";
 import { classifyRoute } from "./modes";
-import type { CatalogStop, StopCatalog } from "./types";
+import type { CatalogStop, StopCatalog, StopLine } from "./types";
 
 /**
  * Build the stop catalog from a GTFS feed. m4-spec §4.
@@ -149,7 +150,7 @@ async function copyFeedFile(
 async function loadRouteModes(client: Client, gtfsDir: string): Promise<void> {
 	const routes = parseCsv(await readFile(join(gtfsDir, "routes.txt"), "utf8"));
 	await client.query(
-		"CREATE UNLOGGED TABLE route_mode (route_id text, mode_id text)",
+		"CREATE UNLOGGED TABLE route_mode (route_id text, mode_id text, short_name text)",
 	);
 
 	const values: string[] = [];
@@ -159,7 +160,10 @@ async function loadRouteModes(client: Client, gtfsDir: string): Promise<void> {
 			route.route_short_name ?? "",
 		);
 		if (!mode || !route.route_id) continue;
-		values.push(`(${quoteLiteral(route.route_id)},${quoteLiteral(mode)})`);
+		const shortName = (route.route_short_name ?? "").trim();
+		values.push(
+			`(${quoteLiteral(route.route_id)},${quoteLiteral(mode)},${quoteLiteral(shortName)})`,
+		);
 	}
 	for (let i = 0; i < values.length; i += 1000) {
 		await client.query(
@@ -195,27 +199,41 @@ async function foldStations(client: Client): Promise<CatalogStop[]> {
 		name: string;
 		lng: number;
 		lat: number;
-		mode_ids: string[] | null;
+		lines: { name: string; modeId: string }[] | null;
 	}>(`
-		SELECT s.id, s.name, s.lng, s.lat, m.mode_ids
+		SELECT s.id, s.name, s.lng, s.lat, l.lines
 		FROM station s
 		LEFT JOIN (
-			SELECT sr.station_id,
-			       array_agg(DISTINCT rm.mode_id ORDER BY rm.mode_id) AS mode_ids
-			FROM stop_route sr
-			JOIN route_mode rm ON rm.route_id = sr.route_id
-			GROUP BY sr.station_id
-		) m ON m.station_id = s.id
+			SELECT x.station_id,
+			       json_agg(
+			         json_build_object('name', x.short_name, 'modeId', x.mode_id)
+			         ORDER BY x.mode_id, x.short_name
+			       ) AS lines
+			FROM (
+				SELECT DISTINCT sr.station_id, rm.short_name, rm.mode_id
+				FROM stop_route sr
+				JOIN route_mode rm ON rm.route_id = sr.route_id
+				WHERE rm.short_name <> ''
+			) x
+			GROUP BY x.station_id
+		) l ON l.station_id = s.id
 		ORDER BY s.id
 	`);
 
-	return result.rows.map((row) => ({
-		id: row.id,
-		name: row.name,
-		lng: row.lng,
-		lat: row.lat,
-		modeIds: row.mode_ids ?? [],
-	}));
+	return result.rows.map((row) => {
+		const lines: StopLine[] = (row.lines ?? []).map((line) => ({
+			name: line.name,
+			modeId: line.modeId,
+		}));
+		return {
+			id: row.id,
+			name: row.name,
+			lng: row.lng,
+			lat: row.lat,
+			lines,
+			modeIds: modeIdsFromLines(lines),
+		};
+	});
 }
 
 async function readFeedPublisher(gtfsDir: string): Promise<string> {

@@ -26,7 +26,8 @@ import { BuilderStopsLayer } from "../map/builder-stops-layer";
 import { DrawLayer } from "../map/draw-layer";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapPointerHandler } from "../map/map-interactions";
-import type { SearchableStop } from "../map/toolkit";
+import { StopSheet } from "../map/stop-sheet";
+import { nearestStopPx, type SearchableStop } from "../map/toolkit";
 import { MapViewportReporter } from "../map/viewport-reporter";
 
 const FALLBACK_CENTER: LngLat = [13.4132, 52.5219];
@@ -49,6 +50,7 @@ export default function BuildRoute() {
 	const [rounds] = useQuery(queries.rounds());
 	const [status, setStatus] = useState<MapStatus>("loading");
 	const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
+	const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 
 	const builder = useBuilder();
 	const config = games[0]?.mapConfig;
@@ -117,6 +119,8 @@ export default function BuildRoute() {
 	}, [catalogStops, builder.area, builder.scalePreset]);
 
 	const insideCount = preview.filter((stop) => stop.insideArea).length;
+	const selectedStop =
+		preview.find((stop) => stop.stopId === selectedStopId) ?? null;
 	const modes = useMemo(() => {
 		const found = new Set<string>();
 		for (const stop of preview) {
@@ -168,7 +172,7 @@ export default function BuildRoute() {
 				<BuilderStopsLayer stops={preview} />
 				<DrawLayer ring={builder.state.ring} />
 				<MapViewportReporter onSettle={setViewBounds} />
-				{builder.state.drawing && (
+				{builder.state.drawing ? (
 					<MapPointerHandler
 						mode={{
 							kind: "ring",
@@ -176,6 +180,14 @@ export default function BuildRoute() {
 							points: builder.state.ring,
 						}}
 						onRingChange={(draft) => builder.setRing(draft.points)}
+					/>
+				) : (
+					<MapPointerHandler
+						mode={{ kind: "tap" }}
+						onTap={(_point, project, screen) => {
+							const hit = nearestStopPx(preview, screen, project);
+							setSelectedStopId(hit?.stopId ?? null);
+						}}
 					/>
 				)}
 			</MapCanvas>
@@ -217,7 +229,10 @@ export default function BuildRoute() {
 				<DrawPanel
 					drawing={builder.state.drawing}
 					onClear={builder.clear}
-					onToggleDrawing={() => builder.setDrawing(!builder.state.drawing)}
+					onToggleDrawing={() => {
+						builder.setDrawing(!builder.state.drawing);
+						setSelectedStopId(null);
+					}}
 					onUndo={builder.undoVertex}
 					vertexCount={builder.state.ring.length}
 				/>
@@ -236,6 +251,12 @@ export default function BuildRoute() {
 					suggestedPreset={builder.suggestedPreset}
 				/>
 			</div>
+			{selectedStop && (
+				<StopSheet
+					onClose={() => setSelectedStopId(null)}
+					stop={selectedStop}
+				/>
+			)}
 		</main>
 	);
 }
@@ -250,6 +271,7 @@ function toSearchable(
 		lng: stop.lng,
 		lat: stop.lat,
 		modeIds: stop.modeIds,
+		lines: stop.lines ?? [],
 		insideArea,
 	};
 }

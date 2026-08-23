@@ -76,6 +76,7 @@ export function materialiseStops(
 			lng: stop.lng,
 			lat: stop.lat,
 			modeIds: stop.modeIds,
+			lines: stop.lines ?? [],
 			insideArea: regionContains(area, position),
 		});
 	}

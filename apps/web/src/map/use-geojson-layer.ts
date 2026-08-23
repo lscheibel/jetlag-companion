@@ -20,6 +20,7 @@ const LAYER_ORDER = [
 	"eliminated-fill",
 	"surviving-outline",
 	"builder-stops",
+	"play-stops",
 	"search-zone-fill",
 	"search-zone-outline",
 	"zone-draft-fill",

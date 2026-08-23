@@ -16,6 +16,10 @@ export interface CatalogStopRow {
 	readonly lng: number;
 	readonly lat: number;
 	readonly modeIds: readonly string[];
+	readonly lines: readonly {
+		readonly name: string;
+		readonly modeId: string;
+	}[];
 }
 
 export interface CatalogView {

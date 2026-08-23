@@ -55,7 +55,11 @@ export type PointerMap = {
 
 export type PointerSession = {
 	getMode: () => PointerMode;
-	onTap: (point: LngLat) => void;
+	onTap: (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	) => void;
 	onRadiusChange: (draft: RadiusDraft, cause: GestureCause) => void;
 	onRingChange: (draft: RingDraft, cause: GestureCause) => void;
 };
@@ -323,7 +327,11 @@ export function bindMapPointers(
 				return;
 			}
 			if (was.kind === "maybe-tap" && mode.kind === "tap") {
-				session.onTap(was.startPoint);
+				session.onTap(
+					was.startPoint,
+					(lngLat) => projectLngLat(map, lngLat),
+					was.start,
+				);
 			}
 			return;
 		}

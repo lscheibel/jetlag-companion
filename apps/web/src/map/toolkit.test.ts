@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	formatCoordinates,
 	formatDistance,
+	nearestStopPx,
 	parseCoordinates,
 	type SearchableStop,
 	searchStops,
@@ -19,6 +20,7 @@ const STOPS: SearchableStop[] = BERLIN_FIXTURE_CATALOG.stops.map((stop) => ({
 	lng: stop.lng,
 	lat: stop.lat,
 	modeIds: stop.modeIds,
+	lines: stop.lines,
 	insideArea: stop.id !== "westkreuz",
 }));
 
@@ -89,5 +91,26 @@ describe("place search", () => {
 	it("still reads a coordinate pair rather than searching for it", () => {
 		const result = searchStops(STOPS, "52.52, 13.4", origin)[0];
 		expect(result?.kind).toBe("coordinate");
+	});
+});
+
+describe("nearestStopPx", () => {
+	const project = (lngLat: readonly [number, number]) => ({
+		x: lngLat[0] * 1000,
+		y: lngLat[1] * 1000,
+	});
+
+	it("hits a station within the pixel slop", () => {
+		const alex = STOPS.find((stop) => stop.stopId === "alexanderplatz");
+		expect(alex).toBeDefined();
+		if (!alex) return;
+		const screen = project([alex.lng, alex.lat]);
+		expect(nearestStopPx(STOPS, screen, project)?.stopId).toBe(
+			"alexanderplatz",
+		);
+	});
+
+	it("misses when the tap is far from every stop", () => {
+		expect(nearestStopPx(STOPS, { x: 0, y: 0 }, project)).toBeNull();
 	});
 });

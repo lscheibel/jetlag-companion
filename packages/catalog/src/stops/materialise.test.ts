@@ -62,6 +62,14 @@ describe("materialiseStops", () => {
 	it("is empty for an empty area", () => {
 		expect(materialiseStops(STOPS, { polygons: [] }, 5000)).toEqual([]);
 	});
+
+	it("copies named lines onto the materialised row", () => {
+		const alex = materialiseStops(STOPS, MITTE, 5000).find(
+			(stop) => stop.stopId === "alexanderplatz",
+		);
+		expect(alex?.lines.some((line) => line.name === "U8")).toBe(true);
+		expect(alex?.modeIds).toEqual(["u-bahn", "s-bahn", "bus"]);
+	});
 });
 
 describe("nearestStationMeters", () => {

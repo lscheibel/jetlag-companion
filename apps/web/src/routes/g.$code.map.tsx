@@ -18,6 +18,7 @@ import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
 import { useSearchArea } from "../game/use-search-area";
 import { ZoneNotice } from "../game/zone-notice";
+import { BuilderStopsLayer } from "../map/builder-stops-layer";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
@@ -48,9 +49,11 @@ import {
 	visibleMarkers,
 } from "../map/players";
 import { SearchZoneLayer } from "../map/search-zone-layer";
+import { StopSheet } from "../map/stop-sheet";
 import {
 	type ConstraintListItem,
 	type MapTool,
+	nearestStopPx,
 	type SearchableStop,
 	type SearchResult,
 	stopPosition,
@@ -65,12 +68,11 @@ import { useWakeLock } from "../map/use-wake-lock";
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
 
 function pointerMode(tool: MapTool): PointerMode {
-	if (
-		tool.kind === "none" ||
-		tool.kind === "editingPin" ||
-		tool.kind === "listingConstraints"
-	) {
+	if (tool.kind === "editingPin" || tool.kind === "listingConstraints") {
 		return { kind: "off" };
+	}
+	if (tool.kind === "none") {
+		return { kind: "tap" };
 	}
 	if (tool.kind === "measure" && tool.measure.kind === "radius") {
 		return {
@@ -125,6 +127,7 @@ export default function MapRoute() {
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 	const [tool, setTool] = useState<MapTool>({ kind: "none" });
 	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
 	const [draftRadius, setDraftRadius] = useState<number | null>(null);
@@ -184,6 +187,21 @@ export default function MapRoute() {
 	);
 	const others = shown.filter((player) => !player.isSelf);
 	const selected = others.find((player) => player.playerId === selectedId);
+	const searchableStops = useMemo<readonly SearchableStop[]>(
+		() =>
+			mapStops.map((stop) => ({
+				stopId: stop.stopId,
+				name: stop.name,
+				lng: stop.lng,
+				lat: stop.lat,
+				modeIds: stop.modeIds,
+				lines: stop.lines ?? [],
+				insideArea: stop.insideArea,
+			})),
+		[mapStops],
+	);
+	const selectedStop =
+		searchableStops.find((stop) => stop.stopId === selectedStopId) ?? null;
 	const myTeam = teams.find((team) => team.id === role.teamId);
 	const editingPin =
 		tool.kind === "editingPin"
@@ -257,15 +275,24 @@ export default function MapRoute() {
 			setDraftPoint(tool.measure.center);
 			setDraftRadius(tool.measure.radiusMeters);
 		}
+		if (next.kind !== "none") {
+			setSelectedStopId(null);
+		}
 		setTool(next);
 	};
 
-	const handleTap = (point: LngLat) => {
-		if (
-			tool.kind === "none" ||
-			tool.kind === "editingPin" ||
-			tool.kind === "listingConstraints"
-		) {
+	const handleTap = (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	) => {
+		if (tool.kind === "editingPin" || tool.kind === "listingConstraints") {
+			return;
+		}
+		if (tool.kind === "none") {
+			const hit = nearestStopPx(searchableStops, screen, project);
+			setSelectedStopId(hit?.stopId ?? null);
+			if (hit) setSelectedId(null);
 			return;
 		}
 		webPlatform.haptics.vibrate([10]);
@@ -552,10 +579,14 @@ export default function MapRoute() {
 					eliminated={searchArea.eliminated}
 					surviving={searchArea.surviving}
 				/>
+				<BuilderStopsLayer id="play-stops" stops={searchableStops} />
 				<SearchZoneLayer zone={zone} />
 				<PinLayer
 					disabled={tool.kind !== "none"}
-					onSelect={(pinId) => setTool({ kind: "editingPin", pinId })}
+					onSelect={(pinId) => {
+						setSelectedStopId(null);
+						setTool({ kind: "editingPin", pinId });
+					}}
 					pins={pins}
 				/>
 				<MeasureLayer measure={measure} />
@@ -597,7 +628,10 @@ export default function MapRoute() {
 					<PlayerMarker
 						key={player.playerId}
 						onSelect={(playerId) => {
-							if (tool.kind === "none") setSelectedId(playerId);
+							if (tool.kind === "none") {
+								setSelectedId(playerId);
+								setSelectedStopId(null);
+							}
 						}}
 						player={player}
 					/>
@@ -688,7 +722,7 @@ export default function MapRoute() {
 					constraints={constraintItems}
 					draftPoint={draftPoint}
 					editingPin={editingPin}
-					stops={mapStops}
+					stops={searchableStops}
 					onCancel={cancelTool}
 					onClearZone={clearZone}
 					onCommitConstraint={commitConstraint}
@@ -762,6 +796,12 @@ export default function MapRoute() {
 				/>
 			</div>
 
+			{selectedStop && (
+				<StopSheet
+					onClose={() => setSelectedStopId(null)}
+					stop={selectedStop}
+				/>
+			)}
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
 			)}

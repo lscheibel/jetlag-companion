@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
 	bigint,
 	boolean,
@@ -129,6 +130,15 @@ export const mapStop = pgTable(
 		lng: doublePrecision("lng").notNull(),
 		lat: doublePrecision("lat").notNull(),
 		modeIds: jsonb("modeIds").$type<string[]>().notNull(),
+		/**
+		 * Named lines that call here (`U8`, `S1`, `100`, …), distinct by
+		 * `(name, modeId)`. Empty on maps materialised before this column
+		 * existed, until the host re-applies. Shown on tap, not on the map.
+		 */
+		lines: jsonb("lines")
+			.$type<{ name: string; modeId: string }[]>()
+			.notNull()
+			.default(sql`'[]'::jsonb`),
 		/**
 		 * Inside the polygon, rather than merely inside the materialisation
 		 * margin. Recorded because the readout wants an honest count and M5's

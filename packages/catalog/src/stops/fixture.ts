@@ -1,5 +1,6 @@
 import { stopCatalogVersion } from "../map/content-hash";
-import type { CatalogStop, StopCatalog } from "./types";
+import { modeIdsFromLines } from "./lines";
+import type { CatalogStop, StopCatalog, StopLine } from "./types";
 
 /**
  * Twelve Berlin stations, carried over from the M0 area pack. m4-spec §4.
@@ -11,91 +12,113 @@ import type { CatalogStop, StopCatalog } from "./types";
  * that cannot build the real catalog in CI.
  */
 
+function station(
+	id: string,
+	name: string,
+	lng: number,
+	lat: number,
+	lines: readonly StopLine[],
+): CatalogStop {
+	return { id, name, lng, lat, lines, modeIds: modeIdsFromLines(lines) };
+}
+
 const BERLIN_STOPS: CatalogStop[] = [
-	{
-		id: "alexanderplatz",
-		name: "Alexanderplatz",
-		lng: 13.4132,
-		lat: 52.5219,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "friedrichstrasse",
-		name: "Friedrichstraße",
-		lng: 13.3872,
-		lat: 52.52,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "gesundbrunnen",
-		name: "Gesundbrunnen",
-		lng: 13.3886,
-		lat: 52.5486,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "hauptbahnhof",
-		name: "Hauptbahnhof",
-		lng: 13.3694,
-		lat: 52.525,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "hermannplatz",
-		name: "Hermannplatz",
-		lng: 13.4244,
-		lat: 52.4869,
-		modeIds: ["u-bahn"],
-	},
-	{
-		id: "ostkreuz",
-		name: "Ostkreuz",
-		lng: 13.469,
-		lat: 52.503,
-		modeIds: ["s-bahn"],
-	},
-	{
-		id: "potsdamer-platz",
-		name: "Potsdamer Platz",
-		lng: 13.376,
-		lat: 52.5096,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "schoenhauser-allee",
-		name: "Schönhauser Allee",
-		lng: 13.4128,
-		lat: 52.5493,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "suedkreuz",
-		name: "Südkreuz",
-		lng: 13.3654,
-		lat: 52.4757,
-		modeIds: ["s-bahn"],
-	},
-	{
-		id: "warschauer-strasse",
-		name: "Warschauer Straße",
-		lng: 13.449,
-		lat: 52.505,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
-	{
-		id: "westkreuz",
-		name: "Westkreuz",
-		lng: 13.2836,
-		lat: 52.5013,
-		modeIds: ["s-bahn"],
-	},
-	{
-		id: "zoologischer-garten",
-		name: "Zoologischer Garten",
-		lng: 13.3327,
-		lat: 52.5073,
-		modeIds: ["s-bahn", "u-bahn"],
-	},
+	station("alexanderplatz", "Alexanderplatz", 13.4132, 52.5219, [
+		{ name: "U2", modeId: "u-bahn" },
+		{ name: "U5", modeId: "u-bahn" },
+		{ name: "U8", modeId: "u-bahn" },
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+		{ name: "100", modeId: "bus" },
+		{ name: "200", modeId: "bus" },
+	]),
+	station("friedrichstrasse", "Friedrichstraße", 13.3872, 52.52, [
+		{ name: "U6", modeId: "u-bahn" },
+		{ name: "S1", modeId: "s-bahn" },
+		{ name: "S2", modeId: "s-bahn" },
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+	]),
+	station("gesundbrunnen", "Gesundbrunnen", 13.3886, 52.5486, [
+		{ name: "U8", modeId: "u-bahn" },
+		{ name: "S1", modeId: "s-bahn" },
+		{ name: "S2", modeId: "s-bahn" },
+		{ name: "S25", modeId: "s-bahn" },
+		{ name: "S26", modeId: "s-bahn" },
+	]),
+	station("hauptbahnhof", "Hauptbahnhof", 13.3694, 52.525, [
+		{ name: "U5", modeId: "u-bahn" },
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+		{ name: "RE1", modeId: "regional" },
+		{ name: "RE2", modeId: "regional" },
+		{ name: "ICE 599", modeId: "long-distance" },
+	]),
+	station("hermannplatz", "Hermannplatz", 13.4244, 52.4869, [
+		{ name: "U7", modeId: "u-bahn" },
+		{ name: "U8", modeId: "u-bahn" },
+		{ name: "M29", modeId: "bus" },
+	]),
+	station("ostkreuz", "Ostkreuz", 13.469, 52.503, [
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S75", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+	]),
+	station("potsdamer-platz", "Potsdamer Platz", 13.376, 52.5096, [
+		{ name: "U2", modeId: "u-bahn" },
+		{ name: "S1", modeId: "s-bahn" },
+		{ name: "S2", modeId: "s-bahn" },
+		{ name: "S25", modeId: "s-bahn" },
+		{ name: "S26", modeId: "s-bahn" },
+	]),
+	station("schoenhauser-allee", "Schönhauser Allee", 13.4128, 52.5493, [
+		{ name: "U2", modeId: "u-bahn" },
+		{ name: "S8", modeId: "s-bahn" },
+		{ name: "S41", modeId: "s-bahn" },
+		{ name: "S42", modeId: "s-bahn" },
+		{ name: "M1", modeId: "tram" },
+	]),
+	station("suedkreuz", "Südkreuz", 13.3654, 52.4757, [
+		{ name: "S2", modeId: "s-bahn" },
+		{ name: "S25", modeId: "s-bahn" },
+		{ name: "S26", modeId: "s-bahn" },
+		{ name: "S41", modeId: "s-bahn" },
+		{ name: "S42", modeId: "s-bahn" },
+	]),
+	station("warschauer-strasse", "Warschauer Straße", 13.449, 52.505, [
+		{ name: "U1", modeId: "u-bahn" },
+		{ name: "U3", modeId: "u-bahn" },
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+		{ name: "M10", modeId: "tram" },
+	]),
+	station("westkreuz", "Westkreuz", 13.2836, 52.5013, [
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+		{ name: "S41", modeId: "s-bahn" },
+		{ name: "S42", modeId: "s-bahn" },
+	]),
+	station("zoologischer-garten", "Zoologischer Garten", 13.3327, 52.5073, [
+		{ name: "U2", modeId: "u-bahn" },
+		{ name: "U9", modeId: "u-bahn" },
+		{ name: "S3", modeId: "s-bahn" },
+		{ name: "S5", modeId: "s-bahn" },
+		{ name: "S7", modeId: "s-bahn" },
+		{ name: "S9", modeId: "s-bahn" },
+		{ name: "100", modeId: "bus" },
+	]),
 ];
 
 /** Hashed the same way the real build hashes its output, for the same reason. */

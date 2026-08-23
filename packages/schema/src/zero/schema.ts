@@ -83,6 +83,7 @@ const mapStop = table("mapStop")
 		lng: number(),
 		lat: number(),
 		modeIds: json<string[]>(),
+		lines: json<{ name: string; modeId: string }[]>(),
 		insideArea: boolean(),
 	})
 	.primaryKey("id");

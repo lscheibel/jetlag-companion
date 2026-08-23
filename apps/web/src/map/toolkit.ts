@@ -12,12 +12,35 @@ export interface SearchableStop {
 	readonly lng: number;
 	readonly lat: number;
 	readonly modeIds: readonly string[];
+	readonly lines: readonly { readonly name: string; readonly modeId: string }[];
 	/** Outside the area is normal and searchable — m4-spec §5. */
 	readonly insideArea: boolean;
 }
 
 export function stopPosition(stop: SearchableStop): LngLat {
 	return [stop.lng, stop.lat];
+}
+
+/** Finger slop around a 4 px circle so a stop is actually tappable. */
+export const STOP_TAP_PX = 24;
+
+export function nearestStopPx(
+	stops: readonly SearchableStop[],
+	screen: { x: number; y: number },
+	project: (lngLat: LngLat) => { x: number; y: number },
+	maxPx: number = STOP_TAP_PX,
+): SearchableStop | null {
+	let best: SearchableStop | null = null;
+	let bestDist = maxPx;
+	for (const stop of stops) {
+		const point = project([stop.lng, stop.lat]);
+		const dist = Math.hypot(point.x - screen.x, point.y - screen.y);
+		if (dist <= bestDist) {
+			bestDist = dist;
+			best = stop;
+		}
+	}
+	return best;
 }
 
 export type Measure =

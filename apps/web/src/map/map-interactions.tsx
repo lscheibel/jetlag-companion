@@ -75,7 +75,11 @@ export function MapPointerHandler({
 	onRingChange,
 }: {
 	readonly mode: PointerMode;
-	readonly onTap?: (point: LngLat) => void;
+	readonly onTap?: (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	) => void;
 	readonly onRadiusChange?: (draft: RadiusDraft, cause: GestureCause) => void;
 	readonly onRingChange?: (draft: RingDraft, cause: GestureCause) => void;
 }) {
@@ -93,7 +97,8 @@ export function MapPointerHandler({
 		if (!map) return;
 		return bindMapPointers(map as unknown as PointerMap, {
 			getMode: () => modeRef.current,
-			onTap: (point) => tapRef.current?.(point),
+			onTap: (point, project, screen) =>
+				tapRef.current?.(point, project, screen),
 			onRadiusChange: (draft, cause) => radiusRef.current?.(draft, cause),
 			onRingChange: (draft, cause) => ringRef.current?.(draft, cause),
 		});

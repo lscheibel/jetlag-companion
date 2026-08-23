@@ -7,14 +7,21 @@
  * on a screen a host opens once.
  */
 
+/** One named line at a station. Distinct `(short name, mode)` — m4-spec inventory, shown on tap. */
+export interface StopLine {
+	readonly name: string;
+	readonly modeId: string;
+}
+
 export interface CatalogStop {
 	/** The feed's own `stop_id`. Not stable across rebuilds — m4-spec §4. */
 	readonly id: string;
 	readonly name: string;
 	readonly lng: number;
 	readonly lat: number;
-	/** Rolled up from the routes that call there. */
+	/** Rolled up from `lines` at build time, so the two cannot drift. */
 	readonly modeIds: readonly string[];
+	readonly lines: readonly StopLine[];
 }
 
 export interface StopCatalog {
@@ -37,5 +44,6 @@ export interface MaterialisedStop {
 	readonly lng: number;
 	readonly lat: number;
 	readonly modeIds: readonly string[];
+	readonly lines: readonly StopLine[];
 	readonly insideArea: boolean;
 }
