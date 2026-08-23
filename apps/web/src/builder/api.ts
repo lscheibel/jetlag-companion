@@ -1,6 +1,6 @@
-import { env } from "@zero-lag/env/web";
 import type { LngLat } from "@zero-lag/geo";
 import type { ScalePreset, StoredMultiPolygon } from "@zero-lag/schema";
+import { serverUrl } from "../dev-origin";
 import type { Session } from "../session";
 
 /**
@@ -65,7 +65,7 @@ async function call<T>(
 	session: Session,
 	init?: RequestInit,
 ): Promise<T> {
-	const response = await fetch(`${env.VITE_SERVER_URL}/api${path}`, {
+	const response = await fetch(`${serverUrl()}/api${path}`, {
 		...init,
 		headers: {
 			"Content-Type": "application/json",
@@ -85,6 +85,31 @@ export function fetchCatalogStops(
 	bbox: readonly [number, number, number, number],
 ): Promise<CatalogView> {
 	return call<CatalogView>(`/catalog/stops?bbox=${bbox.join(",")}`, session);
+}
+
+export interface CatalogBoundaryRow {
+	readonly id: string;
+	readonly name: string;
+	readonly adminLevel: 9 | 10;
+	readonly label: string;
+	readonly polygons: StoredMultiPolygon;
+}
+
+export interface CatalogBoundariesView {
+	readonly total: number;
+	readonly truncated: boolean;
+	readonly boundaries: readonly CatalogBoundaryRow[];
+}
+
+export function fetchCatalogBoundaries(
+	session: Session,
+	bbox: readonly [number, number, number, number],
+	adminLevel: 9 | 10,
+): Promise<CatalogBoundariesView> {
+	return call<CatalogBoundariesView>(
+		`/catalog/boundaries?bbox=${bbox.join(",")}&adminLevel=${adminLevel}`,
+		session,
+	);
 }
 
 export function saveTemplate(

@@ -240,6 +240,7 @@ const constraint = table("constraint")
 		answerId: string().optional(),
 		geometry: json<ConstraintGeometry>(),
 		mode: enumeration<ConstraintMode>(),
+		name: string().optional(),
 		enabled: boolean(),
 		ordinal: number(),
 		createdAt: number(),

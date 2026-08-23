@@ -104,6 +104,7 @@ test("2. a force-quit phone rejoins and converges with no host action", async ({
 	await ben.close();
 
 	const revived = await browser.newContext({
+		ignoreHTTPSErrors: true,
 		storageState: storage,
 		permissions: ["geolocation"],
 		geolocation: { longitude: 13.4132, latitude: 52.5219 },

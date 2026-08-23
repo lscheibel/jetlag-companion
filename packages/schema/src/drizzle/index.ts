@@ -406,6 +406,12 @@ export const constraint = pgTable(
 		geometry: jsonb("geometry").$type<ConstraintGeometry>().notNull(),
 		mode: text("mode").$type<ConstraintMode>().notNull(),
 		/**
+		 * A seeker-typed label so the list is not three identical
+		 * "polygon · include" rows. Answer-derived constraints start unnamed;
+		 * empty is stored as null, not "".
+		 */
+		name: text("name"),
+		/**
 		 * Disabling is a column, not a deletion. Toggling one off, a hider
 		 * correcting an answer, and the bulk "we are searching this zone now"
 		 * invalidation are all writes here — one operation, not three features.

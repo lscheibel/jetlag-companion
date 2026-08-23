@@ -1,18 +1,29 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { type LngLat, multiPolygonBBox } from "@zero-lag/geo";
+import { buildValidHidingArea } from "@zero-lag/catalog";
+import {
+	isEmptyRegion,
+	type LngLat,
+	multiPolygonBBox,
+	regionToMultiPolygon,
+} from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { FoundSheet } from "../game/found-sheet";
+import { HiderSelector } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
 import { RoundBar } from "../game/round-bar";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
+import { useSearchArea } from "../game/use-search-area";
 import { ZoneNotice } from "../game/zone-notice";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
+import { ConstraintDraftLayer } from "../map/constraint-draft-layer";
+import { DrawLayer } from "../map/draw-layer";
+import { EliminatedLayer } from "../map/eliminated-layer";
 import { GameAreaLayer } from "../map/game-area-layer";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapControls } from "../map/map-controls";
@@ -35,12 +46,14 @@ import {
 } from "../map/players";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import {
+	type ConstraintListItem,
 	type MapTool,
 	type SearchableStop,
 	type SearchResult,
 	stopPosition,
 } from "../map/toolkit";
 import { useBlindness } from "../map/use-blindness";
+import { boundaryAtPoint, useBoundaries } from "../map/use-boundaries";
 import { useCompassHeading } from "../map/use-compass-heading";
 import { useNow } from "../map/use-now";
 import { useWakeLock } from "../map/use-wake-lock";
@@ -72,6 +85,8 @@ export default function MapRoute() {
 	const [mapStops] = useQuery(queries.mapStops());
 	const [pins] = useQuery(queries.pins());
 	const [searchZones] = useQuery(queries.searchZones());
+	const [rounds] = useQuery(queries.rounds());
+	const [constraints] = useQuery(queries.constraints());
 
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
@@ -93,6 +108,9 @@ export default function MapRoute() {
 	 * the retry button does.
 	 */
 	const [attempt, setAttempt] = useState(0);
+	const [pickedHiderTeamId, setPickedHiderTeamId] = useState<string | null>(
+		null,
+	);
 
 	const headingDeg = useCompassHeading();
 	const blindness = useBlindness(session.gameId);
@@ -149,6 +167,45 @@ export default function MapRoute() {
 					]
 				: FALLBACK_CENTER;
 
+	const liveRound =
+		[...rounds].reverse().find((round) => round.status !== "ended") ?? null;
+	const hiderTeams = teams.filter((team) =>
+		liveRound?.roles.some(
+			(assignment) =>
+				assignment.teamId === team.id && assignment.role === "hider",
+		),
+	);
+	const hiderTeamId =
+		pickedHiderTeamId &&
+		hiderTeams.some((team) => team.id === pickedHiderTeamId)
+			? pickedHiderTeamId
+			: (hiderTeams[0]?.id ?? null);
+	const searchArea = useSearchArea(hiderTeamId);
+	const scopedConstraints = constraints.filter(
+		(row) => row.hiderTeamId === hiderTeamId,
+	);
+	const constraintItems: readonly ConstraintListItem[] = scopedConstraints.map(
+		(row) => ({
+			id: row.id,
+			source: row.source,
+			mode: row.mode,
+			kind: row.geometry.kind,
+			enabled: row.enabled,
+			name: row.name ?? null,
+		}),
+	);
+	const canEditConstraints =
+		role.role === "seeker" && role.teamId !== null && role.roundId !== null;
+
+	const pickingLevel =
+		tool.kind === "pickingBoundaryConstraint" ? tool.adminLevel : null;
+	const areaBBox = area ? multiPolygonBBox(area) : null;
+	const boundaries = useBoundaries(session, areaBBox, pickingLevel);
+	const selectedBoundary =
+		tool.kind === "pickingBoundaryConstraint" && tool.selectedId
+			? (boundaries.find((row) => row.id === tool.selectedId) ?? null)
+			: null;
+
 	const cancelTool = () => {
 		webPlatform.haptics.vibrate([15]);
 		setTool({ kind: "none" });
@@ -170,7 +227,13 @@ export default function MapRoute() {
 	};
 
 	const handleTap = (point: LngLat) => {
-		if (tool.kind === "none" || tool.kind === "editingPin") return;
+		if (
+			tool.kind === "none" ||
+			tool.kind === "editingPin" ||
+			tool.kind === "listingConstraints"
+		) {
+			return;
+		}
 		webPlatform.haptics.vibrate([10]);
 		if (tool.kind === "measure") {
 			setTool({
@@ -186,6 +249,23 @@ export default function MapRoute() {
 		}
 		if (tool.kind === "placingPin") {
 			setDraftPoint(point);
+			return;
+		}
+		if (tool.kind === "drawingRadiusConstraint") {
+			if (tool.center) return;
+			setTool({ ...tool, center: point });
+			return;
+		}
+		if (tool.kind === "drawingPolygonConstraint") {
+			setTool({ ...tool, ring: [...tool.ring, point] });
+			return;
+		}
+		if (tool.kind === "pickingBoundaryConstraint") {
+			const hit = boundaryAtPoint(boundaries, point);
+			if (!hit) return;
+			setTool({ ...tool, selectedId: hit.id });
+			const box = multiPolygonBBox(hit.polygons);
+			if (box) setFlyTarget({ kind: "bounds", bounds: box });
 			return;
 		}
 		setTool({ ...tool, center: point });
@@ -290,6 +370,110 @@ export default function MapRoute() {
 		cancelTool();
 	};
 
+	const commitConstraint = (mode: "include" | "exclude", name: string) => {
+		if (!role.teamId || !role.roundId || !hiderTeamId) return;
+		const ordinal =
+			scopedConstraints.reduce((max, row) => Math.max(max, row.ordinal), -1) +
+			1;
+		const label = name.trim() || null;
+		if (tool.kind === "drawingRadiusConstraint" && tool.center) {
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: {
+						kind: "radius",
+						center: [tool.center[0], tool.center[1]],
+						radius: tool.radiusMeters,
+					},
+					mode,
+					ordinal,
+					name: label,
+				}),
+			);
+		} else if (
+			tool.kind === "drawingPolygonConstraint" &&
+			tool.ring.length >= 3
+		) {
+			const region = buildValidHidingArea(tool.ring);
+			if (isEmptyRegion(region)) return;
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: {
+						kind: "polygon",
+						polygons: regionToMultiPolygon(region).map((polygon) =>
+							polygon.map((ring) =>
+								ring.map(([lng, lat]) => [lng, lat] as [number, number]),
+							),
+						),
+					},
+					mode,
+					ordinal,
+					name: label,
+				}),
+			);
+		} else if (tool.kind === "pickingBoundaryConstraint" && selectedBoundary) {
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: {
+						kind: "polygon",
+						polygons: selectedBoundary.polygons.map((polygon) =>
+							polygon.map((ring) =>
+								ring.map(([lng, lat]) => [lng, lat] as [number, number]),
+							),
+						),
+					},
+					mode,
+					ordinal,
+					name: label,
+				}),
+			);
+		} else {
+			return;
+		}
+		webPlatform.haptics.vibrate([15]);
+		cancelTool();
+	};
+
+	const renameConstraint = (id: string, name: string) => {
+		void zero.mutate(
+			mutators.constraint.setName({
+				...event(),
+				constraintId: id,
+				name: name.trim() || null,
+			}),
+		);
+	};
+
+	const toggleConstraint = (id: string, enabled: boolean) => {
+		void zero.mutate(
+			mutators.constraint.setEnabled({
+				...event(),
+				constraintId: id,
+				enabled,
+			}),
+		);
+	};
+
+	const removeConstraint = (id: string) => {
+		void zero.mutate(
+			mutators.constraint.remove({ ...event(), constraintId: id }),
+		);
+	};
+
 	return (
 		<main
 			className={`absolute inset-0 overflow-hidden ${tool.kind === "none" ? "" : "[&_.maplibregl-marker]:pointer-events-none"}`}
@@ -306,6 +490,10 @@ export default function MapRoute() {
 			>
 				<GameAreaLayer area={area} />
 				<BuildingsLayer />
+				<EliminatedLayer
+					eliminated={searchArea.eliminated}
+					surviving={searchArea.surviving}
+				/>
 				<SearchZoneLayer zone={zone} />
 				<PinLayer
 					disabled={tool.kind !== "none"}
@@ -313,6 +501,18 @@ export default function MapRoute() {
 					pins={pins}
 				/>
 				<MeasureLayer measure={measure} />
+				{tool.kind === "drawingRadiusConstraint" && (
+					<ConstraintDraftLayer
+						center={tool.center}
+						radiusMeters={tool.radiusMeters}
+					/>
+				)}
+				{tool.kind === "pickingBoundaryConstraint" && (
+					<ConstraintDraftLayer polygons={selectedBoundary?.polygons ?? null} />
+				)}
+				{tool.kind === "drawingPolygonConstraint" && (
+					<DrawLayer ring={tool.ring} />
+				)}
 				<CameraController
 					camera={camera}
 					fix={ownFix}
@@ -321,13 +521,24 @@ export default function MapRoute() {
 				/>
 				<MapTapHandler onTap={handleTap} />
 				<RadiusDragHandler
-					active={tool.kind === "measure" && tool.measure.kind === "radius"}
-					onChange={(center, radiusMeters) =>
+					active={
+						(tool.kind === "measure" && tool.measure.kind === "radius") ||
+						tool.kind === "drawingRadiusConstraint"
+					}
+					onChange={(center, radiusMeters) => {
+						if (tool.kind === "drawingRadiusConstraint") {
+							setTool({
+								kind: "drawingRadiusConstraint",
+								center,
+								radiusMeters,
+							});
+							return;
+						}
 						setTool({
 							kind: "measure",
 							measure: { kind: "radius", center, radiusMeters },
-						})
-					}
+						});
+					}}
 				/>
 				<MapFlyTo target={flyTarget} />
 				<NorthReset />
@@ -359,12 +570,23 @@ export default function MapRoute() {
 					{role.role ?? "no role"}
 				</span>
 				<RoundBar clockOffsetMs={ephemeral.clockOffsetMs} />
+				<HiderSelector
+					hiders={hiderTeams}
+					onSelect={setPickedHiderTeamId}
+					selectedId={hiderTeamId}
+				/>
 				{!loaded && (
 					<span className="ml-auto" data-testid="game-not-loaded">
 						Game not loaded yet.
 					</span>
 				)}
 			</header>
+			<span className="sr-only" data-testid="surviving-area-hash">
+				{searchArea.hash ?? ""}
+			</span>
+			<span className="sr-only" data-testid="constraint-count">
+				{scopedConstraints.length}
+			</span>
 			<span className="sr-only" data-testid="pins-synced-count">
 				{pins.length}
 			</span>
@@ -406,16 +628,20 @@ export default function MapRoute() {
 					)}
 				</div>
 				<MapToolSheet
+					boundaries={boundaries}
+					canEditConstraints={canEditConstraints}
 					canPlaceZone={
 						role.role === "seeker" &&
 						role.teamId !== null &&
 						role.roundId !== null
 					}
+					constraints={constraintItems}
 					draftPoint={draftPoint}
 					editingPin={editingPin}
 					stops={mapStops}
 					onCancel={cancelTool}
 					onClearZone={clearZone}
+					onCommitConstraint={commitConstraint}
 					onDeletePin={() => {
 						if (editingPin) {
 							void zero.mutate(
@@ -427,8 +653,22 @@ export default function MapRoute() {
 						}
 						cancelTool();
 					}}
+					onRemoveConstraint={removeConstraint}
+					onRenameConstraint={renameConstraint}
 					onSavePin={savePin}
 					onSaveZone={saveZone}
+					onSelectBoundary={(id) => {
+						if (tool.kind !== "pickingBoundaryConstraint") return;
+						if (id === null) {
+							setTool({ ...tool, selectedId: null });
+							return;
+						}
+						const row = boundaries.find((item) => item.id === id);
+						setTool({ ...tool, selectedId: id });
+						if (!row) return;
+						const box = multiPolygonBBox(row.polygons);
+						if (box) setFlyTarget({ kind: "bounds", bounds: box });
+					}}
 					onSearchResult={handleSearchResult}
 					onSearchStopZone={handleSearchStopZone}
 					onSeedMeasure={() => {
@@ -447,6 +687,7 @@ export default function MapRoute() {
 							});
 						}
 					}}
+					onToggleConstraint={toggleConstraint}
 					onToolChange={changeTool}
 					onUndoMeasure={() => {
 						if (tool.kind !== "measure" || tool.measure.kind !== "path") return;
@@ -456,6 +697,13 @@ export default function MapRoute() {
 								kind: "path",
 								points: tool.measure.points.slice(0, -1),
 							},
+						});
+					}}
+					onUndoPolygonVertex={() => {
+						if (tool.kind !== "drawingPolygonConstraint") return;
+						setTool({
+							kind: "drawingPolygonConstraint",
+							ring: tool.ring.slice(0, -1),
 						});
 					}}
 					origin={origin}

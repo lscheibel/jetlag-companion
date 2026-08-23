@@ -1,5 +1,5 @@
-import { env } from "@zero-lag/env/web";
 import type { BatteryState, ClientFix, TeamRole } from "@zero-lag/schema";
+import { serverUrl } from "./dev-origin";
 
 /**
  * Client half of the ephemeral channel. m0-spec §8.
@@ -119,7 +119,7 @@ export class EphemeralChannel {
 		this.#heartbeat ??= setInterval(() => {
 			if (this.#current) this.sendPosition(this.#current);
 		}, HEARTBEAT_MS);
-		const url = new URL(env.VITE_SERVER_URL);
+		const url = new URL(serverUrl());
 		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 		url.pathname = "/api/ephemeral";
 

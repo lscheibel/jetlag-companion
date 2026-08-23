@@ -162,6 +162,8 @@ export const EVENT_TYPES = [
 	"question.cancelled",
 	"constraint.created",
 	"constraint.enabledChanged",
+	"constraint.renamed",
+	"constraint.deleted",
 	"pin.created",
 	"pin.updated",
 	"pin.deleted",

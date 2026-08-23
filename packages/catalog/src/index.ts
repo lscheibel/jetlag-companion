@@ -23,6 +23,15 @@ export {
 	type ParsedBoundary,
 	parseBoundaryLine,
 } from "./osm/boundary";
+export { BERLIN_FIXTURE_BOUNDARIES } from "./osm/fixture";
+export {
+	boundariesFromGeojsonseq,
+	boundariesInBBox,
+	boundaryContaining,
+	type CatalogAdminLevel,
+	type CatalogBoundary,
+	catalogBoundaryFromParsed,
+} from "./osm/query";
 export { BERLIN_FIXTURE_CATALOG } from "./stops/fixture";
 export {
 	bboxContains,

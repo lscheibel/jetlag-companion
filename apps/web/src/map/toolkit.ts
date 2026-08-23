@@ -38,7 +38,38 @@ export type MapTool =
 			readonly center: LngLat | null;
 			readonly radiusMeters: number;
 			readonly stopId: string | null;
-	  };
+	  }
+	| {
+			readonly kind: "drawingRadiusConstraint";
+			readonly center: LngLat | null;
+			readonly radiusMeters: number;
+	  }
+	| {
+			readonly kind: "drawingPolygonConstraint";
+			readonly ring: readonly LngLat[];
+	  }
+	| {
+			readonly kind: "pickingBoundaryConstraint";
+			readonly adminLevel: 9 | 10;
+			readonly selectedId: string | null;
+	  }
+	| { readonly kind: "listingConstraints" };
+
+export type BoundaryListItem = {
+	readonly id: string;
+	readonly name: string;
+	readonly adminLevel: 9 | 10;
+	readonly label: string;
+};
+
+export type ConstraintListItem = {
+	readonly id: string;
+	readonly source: "answer" | "manual";
+	readonly mode: "include" | "exclude";
+	readonly kind: string;
+	readonly enabled: boolean;
+	readonly name: string | null;
+};
 
 export function formatDistance(meters: number): string {
 	if (meters < 1_000) return `${Math.round(meters)} m`;

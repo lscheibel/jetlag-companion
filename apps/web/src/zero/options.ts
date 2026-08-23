@@ -1,6 +1,6 @@
 import type { ZeroOptions } from "@rocicorp/zero";
-import { env } from "@zero-lag/env/web";
 import { mutators, schema } from "@zero-lag/schema";
+import { zeroCacheUrl } from "../dev-origin";
 import type { Session } from "../session";
 
 /**
@@ -22,7 +22,7 @@ const GAME_LENGTH_MS = 3 * 60 * 60 * 1000;
 
 export function zeroOptions(session: Session): ZeroOptions {
 	return {
-		cacheURL: env.VITE_ZERO_CACHE_URL,
+		cacheURL: zeroCacheUrl(),
 		schema,
 		mutators,
 		userID: session.playerId,

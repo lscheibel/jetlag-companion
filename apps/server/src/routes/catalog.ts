@@ -2,6 +2,7 @@ import type { BBox } from "@zero-lag/geo";
 import { Hono } from "hono";
 import { z } from "zod";
 import { contextFromRequest } from "../auth";
+import { boundariesInView } from "../boundaries";
 import { catalogVersion, stopsInView } from "../catalog";
 
 /**
@@ -26,6 +27,14 @@ const bboxSchema = z
  * country still gets an answer it can render rather than 251,741 rows.
  */
 const MAX_STOPS = 2_000;
+const MAX_BOUNDARIES = 200;
+
+const adminLevelSchema = z
+	.string()
+	.transform((raw) => Number(raw))
+	.refine((value): value is 9 | 10 => value === 9 || value === 10, {
+		message: "adminLevel must be 9 or 10",
+	});
 
 export const catalog = new Hono();
 
@@ -44,5 +53,30 @@ catalog.get("/stops", async (c) => {
 		total: found.length,
 		truncated: found.length > MAX_STOPS,
 		stops: found.slice(0, MAX_STOPS),
+	});
+});
+
+catalog.get("/boundaries", async (c) => {
+	const ctx = await contextFromRequest(c.req.raw);
+	if (!ctx) return c.json({ error: "unauthenticated" }, 401);
+
+	const parsed = bboxSchema.safeParse(c.req.query("bbox") ?? "");
+	if (!parsed.success) return c.json({ error: "invalid_bbox" }, 400);
+	const level = adminLevelSchema.safeParse(c.req.query("adminLevel") ?? "");
+	if (!level.success) return c.json({ error: "invalid_admin_level" }, 400);
+
+	const bbox = parsed.data as BBox;
+	const found = boundariesInView(bbox, level.data);
+
+	return c.json({
+		total: found.length,
+		truncated: found.length > MAX_BOUNDARIES,
+		boundaries: found.slice(0, MAX_BOUNDARIES).map((row) => ({
+			id: row.id,
+			name: row.name,
+			adminLevel: row.adminLevel,
+			label: row.label,
+			polygons: row.polygons,
+		})),
 	});
 });

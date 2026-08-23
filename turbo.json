@@ -15,7 +15,8 @@
 		},
 		"dev": {
 			"cache": false,
-			"persistent": true
+			"persistent": true,
+			"passThroughEnv": ["HTTPS"]
 		},
 		"db:push": {
 			"cache": false,

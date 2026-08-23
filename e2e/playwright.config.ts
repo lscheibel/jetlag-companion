@@ -16,7 +16,8 @@ export default defineConfig({
 	expect: { timeout: 20_000 },
 	reporter: process.env.CI ? "github" : [["list"]],
 	use: {
-		baseURL: "http://localhost:5173",
+		baseURL: "https://localhost:5173",
+		ignoreHTTPSErrors: true,
 		trace: "retain-on-failure",
 		...devices["Desktop Chrome"],
 		permissions: ["geolocation"],
@@ -36,10 +37,11 @@ export default defineConfig({
 		},
 		{
 			command: "npm run dev --workspace web",
-			url: "http://localhost:5173",
+			url: "https://localhost:5173",
 			cwd: "..",
 			reuseExistingServer: true,
 			timeout: 60_000,
+			ignoreHTTPSErrors: true,
 		},
 	],
 });

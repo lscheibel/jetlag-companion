@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { contextFromRequest } from "./auth";
+import { loadBoundaries } from "./boundaries";
 import { loadCatalog } from "./catalog";
 import { db } from "./db";
 import { attachEphemeralChannel } from "./ephemeral";
@@ -51,6 +52,7 @@ app.route("/api/zero", zero);
 // Read once, at startup rather than on the first request, so a missing
 // artifact is a line in the boot log instead of a slow first builder open.
 loadCatalog();
+loadBoundaries();
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
 	console.log(`server listening on http://localhost:${info.port}`);

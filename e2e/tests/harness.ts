@@ -131,6 +131,7 @@ const LOCAL_ORIGINS = new Set([
 	"http://localhost:3000",
 	"http://localhost:4848",
 	"http://localhost:5173",
+	"https://localhost:5173",
 ]);
 
 async function installThirdPartyGuard(
@@ -147,7 +148,12 @@ async function installThirdPartyGuard(
 		await route.abort("blockedbyclient");
 	});
 	await context.route("https://**/*", async (route) => {
-		requests.push(route.request().url());
+		const url = route.request().url();
+		if (LOCAL_ORIGINS.has(new URL(url).origin)) {
+			await route.continue();
+			return;
+		}
+		requests.push(url);
 		await route.abort("blockedbyclient");
 	});
 }
@@ -201,6 +207,7 @@ export async function openPhone(
 	options: PhoneOptions = {},
 ): Promise<Phone> {
 	const context = await browser.newContext({
+		ignoreHTTPSErrors: true,
 		permissions: ["geolocation"],
 		geolocation: options.geolocation ?? {
 			longitude: 13.4132,
@@ -233,7 +240,7 @@ export async function openPhone(
 	const externalRequests: string[] = [];
 	await installThirdPartyGuard(context, externalRequests);
 	await installTiles(context, options.tiles ?? "stub", tileRequests);
-	const tunnel = await installTunnel(page, /localhost:4848/);
+	const tunnel = await installTunnel(page, /localhost:4848|\/zero-cache/);
 	const channelTunnel = await installTunnel(page, /\/api\/ephemeral/);
 
 	await page.goto("/");

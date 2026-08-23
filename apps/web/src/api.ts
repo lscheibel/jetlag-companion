@@ -1,5 +1,5 @@
-import { env } from "@zero-lag/env/web";
 import { z } from "zod";
+import { serverUrl } from "./dev-origin";
 import { deviceId, type Session } from "./session";
 
 /**
@@ -55,7 +55,7 @@ export function joinFailureMessage(reason: JoinFailure): string {
 const errorBody = z.object({ error: z.string() });
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-	const response = await fetch(`${env.VITE_SERVER_URL}${path}`, {
+	const response = await fetch(`${serverUrl()}${path}`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify(body),
@@ -120,7 +120,7 @@ export async function uploadPhoto(
 ): Promise<PhotoUpload> {
 	const form = new FormData();
 	form.set("file", file);
-	const response = await fetch(`${env.VITE_SERVER_URL}/api/photos`, {
+	const response = await fetch(`${serverUrl()}/api/photos`, {
 		method: "POST",
 		headers: { Authorization: `Bearer ${token}` },
 		body: form,
@@ -132,7 +132,7 @@ export async function uploadPhoto(
 }
 
 export async function fetchPhoto(id: string, token: string): Promise<Blob> {
-	const response = await fetch(`${env.VITE_SERVER_URL}/api/photos/${id}`, {
+	const response = await fetch(`${serverUrl()}/api/photos/${id}`, {
 		headers: { Authorization: `Bearer ${token}` },
 	});
 	if (!response.ok) {

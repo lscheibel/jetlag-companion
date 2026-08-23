@@ -1421,6 +1421,25 @@ export const mutators = defineMutators({
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				const constraint = await tx.run(
+					zql.constraint.where("id", args.constraintId).one(),
+				);
+				if (!constraint) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing constraint",
+							actual: "no such constraint",
+						});
+					}
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					constraint.seekerTeamId,
+					"toggling a constraint",
+				);
 				await tx.mutate.constraint.update({
 					id: args.constraintId,
 					enabled: args.enabled,
@@ -1430,8 +1449,51 @@ export const mutators = defineMutators({
 					gameId,
 					type: "constraint.enabledChanged",
 					actorPlayerId: playerId,
-					actorTeamId: null,
+					actorTeamId: constraint.seekerTeamId,
 					payload: { constraintId: args.constraintId, enabled: args.enabled },
+				});
+			},
+		),
+
+		setName: defineMutator(
+			z.object({
+				...withEvent,
+				constraintId: z.string(),
+				name: z.string().max(80).nullable(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const constraint = await tx.run(
+					zql.constraint.where("id", args.constraintId).one(),
+				);
+				if (!constraint) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing constraint",
+							actual: "no such constraint",
+						});
+					}
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					constraint.seekerTeamId,
+					"naming a constraint",
+				);
+				const name = args.name?.trim() || null;
+				await tx.mutate.constraint.update({
+					id: args.constraintId,
+					name,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "constraint.renamed",
+					actorPlayerId: playerId,
+					actorTeamId: constraint.seekerTeamId,
+					payload: { constraintId: args.constraintId, name },
 				});
 			},
 		),
@@ -1452,9 +1514,46 @@ export const mutators = defineMutators({
 				geometry: constraintGeometry,
 				mode: z.enum(["include", "exclude"]),
 				ordinal: z.number().int().nonnegative(),
+				name: z.string().max(80).nullable(),
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireTeamMember(
+					tx,
+					playerId,
+					args.seekerTeamId,
+					"creating a constraint",
+				);
+				await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"creating a constraint",
+				);
+				if (
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.seekerTeamId,
+						gameId,
+						"seeker",
+						"creating a constraint",
+					))
+				) {
+					return;
+				}
+				if (
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"creating a constraint",
+					))
+				) {
+					return;
+				}
 				await tx.mutate.constraint.insert({
 					id: args.constraintId,
 					roundId: args.roundId,
@@ -1464,6 +1563,7 @@ export const mutators = defineMutators({
 					answerId: null,
 					geometry: args.geometry,
 					mode: args.mode,
+					name: args.name?.trim() || null,
 					enabled: true,
 					ordinal: args.ordinal,
 					createdAt: now(),
@@ -1475,6 +1575,56 @@ export const mutators = defineMutators({
 					actorPlayerId: playerId,
 					actorTeamId: args.seekerTeamId,
 					payload: { constraintId: args.constraintId, source: "manual" },
+				});
+			},
+		),
+
+		/**
+		 * Hand-authored rows can be removed. Answer-sourced rows stay disable-only
+		 * — a correction rewrites them in place rather than leaving a hole in the
+		 * fold. M7 owns that write.
+		 */
+		remove: defineMutator(
+			z.object({
+				...withEvent,
+				constraintId: z.string(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const constraint = await tx.run(
+					zql.constraint.where("id", args.constraintId).one(),
+				);
+				if (!constraint) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing constraint",
+							actual: "no such constraint",
+						});
+					}
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					constraint.seekerTeamId,
+					"removing a constraint",
+				);
+				if (constraint.source !== "manual") {
+					refuse(tx, {
+						code: "not_permitted",
+						reason: "only a hand-authored constraint can be removed",
+					});
+					return;
+				}
+				await tx.mutate.constraint.delete({ id: args.constraintId });
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "constraint.deleted",
+					actorPlayerId: playerId,
+					actorTeamId: constraint.seekerTeamId,
+					payload: { constraintId: args.constraintId },
 				});
 			},
 		),
@@ -2127,6 +2277,10 @@ async function createAnswerConstraint(
 			.where("hiderTeamId", question.targetTeamId),
 	);
 
+	const existing = await tx.run(
+		zql.constraint.where("id", input.constraintId).one(),
+	);
+
 	await tx.mutate.constraint.upsert({
 		id: input.constraintId,
 		roundId: question.roundId,
@@ -2136,6 +2290,7 @@ async function createAnswerConstraint(
 		answerId: input.answerId,
 		geometry: shape.geometry,
 		mode: shape.mode,
+		name: existing?.name ?? null,
 		enabled: true,
 		// Only a caching detail — the fold commutes, so this does not affect the
 		// result. m0-spec §9.

@@ -76,9 +76,33 @@ APP_ORIGIN=http://host.docker.internal:3000 npm run zero:start
 npm run dev
 ```
 
-The web app is on `http://localhost:5173`, the server on `:3000`, `zero-cache`
+The web app is on `https://localhost:5173`, the server on `:3000`, `zero-cache`
 on `:4848`. Give `zero-cache` a minute on a cold replica — initial sync is slow
 the first time and instant afterwards.
+
+### Testing on a phone
+
+`http://localhost` is a secure context; `http://192.168.x.x` on a phone is not,
+so `crypto.randomUUID()` (and geolocation, and the PWA) fail there. The Vite
+dev server therefore speaks HTTPS by default. Open `https://<lan-ip>:5173` on
+the phone, same Wi-Fi. The first `npm run dev` may ask for the Mac password —
+it installs a local CA and downloads `mkcert`. `HTTPS=0 npm run dev` turns
+that off.
+
+The phone has to trust that CA once, or the browser will warn and some APIs
+stay blocked. The file is `rootCA.pem` in the directory printed by
+`mkcert -CAROOT`.
+
+- **iOS:** install the profile, then Settings → General → About → Certificate
+  Trust Settings → enable full trust.
+- **Android:** Settings → Security → install a CA certificate; open the app in
+  Chrome.
+
+Allow Node through the macOS firewall if prompted.
+
+A public URL without installing a CA: `cloudflared tunnel --url https://localhost:5173`
+and open the `*.trycloudflare.com` address. Vite proxies `/api` and Zero
+through the page origin either way.
 
 ## Checks
 
