@@ -261,6 +261,64 @@ export const roundTeamRole = pgTable(
 	(table) => [primaryKey({ columns: [table.roundId, table.teamId] })],
 );
 
+/** One host-authored rules document per game. */
+export const houseRules = pgTable("houseRules", {
+	gameId: text("gameId").primaryKey(),
+	text: text("text").notNull(),
+	updatedAt: epochMs("updatedAt").notNull(),
+	updatedByPlayerId: text("updatedByPlayerId").notNull(),
+});
+
+/** Pause is a second axis beside round status, represented as intervals. */
+export const roundPause = pgTable(
+	"roundPause",
+	{
+		id: text("id").primaryKey(),
+		roundId: text("roundId").notNull(),
+		startedAt: epochMs("startedAt").notNull(),
+		endedAt: epochMs("endedAt"),
+		reason: text("reason").notNull(),
+		startedByPlayerId: text("startedByPlayerId").notNull(),
+		endedByPlayerId: text("endedByPlayerId"),
+	},
+	(table) => [index("roundPause_round_idx").on(table.roundId)],
+);
+
+/** The complete result has one row for every hider team, including survivors. */
+export const hiderOutcome = pgTable(
+	"hiderOutcome",
+	{
+		id: text("id").primaryKey(),
+		roundId: text("roundId").notNull(),
+		hiderTeamId: text("hiderTeamId").notNull(),
+		seekerTeamId: text("seekerTeamId"),
+		foundAt: epochMs("foundAt"),
+		durationMillis: epochMs("durationMillis"),
+		photoId: text("photoId"),
+		markedByPlayerId: text("markedByPlayerId"),
+		markedAt: epochMs("markedAt"),
+	},
+	(table) => [
+		uniqueIndex("hiderOutcome_round_team_idx").on(
+			table.roundId,
+			table.hiderTeamId,
+		),
+	],
+);
+
+/** Photo metadata only; the bytes live outside Postgres. */
+export const photo = pgTable("photo", {
+	id: text("id").primaryKey(),
+	gameId: text("gameId").notNull(),
+	sha256: text("sha256").notNull(),
+	contentType: text("contentType").notNull(),
+	byteSize: integer("byteSize").notNull(),
+	width: integer("width").notNull(),
+	height: integer("height").notNull(),
+	uploadedByPlayerId: text("uploadedByPlayerId").notNull(),
+	uploadedAt: epochMs("uploadedAt").notNull(),
+});
+
 export const hidingCommitment = pgTable(
 	"hidingCommitment",
 	{
@@ -482,6 +540,10 @@ export const drizzleSchema = {
 	teamMember,
 	round,
 	roundTeamRole,
+	houseRules,
+	roundPause,
+	hiderOutcome,
+	photo,
 	hidingCommitment,
 	question,
 	answer,

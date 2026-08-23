@@ -304,3 +304,93 @@ export async function committedZone(
 	);
 	return result.rows[0] ?? null;
 }
+
+// --- M5 -------------------------------------------------------------------
+
+export async function houseRulesText(gameId: string): Promise<string | null> {
+	const result = await db().query<{ text: string }>(
+		'SELECT "text" FROM "houseRules" WHERE "gameId" = $1',
+		[gameId],
+	);
+	return result.rows[0]?.text ?? null;
+}
+
+export async function pausesForRound(roundId: string): Promise<
+	{
+		id: string;
+		reason: string;
+		startedAt: number;
+		endedAt: number | null;
+	}[]
+> {
+	const result = await db().query<{
+		id: string;
+		reason: string;
+		startedAt: string;
+		endedAt: string | null;
+	}>(
+		`SELECT id, reason, "startedAt", "endedAt" FROM "roundPause"
+		 WHERE "roundId" = $1 ORDER BY "startedAt"`,
+		[roundId],
+	);
+	return result.rows.map((row) => ({
+		id: row.id,
+		reason: row.reason,
+		startedAt: Number(row.startedAt),
+		endedAt: row.endedAt === null ? null : Number(row.endedAt),
+	}));
+}
+
+export async function hiderOutcomes(roundId: string): Promise<
+	{
+		hiderTeamId: string;
+		seekerTeamId: string | null;
+		foundAt: number | null;
+		durationMillis: number | null;
+		photoId: string | null;
+	}[]
+> {
+	const result = await db().query<{
+		hiderTeamId: string;
+		seekerTeamId: string | null;
+		foundAt: string | null;
+		durationMillis: string | null;
+		photoId: string | null;
+	}>(
+		`SELECT "hiderTeamId", "seekerTeamId", "foundAt", "durationMillis", "photoId"
+		 FROM "hiderOutcome" WHERE "roundId" = $1`,
+		[roundId],
+	);
+	return result.rows.map((row) => ({
+		hiderTeamId: row.hiderTeamId,
+		seekerTeamId: row.seekerTeamId,
+		foundAt: row.foundAt === null ? null : Number(row.foundAt),
+		durationMillis:
+			row.durationMillis === null ? null : Number(row.durationMillis),
+		photoId: row.photoId,
+	}));
+}
+
+export async function photoRow(photoId: string): Promise<{
+	sha256: string;
+	gameId: string;
+	byteSize: number;
+} | null> {
+	const result = await db().query<{
+		sha256: string;
+		gameId: string;
+		byteSize: number;
+	}>('SELECT sha256, "gameId", "byteSize" FROM photo WHERE id = $1', [photoId]);
+	return result.rows[0] ?? null;
+}
+
+export async function eventPayloads(
+	gameId: string,
+	type: string,
+): Promise<unknown[]> {
+	const result = await db().query<{ payload: unknown }>(
+		'SELECT payload FROM event WHERE "gameId" = $1 AND type = $2 ORDER BY seq',
+		[gameId, type],
+	);
+	return result.rows.map((row) => row.payload);
+}

@@ -3,9 +3,15 @@ import {
 	defineMutators,
 	type Transaction,
 } from "@rocicorp/zero";
-import { answerToConstraintGeometry } from "@zero-lag/rules";
+import { answerToConstraintGeometry, elapsed } from "@zero-lag/rules";
 import { z } from "zod";
-import type { EventType, GameContext, Json } from "../types";
+import type {
+	EventType,
+	GameContext,
+	Json,
+	RoundStatus,
+	TeamRole,
+} from "../types";
 import {
 	refuse,
 	reject,
@@ -204,6 +210,35 @@ export const mutators = defineMutators({
 			z.object({ ...withEvent }),
 			async ({ tx, ctx, args }) => {
 				await setHost(tx, requireContext(ctx), args.eventId, false);
+			},
+		),
+	},
+
+	rules: {
+		update: defineMutator(
+			z.object({
+				...withEvent,
+				text: z.string().max(50_000),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "updating house rules");
+
+				const updatedAt = now();
+				await tx.mutate.houseRules.upsert({
+					gameId,
+					text: args.text,
+					updatedAt,
+					updatedByPlayerId: playerId,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "rules.updated",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: { length: args.text.length },
+				});
 			},
 		),
 	},
@@ -624,11 +659,12 @@ export const mutators = defineMutators({
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "creating a round");
 				await tx.mutate.round.insert({
 					id: args.roundId,
 					gameId,
 					ordinal: args.ordinal,
-					status: "hiding",
+					status: "pending",
 					hidingDurationMs: args.hidingDurationMs,
 					hidingStartedAt: null,
 					seekingStartedAt: null,
@@ -657,13 +693,34 @@ export const mutators = defineMutators({
 		),
 
 		startHiding: defineMutator(
-			z.object({ ...withEvent, roundId: z.string() }),
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				hidingDurationMs: z.number().int().positive().optional(),
+			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "starting the hiding phase");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"starting the hiding phase",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(tx, round.status, "pending", "starting hiding")
+				) {
+					return;
+				}
+
 				const startedAt = now();
+				const hidingDurationMs =
+					args.hidingDurationMs ?? round.hidingDurationMs;
 				await tx.mutate.round.update({
 					id: args.roundId,
 					status: "hiding",
+					hidingDurationMs,
 					hidingStartedAt: startedAt,
 				});
 				await tx.mutate.game.update({ id: gameId, status: "running" });
@@ -673,7 +730,7 @@ export const mutators = defineMutators({
 					type: "round.hidingStarted",
 					actorPlayerId: playerId,
 					actorTeamId: null,
-					payload: { roundId: args.roundId, startedAt },
+					payload: { roundId: args.roundId, startedAt, hidingDurationMs },
 				});
 			},
 		),
@@ -682,6 +739,21 @@ export const mutators = defineMutators({
 			z.object({ ...withEvent, roundId: z.string() }),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "starting the seeking phase");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"starting the seeking phase",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(tx, round.status, "hiding", "starting seeking") ||
+					!(await requireNoOpenPause(tx, args.roundId, "starting seeking"))
+				) {
+					return;
+				}
+
 				const startedAt = now();
 				await tx.mutate.round.update({
 					id: args.roundId,
@@ -703,7 +775,41 @@ export const mutators = defineMutators({
 			z.object({ ...withEvent, roundId: z.string() }),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "ending a round");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"ending a round",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(tx, round.status, "seeking", "ending a round") ||
+					!(await requireNoOpenPause(tx, args.roundId, "ending a round"))
+				) {
+					return;
+				}
+
 				const endedAt = now();
+				const roles = await tx.run(
+					zql.roundTeamRole.where("roundId", args.roundId),
+				);
+				for (const role of roles) {
+					if (role.role !== "hider") continue;
+					const existing = await findOutcome(tx, args.roundId, role.teamId);
+					if (existing) continue;
+					await tx.mutate.hiderOutcome.insert({
+						id: outcomeId(args.roundId, role.teamId),
+						roundId: args.roundId,
+						hiderTeamId: role.teamId,
+						seekerTeamId: null,
+						foundAt: null,
+						durationMillis: null,
+						photoId: null,
+						markedByPlayerId: null,
+						markedAt: null,
+					});
+				}
 				await tx.mutate.round.update({
 					id: args.roundId,
 					status: "ended",
@@ -716,6 +822,342 @@ export const mutators = defineMutators({
 					actorPlayerId: playerId,
 					actorTeamId: null,
 					payload: { roundId: args.roundId, endedAt },
+				});
+			},
+		),
+
+		pause: defineMutator(
+			z.object({
+				...withEvent,
+				pauseId: z.string(),
+				roundId: z.string(),
+				reason: z.string().trim().min(1).max(1_000),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "pausing a round");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"pausing a round",
+				);
+				if (
+					!round ||
+					!requireActiveRoundPhase(tx, round.status, "pausing a round")
+				) {
+					return;
+				}
+				if (await findOpenPause(tx, args.roundId)) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "a round with no active pause",
+						actual: "the round is already paused",
+					});
+					return;
+				}
+				const pauseWithId = await tx.run(
+					zql.roundPause.where("id", args.pauseId).one(),
+				);
+				if (pauseWithId) {
+					refuse(tx, {
+						code: "not_permitted",
+						reason: "a pause id cannot be reused",
+					});
+					return;
+				}
+
+				const startedAt = now();
+				await tx.mutate.roundPause.insert({
+					id: args.pauseId,
+					roundId: args.roundId,
+					startedAt,
+					endedAt: null,
+					reason: args.reason,
+					startedByPlayerId: playerId,
+					endedByPlayerId: null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.paused",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: {
+						roundId: args.roundId,
+						pauseId: args.pauseId,
+						reason: args.reason,
+						startedAt,
+					},
+				});
+			},
+		),
+
+		resume: defineMutator(
+			z.object({ ...withEvent, roundId: z.string() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "resuming a round");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"resuming a round",
+				);
+				if (
+					!round ||
+					!requireActiveRoundPhase(tx, round.status, "resuming a round")
+				) {
+					return;
+				}
+				const pause = await findOpenPause(tx, args.roundId);
+				if (!pause) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "a paused round",
+						actual: "the round is not paused",
+					});
+					return;
+				}
+
+				const endedAt = now();
+				await tx.mutate.roundPause.update({
+					id: pause.id,
+					endedAt,
+					endedByPlayerId: playerId,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.resumed",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: {
+						roundId: args.roundId,
+						pauseId: pause.id,
+						endedAt,
+						pausedMillis: Math.max(0, endedAt - pause.startedAt),
+					},
+				});
+			},
+		),
+
+		markFound: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				hiderTeamId: z.string(),
+				seekerTeamId: z.string(),
+				photoId: z.string().optional(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"marking a hider found",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"seeking",
+						"marking a hider found",
+					) ||
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"marking a hider found",
+					)) ||
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.seekerTeamId,
+						gameId,
+						"seeker",
+						"marking a hider found",
+					))
+				) {
+					return;
+				}
+				if (await findOpenPause(tx, args.roundId)) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "an unpaused seeking phase",
+						actual: "the round is paused",
+					});
+					return;
+				}
+
+				const photo = args.photoId
+					? await requireOwnedPhoto(tx, args.photoId, gameId, playerId)
+					: undefined;
+				if (args.photoId && !photo) return;
+				if (photo) {
+					const attached = await tx.run(
+						zql.hiderOutcome.where("photoId", photo.id),
+					);
+					if (
+						attached.some(
+							(outcome) =>
+								outcome.roundId !== args.roundId ||
+								outcome.hiderTeamId !== args.hiderTeamId,
+						)
+					) {
+						refuse(tx, {
+							code: "not_permitted",
+							reason: "a photo can belong to only one found outcome",
+						});
+						return;
+					}
+				}
+
+				const existing = await findOutcome(tx, args.roundId, args.hiderTeamId);
+				if (existing?.foundAt != null) {
+					if (existing.seekerTeamId !== args.seekerTeamId) {
+						refuse(tx, {
+							code: "game_state_invalid",
+							expected: "the seeker team from the existing found mark",
+							actual: "a different seeker team",
+						});
+						return;
+					}
+					if (!photo || existing.photoId === photo.id) return;
+					if (existing.photoId) {
+						await tx.mutate.photo.delete({ id: existing.photoId });
+					}
+					await tx.mutate.hiderOutcome.update({
+						id: existing.id,
+						photoId: photo.id,
+					});
+					await appendEvent(tx, {
+						eventId: args.eventId,
+						gameId,
+						type: "round.hiderFound",
+						actorPlayerId: playerId,
+						actorTeamId: args.hiderTeamId,
+						payload: {
+							roundId: args.roundId,
+							hiderTeamId: args.hiderTeamId,
+							seekerTeamId: args.seekerTeamId,
+							foundAt: existing.foundAt,
+							durationMillis: existing.durationMillis,
+							hasPhoto: true,
+						},
+					});
+					return;
+				}
+
+				if (round.seekingStartedAt == null) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "a seeking phase with a start time",
+						actual: "seekingStartedAt is missing",
+					});
+					return;
+				}
+				const foundAt = now();
+				const pauses = await tx.run(
+					zql.roundPause.where("roundId", args.roundId),
+				);
+				const durationMillis = elapsed(round.seekingStartedAt, pauses, foundAt);
+				const markedAt = foundAt;
+				await tx.mutate.hiderOutcome.upsert({
+					id: existing?.id ?? outcomeId(args.roundId, args.hiderTeamId),
+					roundId: args.roundId,
+					hiderTeamId: args.hiderTeamId,
+					seekerTeamId: args.seekerTeamId,
+					foundAt,
+					durationMillis,
+					photoId: photo?.id ?? null,
+					markedByPlayerId: playerId,
+					markedAt,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.hiderFound",
+					actorPlayerId: playerId,
+					actorTeamId: args.hiderTeamId,
+					payload: {
+						roundId: args.roundId,
+						hiderTeamId: args.hiderTeamId,
+						seekerTeamId: args.seekerTeamId,
+						foundAt,
+						durationMillis,
+						hasPhoto: photo !== undefined,
+					},
+				});
+			},
+		),
+
+		unmarkFound: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				hiderTeamId: z.string(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"unmarking a hider found",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"seeking",
+						"unmarking a hider found",
+					) ||
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"unmarking a hider found",
+					))
+				) {
+					return;
+				}
+				const existing = await findOutcome(tx, args.roundId, args.hiderTeamId);
+				if (!existing || existing.foundAt == null) return;
+
+				if (existing.photoId) {
+					await tx.mutate.photo.delete({ id: existing.photoId });
+				}
+				await tx.mutate.hiderOutcome.update({
+					id: existing.id,
+					seekerTeamId: null,
+					foundAt: null,
+					durationMillis: null,
+					photoId: null,
+					markedByPlayerId: null,
+					markedAt: null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.hiderFound",
+					actorPlayerId: playerId,
+					actorTeamId: args.hiderTeamId,
+					payload: {
+						roundId: args.roundId,
+						hiderTeamId: args.hiderTeamId,
+						seekerTeamId: null,
+						foundAt: null,
+						durationMillis: null,
+						hasPhoto: false,
+					},
 				});
 			},
 		),
@@ -736,6 +1178,37 @@ export const mutators = defineMutators({
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"committing a hiding zone",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"hiding",
+						"committing a hiding zone",
+					) ||
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"committing a hiding zone",
+					))
+				) {
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					args.hiderTeamId,
+					"committing a hiding zone",
+				);
 				await tx.mutate.hidingCommitment.upsert({
 					id: args.commitmentId,
 					roundId: args.roundId,
@@ -1429,7 +1902,7 @@ async function requireRoundInGame(
 	roundId: string,
 	gameId: string,
 	action: string,
-): Promise<void> {
+) {
 	const round = await tx.run(zql.round.where("id", roundId).one());
 	if (!round) {
 		if (tx.location === "server") {
@@ -1439,14 +1912,142 @@ async function requireRoundInGame(
 				actual: "no such round",
 			});
 		}
-		return;
+		return undefined;
 	}
 	if (round.gameId !== gameId) {
 		refuse(tx, {
 			code: "not_permitted",
 			reason: `${action} is limited to this game's rounds`,
 		});
+		return undefined;
 	}
+	return round;
+}
+
+function requireRoundPhase(
+	tx: Tx,
+	actual: RoundStatus,
+	expected: RoundStatus,
+	action: string,
+): boolean {
+	if (actual === expected) return true;
+	refuse(tx, {
+		code: "game_state_invalid",
+		expected: `${expected} before ${action}`,
+		actual,
+	});
+	return false;
+}
+
+function requireActiveRoundPhase(
+	tx: Tx,
+	actual: RoundStatus,
+	action: string,
+): boolean {
+	if (actual === "hiding" || actual === "seeking") return true;
+	refuse(tx, {
+		code: "game_state_invalid",
+		expected: `hiding or seeking before ${action}`,
+		actual,
+	});
+	return false;
+}
+
+async function findOpenPause(tx: Tx, roundId: string) {
+	const pauses = await tx.run(zql.roundPause.where("roundId", roundId));
+	return pauses.find((pause) => pause.endedAt == null);
+}
+
+async function requireNoOpenPause(
+	tx: Tx,
+	roundId: string,
+	action: string,
+): Promise<boolean> {
+	if (!(await findOpenPause(tx, roundId))) return true;
+	refuse(tx, {
+		code: "game_state_invalid",
+		expected: `an unpaused round before ${action}`,
+		actual: "the round is paused",
+	});
+	return false;
+}
+
+async function requireTeamForRole(
+	tx: Tx,
+	roundId: string,
+	teamId: string,
+	gameId: string,
+	expectedRole: TeamRole,
+	action: string,
+): Promise<boolean> {
+	const team = await tx.run(zql.team.where("id", teamId).one());
+	if (!team) {
+		if (tx.location === "server") {
+			reject({
+				code: "game_state_invalid",
+				expected: `a ${expectedRole} team in this game`,
+				actual: "no such team",
+			});
+		}
+		return false;
+	}
+	if (team.gameId !== gameId) {
+		refuse(tx, {
+			code: "not_permitted",
+			reason: `${action} is limited to teams in this game`,
+		});
+		return false;
+	}
+
+	const role = await tx.run(
+		zql.roundTeamRole.where("roundId", roundId).where("teamId", teamId).one(),
+	);
+	if (role?.role === expectedRole) return true;
+	refuse(tx, {
+		code: "not_permitted",
+		reason: `${action} requires ${teamId} to be a ${expectedRole} team`,
+	});
+	return false;
+}
+
+async function requireOwnedPhoto(
+	tx: Tx,
+	photoId: string,
+	gameId: string,
+	playerId: string,
+) {
+	const photo = await tx.run(zql.photo.where("id", photoId).one());
+	if (!photo) {
+		if (tx.location === "server") {
+			reject({
+				code: "game_state_invalid",
+				expected: "an uploaded photo in this game",
+				actual: "no such photo",
+			});
+		}
+		return undefined;
+	}
+	if (photo.gameId !== gameId || photo.uploadedByPlayerId !== playerId) {
+		refuse(tx, {
+			code: "not_permitted",
+			reason: "a found photo must belong to its game and uploader",
+		});
+		return undefined;
+	}
+	return photo;
+}
+
+async function findOutcome(tx: Tx, roundId: string, hiderTeamId: string) {
+	return tx.run(
+		zql.hiderOutcome
+			.where("roundId", roundId)
+			.where("hiderTeamId", hiderTeamId)
+			.one(),
+	);
+}
+
+function outcomeId(roundId: string, hiderTeamId: string): string {
+	return `${roundId}:${hiderTeamId}`;
 }
 
 async function requireSeekerRole(

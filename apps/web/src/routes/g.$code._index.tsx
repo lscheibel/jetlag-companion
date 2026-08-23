@@ -12,6 +12,9 @@ import { HostBanner } from "../lobby/host-banner";
 import type { LobbyPlayer } from "../lobby/player-row";
 import { RolePanel } from "../lobby/role-panel";
 import { RosterPanel } from "../lobby/roster-panel";
+import { OutcomeList } from "../lobby/outcome-list";
+import { RoundControls } from "../lobby/round-controls";
+import { RulesCard } from "../lobby/rules-card";
 import { ShareCard } from "../lobby/share-card";
 import type { LobbyTeam } from "../lobby/team-card";
 import { useIsHost } from "../lobby/use-is-host";
@@ -102,6 +105,7 @@ function Lobby() {
 		<main className="mx-auto max-w-2xl space-y-4 p-4">
 			<ShareCard code={session.code} />
 			<HostBanner />
+			<RulesCard amHost={amHost} />
 
 			{rejection && (
 				<div
@@ -135,6 +139,8 @@ function Lobby() {
 				roundId={round?.id ?? null}
 				teams={lobbyTeams}
 			/>
+			<RoundControls amHost={amHost} />
+			<OutcomeList token={session.token} />
 
 			<footer className="flex items-center gap-3 pt-2 text-sm">
 				<Link

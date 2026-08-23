@@ -66,6 +66,38 @@ export const queries = defineQueries({
 			.orderBy("ordinal", "asc");
 	}),
 
+	/** House rules are public game content and remain readable in every phase. */
+	houseRules: defineQuery(({ ctx }) => {
+		const { gameId } = requireContext(ctx);
+		return zql.houseRules.where("gameId", gameId);
+	}),
+
+	/** Pause intervals drive every public clock in the game. */
+	roundPauses: defineQuery(({ ctx }) => {
+		const { gameId } = requireContext(ctx);
+		return zql.roundPause
+			.where(({ exists }) =>
+				exists("round", (round) => round.where("gameId", gameId)),
+			)
+			.orderBy("startedAt", "asc");
+	}),
+
+	/** Being found is public; unlike commitments, outcomes are never role-filtered. */
+	hiderOutcomes: defineQuery(({ ctx }) => {
+		const { gameId } = requireContext(ctx);
+		return zql.hiderOutcome
+			.where(({ exists }) =>
+				exists("round", (round) => round.where("gameId", gameId)),
+			)
+			.related("photo");
+	}),
+
+	/** Metadata is public inside its game; photo bytes are served separately. */
+	photos: defineQuery(({ ctx }) => {
+		const { gameId } = requireContext(ctx);
+		return zql.photo.where("gameId", gameId).orderBy("uploadedAt", "asc");
+	}),
+
 	/**
 	 * A question is visible to the team that asked it and the team it was asked
 	 * of, and to nobody else — seeker teams play against each other and do not

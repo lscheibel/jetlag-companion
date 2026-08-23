@@ -45,13 +45,20 @@ export function Rounds() {
 			return;
 		}
 
+		const roundId = crypto.randomUUID();
 		void zero.mutate(
 			mutators.round.create({
 				eventId,
-				roundId: crypto.randomUUID(),
+				roundId,
 				ordinal: rounds.length + 1,
 				hidingDurationMs: HIDING_DURATION_MS,
 				roles,
+			}),
+		);
+		void zero.mutate(
+			mutators.round.startHiding({
+				eventId: crypto.randomUUID(),
+				roundId,
 			}),
 		);
 	}

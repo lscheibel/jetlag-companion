@@ -3,11 +3,16 @@ import { env } from "@zero-lag/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { contextFromRequest } from "./auth";
 import { loadCatalog } from "./catalog";
+import { db } from "./db";
 import { attachEphemeralChannel } from "./ephemeral";
+import { processPhoto } from "./photo";
+import { findPhotoForGame, loadPhotoBytes, savePhotoUpload } from "./photo-db";
 import { catalog } from "./routes/catalog";
 import { games } from "./routes/games";
 import { gameMaps, maps } from "./routes/maps";
+import { createPhotosRoute } from "./routes/photos";
 import { zero } from "./routes/zero";
 
 const app = new Hono();
@@ -29,6 +34,18 @@ app.route("/api/games", games);
 app.route("/api/games", gameMaps);
 app.route("/api/maps", maps);
 app.route("/api/catalog", catalog);
+app.route(
+	"/api/photos",
+	createPhotosRoute({
+		authenticate: contextFromRequest,
+		upload: async (ctx, input) => {
+			const processed = await processPhoto(input);
+			return savePhotoUpload(db, env.PHOTOS_PATH, ctx, processed);
+		},
+		find: (gameId, photoId) => findPhotoForGame(db, gameId, photoId),
+		load: (photo) => loadPhotoBytes(env.PHOTOS_PATH, photo),
+	}),
+);
 app.route("/api/zero", zero);
 
 // Read once, at startup rather than on the first request, so a missing

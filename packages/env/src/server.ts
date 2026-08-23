@@ -8,6 +8,8 @@ export const env = createEnv({
 		CORS_ORIGIN: z.url(),
 		/** Signs the game token in m0-spec §4. Long-lived tokens, so rotate deliberately. */
 		GAME_TOKEN_SECRET: z.string().min(16),
+		/** Content-addressed processed photo bytes; metadata remains in Postgres. */
+		PHOTOS_PATH: z.string().min(1).default("./data/photos"),
 		PORT: z.coerce.number().int().positive().default(3000),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])

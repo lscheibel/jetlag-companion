@@ -1,9 +1,12 @@
 import { mustGetMutator, mustGetQuery } from "@rocicorp/zero";
 import { handleMutateRequest, handleQueryRequest } from "@rocicorp/zero/server";
-import { mutators, queries, schema } from "@zero-lag/schema";
+import { env } from "@zero-lag/env/server";
+import { mutators, queries, schema, zql } from "@zero-lag/schema";
 import { Hono } from "hono";
+import { z } from "zod";
 import { contextFromRequest } from "../auth";
-import { dbProvider } from "../db";
+import { db, dbProvider } from "../db";
+import { deletePhotoBlobIfUnreferenced } from "../photo-db";
 
 /**
  * The two endpoints `zero-cache` calls back into.
@@ -15,6 +18,15 @@ import { dbProvider } from "../db";
  */
 
 export const zero = new Hono();
+
+const unmarkFoundArgs = z.object({
+	roundId: z.string(),
+	hiderTeamId: z.string(),
+});
+
+const markFoundArgs = unmarkFoundArgs.extend({
+	photoId: z.string().optional(),
+});
 
 zero.post("/query", async (c) => {
 	const request = c.req.raw;
@@ -44,10 +56,53 @@ zero.post("/mutate", async (c) => {
 
 	const result = await handleMutateRequest({
 		dbProvider,
-		handler: (transact) =>
-			transact((tx, name, args) =>
-				mustGetMutator(mutators, name).fn({ args, tx, ctx }),
-			),
+		handler: async (transact) => {
+			const deletedPhotoDigests = new Set<string>();
+			const mutationResult = await transact(async (tx, name, args) => {
+				if (name === "round.unmarkFound" || name === "round.markFound") {
+					const parsed =
+						name === "round.unmarkFound"
+							? unmarkFoundArgs.safeParse(args)
+							: markFoundArgs.safeParse(args);
+					if (parsed.success) {
+						const outcome = await tx.run(
+							zql.hiderOutcome
+								.where("roundId", parsed.data.roundId)
+								.where("hiderTeamId", parsed.data.hiderTeamId)
+								.related("photo")
+								.one(),
+						);
+						const replacing =
+							name === "round.markFound" &&
+							"photoId" in parsed.data &&
+							parsed.data.photoId !== undefined &&
+							outcome?.photoId !== parsed.data.photoId;
+						if (
+							outcome?.photo?.gameId === ctx.gameId &&
+							(name === "round.unmarkFound" || replacing)
+						) {
+							deletedPhotoDigests.add(outcome.photo.sha256);
+						}
+					}
+				}
+
+				await mustGetMutator(mutators, name).fn({ args, tx, ctx });
+			});
+
+			// transact() has committed at this point. Deleting before it returns
+			// could leave a rolled-back photo row pointing at missing bytes.
+			if (!("error" in mutationResult.result)) {
+				for (const digest of deletedPhotoDigests) {
+					try {
+						await deletePhotoBlobIfUnreferenced(db, env.PHOTOS_PATH, digest);
+					} catch (error) {
+						console.error("failed to delete unreferenced photo bytes", error);
+					}
+				}
+			}
+
+			return mutationResult;
+		},
 		request,
 		userID: ctx.playerId,
 	});

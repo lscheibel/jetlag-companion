@@ -4,8 +4,12 @@ import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { FoundSheet } from "../game/found-sheet";
+import { HidingSheet } from "../game/hiding-sheet";
+import { RoundBar } from "../game/round-bar";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
+import { ZoneNotice } from "../game/zone-notice";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
@@ -343,7 +347,7 @@ export default function MapRoute() {
 				<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
 			)}
 
-			<header className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-background/90 p-3 text-sm">
+			<header className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-background/90 p-3 pr-24 text-sm">
 				<Link
 					className="min-h-11 rounded border px-3 py-2"
 					data-testid="back-to-lobby"
@@ -351,7 +355,10 @@ export default function MapRoute() {
 				>
 					Lobby
 				</Link>
-				<span data-testid="my-role">{role.role ?? "no role"}</span>
+				<span className="sr-only" data-testid="my-role">
+					{role.role ?? "no role"}
+				</span>
+				<RoundBar clockOffsetMs={ephemeral.clockOffsetMs} />
 				{!loaded && (
 					<span className="ml-auto" data-testid="game-not-loaded">
 						Game not loaded yet.
@@ -376,6 +383,9 @@ export default function MapRoute() {
 					<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
 				)}
 			</div>
+			<div className="absolute inset-x-3 top-32 z-20 mx-auto max-w-xl">
+				<ZoneNotice fix={ownFix} role={role} />
+			</div>
 
 			<AbsentPlayers players={others} />
 
@@ -388,7 +398,13 @@ export default function MapRoute() {
 				trackingNotice="Tracking pauses when the screen locks."
 			/>
 
-			<div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 mx-auto w-full max-w-xl p-3">
+			<div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 mx-auto w-full max-w-xl space-y-2 p-3">
+				<div className="ml-auto max-w-sm">
+					{tool.kind === "none" && <HidingSheet role={role} />}
+					{tool.kind === "none" && (
+						<FoundSheet role={role} token={session.token} />
+					)}
+				</div>
 				<MapToolSheet
 					canPlaceZone={
 						role.role === "seeker" &&

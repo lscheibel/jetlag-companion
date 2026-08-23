@@ -77,7 +77,10 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/zero-lag
       GAME_TOKEN_SECRET: ${GAME_TOKEN_SECRET:-dev-secret-change-me}
+      PHOTOS_PATH: /data/photos
       ZERO_CACHE_URL: http://zero-cache:4848
+    volumes:
+      - photos:/data/photos
     healthcheck:
       test:
         [
@@ -131,5 +134,6 @@ services:
     working_dir: /data
 
 volumes:
+  photos:
   postgres_data:
   zero_replica:

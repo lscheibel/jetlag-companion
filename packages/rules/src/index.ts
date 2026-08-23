@@ -1,5 +1,11 @@
 export { searchAreaCacheKey } from "./cache";
 export {
+	elapsed,
+	hidingTimeRemaining,
+	type PauseInterval,
+	pausedMillisBefore,
+} from "./clock";
+export {
 	applyConstraint,
 	type Constraint,
 	type ConstraintGeometry,

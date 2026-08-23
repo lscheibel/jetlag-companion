@@ -140,6 +140,55 @@ const roundTeamRole = table("roundTeamRole")
 	})
 	.primaryKey("roundId", "teamId");
 
+const houseRules = table("houseRules")
+	.columns({
+		gameId: string(),
+		text: string(),
+		updatedAt: number(),
+		updatedByPlayerId: string(),
+	})
+	.primaryKey("gameId");
+
+const roundPause = table("roundPause")
+	.columns({
+		id: string(),
+		roundId: string(),
+		startedAt: number(),
+		endedAt: number().optional(),
+		reason: string(),
+		startedByPlayerId: string(),
+		endedByPlayerId: string().optional(),
+	})
+	.primaryKey("id");
+
+const hiderOutcome = table("hiderOutcome")
+	.columns({
+		id: string(),
+		roundId: string(),
+		hiderTeamId: string(),
+		seekerTeamId: string().optional(),
+		foundAt: number().optional(),
+		durationMillis: number().optional(),
+		photoId: string().optional(),
+		markedByPlayerId: string().optional(),
+		markedAt: number().optional(),
+	})
+	.primaryKey("id");
+
+const photo = table("photo")
+	.columns({
+		id: string(),
+		gameId: string(),
+		sha256: string(),
+		contentType: string(),
+		byteSize: number(),
+		width: number(),
+		height: number(),
+		uploadedByPlayerId: string(),
+		uploadedAt: number(),
+	})
+	.primaryKey("id");
+
 const hidingCommitment = table("hidingCommitment")
 	.columns({
 		id: string(),
@@ -271,6 +320,16 @@ const gameRelationships = relationships(game, ({ many, one }) => ({
 		destField: ["gameId"],
 		destSchema: round,
 	}),
+	houseRules: one({
+		sourceField: ["id"],
+		destField: ["gameId"],
+		destSchema: houseRules,
+	}),
+	photos: many({
+		sourceField: ["id"],
+		destField: ["gameId"],
+		destSchema: photo,
+	}),
 	pins: many({ sourceField: ["id"], destField: ["gameId"], destSchema: pin }),
 	mapConfig: one({
 		sourceField: ["mapConfigId"],
@@ -367,6 +426,16 @@ const roundRelationships = relationships(round, ({ many }) => ({
 		destField: ["roundId"],
 		destSchema: searchZone,
 	}),
+	pauses: many({
+		sourceField: ["id"],
+		destField: ["roundId"],
+		destSchema: roundPause,
+	}),
+	outcomes: many({
+		sourceField: ["id"],
+		destField: ["roundId"],
+		destSchema: hiderOutcome,
+	}),
 }));
 
 const roundTeamRoleRelationships = relationships(roundTeamRole, ({ many }) => ({
@@ -374,6 +443,43 @@ const roundTeamRoleRelationships = relationships(roundTeamRole, ({ many }) => ({
 		sourceField: ["teamId"],
 		destField: ["teamId"],
 		destSchema: teamMember,
+	}),
+}));
+
+const houseRulesRelationships = relationships(houseRules, ({ one }) => ({
+	game: one({
+		sourceField: ["gameId"],
+		destField: ["id"],
+		destSchema: game,
+	}),
+}));
+
+const roundPauseRelationships = relationships(roundPause, ({ one }) => ({
+	round: one({
+		sourceField: ["roundId"],
+		destField: ["id"],
+		destSchema: round,
+	}),
+}));
+
+const hiderOutcomeRelationships = relationships(hiderOutcome, ({ one }) => ({
+	round: one({
+		sourceField: ["roundId"],
+		destField: ["id"],
+		destSchema: round,
+	}),
+	photo: one({
+		sourceField: ["photoId"],
+		destField: ["id"],
+		destSchema: photo,
+	}),
+}));
+
+const photoRelationships = relationships(photo, ({ one }) => ({
+	game: one({
+		sourceField: ["gameId"],
+		destField: ["id"],
+		destSchema: game,
 	}),
 }));
 
@@ -474,6 +580,10 @@ export const schema = createSchema({
 		teamMember,
 		round,
 		roundTeamRole,
+		houseRules,
+		roundPause,
+		hiderOutcome,
+		photo,
 		hidingCommitment,
 		question,
 		answer,
@@ -491,6 +601,10 @@ export const schema = createSchema({
 		teamMemberRelationships,
 		roundRelationships,
 		roundTeamRoleRelationships,
+		houseRulesRelationships,
+		roundPauseRelationships,
+		hiderOutcomeRelationships,
+		photoRelationships,
 		questionRelationships,
 		constraintRelationships,
 		pinRelationships,

@@ -66,6 +66,10 @@ coverage
 tmp
 temp
 
+# Processed photo bytes. Metadata lives in Postgres; this directory is local.
+data/photos/
+apps/server/data/
+
 # Playwright
 playwright-report
 test-results

@@ -192,6 +192,44 @@ describe("the M4 map schema", () => {
 	});
 });
 
+describe("the M5 lifecycle schema", () => {
+	it("indexes pause intervals by round", () => {
+		const roundPause = getTableConfig(drizzleSchema.roundPause);
+		const roundIndex = roundPause.indexes.find(
+			(index) => index.config.name === "roundPause_round_idx",
+		);
+		expect(
+			roundIndex?.config.columns.map((column) =>
+				"name" in column ? column.name : column,
+			),
+		).toEqual(["roundId"]);
+	});
+
+	it("allows one outcome per hider team per round", () => {
+		const hiderOutcome = getTableConfig(drizzleSchema.hiderOutcome);
+		const unique = hiderOutcome.indexes.find(
+			(index) => index.config.name === "hiderOutcome_round_team_idx",
+		);
+		expect(unique?.config.unique).toBe(true);
+		expect(
+			unique?.config.columns.map((column) =>
+				"name" in column ? column.name : column,
+			),
+		).toEqual(["roundId", "hiderTeamId"]);
+	});
+
+	it("declares exactly the four lifecycle event additions", () => {
+		expect(EVENT_TYPES).toEqual(
+			expect.arrayContaining([
+				"rules.updated",
+				"round.paused",
+				"round.resumed",
+				"round.hiderFound",
+			]),
+		);
+	});
+});
+
 describe("the M1 vocabulary", () => {
 	it("declares the events M1 emits", () => {
 		expect(EVENT_TYPES).toContain("host.changed");

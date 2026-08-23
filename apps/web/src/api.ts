@@ -16,6 +16,13 @@ type CreateResponse = {
 
 type JoinResponse = CreateResponse & { rejoined: boolean };
 
+export interface PhotoUpload {
+	id: string;
+	sha256: string;
+	width: number;
+	height: number;
+}
+
 /**
  * Why a join did not work, in the words the screen will use. m1-spec §7.
  *
@@ -105,4 +112,31 @@ export async function joinGame(
 		token: result.token,
 		deviceId: device,
 	};
+}
+
+export async function uploadPhoto(
+	file: File,
+	token: string,
+): Promise<PhotoUpload> {
+	const form = new FormData();
+	form.set("file", file);
+	const response = await fetch(`${env.VITE_SERVER_URL}/api/photos`, {
+		method: "POST",
+		headers: { Authorization: `Bearer ${token}` },
+		body: form,
+	});
+	if (!response.ok) {
+		throw new Error(`Photo upload failed: ${response.status}`);
+	}
+	return response.json() as Promise<PhotoUpload>;
+}
+
+export async function fetchPhoto(id: string, token: string): Promise<Blob> {
+	const response = await fetch(`${env.VITE_SERVER_URL}/api/photos/${id}`, {
+		headers: { Authorization: `Bearer ${token}` },
+	});
+	if (!response.ok) {
+		throw new Error(`Photo download failed: ${response.status}`);
+	}
+	return response.blob();
 }
