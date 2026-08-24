@@ -6,7 +6,6 @@ import {
 import { queries } from "@zero-lag/schema";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { RulesLink } from "../game/rules-link";
 import type { GameShell } from "../game/shell";
 import { useBatteryBroadcast } from "../game/use-battery-broadcast";
 import { useEphemeralChannel } from "../game/use-ephemeral";
@@ -112,15 +111,15 @@ function Connected({ session }: { session: Session }) {
 
 	return (
 		<>
-			<div className="fixed top-2 right-3 z-50 flex items-start gap-2">
-				<p
-					className="px-2 py-3 text-right text-ink-dim text-xs"
-					data-testid="connection-state"
-				>
-					{connection.name}
-				</p>
-				<RulesLink playerId={session.playerId} />
-			</div>
+			{/*
+			 * The connection state is for tests and for a developer looking for it.
+			 * A player has never needed to read the word "connecting" off their
+			 * lobby, and the app is deliberately built to keep working while it says
+			 * so — so it is announced rather than displayed. m0-spec §3.
+			 */}
+			<p className="sr-only" data-testid="connection-state">
+				{connection.name}
+			</p>
 			<Outlet context={shell} />
 		</>
 	);

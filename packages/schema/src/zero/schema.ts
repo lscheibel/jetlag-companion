@@ -62,6 +62,7 @@ const mapConfig = table("mapConfig")
 		selection: json<Selection>(),
 		validHidingArea: json<StoredMultiPolygon>(),
 		hidingRadiusMeters: number(),
+		modeIds: json<string[]>().optional(),
 		sourceTemplateId: string().optional(),
 		supersedesConfigId: string().optional(),
 		contentHash: string(),
@@ -96,6 +97,7 @@ const player = table("player")
 		deviceId: string(),
 		joinedAt: number(),
 		isHost: boolean(),
+		readyAt: number().optional(),
 		leftAt: number().optional(),
 		removedByPlayerId: string().optional(),
 	})

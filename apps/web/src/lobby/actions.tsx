@@ -14,7 +14,8 @@ import { type LobbyRejection, useRejections } from "./use-rejections";
 export interface LobbyActions {
 	claimHost(): void;
 	releaseHost(): void;
-	createTeam(input: { name: string; color: string; emoji: string }): void;
+	/** Returns the id it minted, so a caller can act on the team it just made. */
+	createTeam(input: { name: string; color: string; emoji: string }): string;
 	updateTeam(
 		teamId: string,
 		changes: { name?: string; color?: string; emoji?: string },
@@ -24,6 +25,8 @@ export interface LobbyActions {
 	joinTeam(teamId: string, playerId?: string): void;
 	leaveTeam(teamId: string): void;
 	renamePlayer(displayName: string, playerId?: string): void;
+	/** Your own word, and nobody else's to give. m1-spec §11. */
+	setReady(ready: boolean): void;
 	removePlayer(playerId: string): void;
 	readmitPlayer(playerId: string): void;
 	assignRoles(
@@ -58,16 +61,13 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 			claimHost: () => submit(zero.mutate(mutators.game.claimHost(event()))),
 			releaseHost: () =>
 				submit(zero.mutate(mutators.game.releaseHost(event()))),
-			createTeam: (input) =>
+			createTeam: (input) => {
+				const teamId = crypto.randomUUID();
 				submit(
-					zero.mutate(
-						mutators.team.create({
-							...event(),
-							teamId: crypto.randomUUID(),
-							...input,
-						}),
-					),
-				),
+					zero.mutate(mutators.team.create({ ...event(), teamId, ...input })),
+				);
+				return teamId;
+			},
 			updateTeam: (teamId, changes) =>
 				submit(
 					zero.mutate(mutators.team.update({ ...event(), teamId, ...changes })),
@@ -86,6 +86,8 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 						mutators.player.rename({ ...event(), displayName, playerId }),
 					),
 				),
+			setReady: (ready) =>
+				submit(zero.mutate(mutators.player.setReady({ ...event(), ready }))),
 			removePlayer: (playerId) =>
 				submit(zero.mutate(mutators.player.remove({ ...event(), playerId }))),
 			readmitPlayer: (playerId) =>

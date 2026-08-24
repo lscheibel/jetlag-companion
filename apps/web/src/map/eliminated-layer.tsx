@@ -44,9 +44,7 @@ export function EliminatedLayer({
 	const fill = useMemo(() => multiPolygonFeature(eliminated), [eliminated]);
 	const outline = useMemo(
 		() =>
-			multiPolygonFeature(
-				surviving ? regionToMultiPolygon(surviving) : null,
-			),
+			multiPolygonFeature(surviving ? regionToMultiPolygon(surviving) : null),
 		[surviving],
 	);
 	useGeoJsonLayer("eliminated", fill, FILL_LAYERS);

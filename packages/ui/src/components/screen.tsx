@@ -22,7 +22,17 @@ interface ScreenProps extends HTMLAttributes<HTMLDivElement> {
 export function Screen({ className, children, ...rest }: ScreenProps) {
 	return (
 		<div
-			className={cn("flex min-h-dvh flex-col bg-ground text-ink", className)}
+			/**
+			 * A fixed-height column, not a growing page: the header, the pinned
+			 * action and the tab bar are the frame, and only the body between them
+			 * scrolls. Two things stuck to the bottom of a growing page are two
+			 * things stuck to the same place, which is how a nav bar ends up on top
+			 * of the button it is meant to sit under.
+			 */
+			className={cn(
+				"flex h-dvh flex-col overflow-hidden bg-ground text-ink",
+				className,
+			)}
 			{...rest}
 		>
 			{children}
@@ -54,7 +64,7 @@ export function ScreenHeader({
 	return (
 		<header
 			className={cn(
-				"sticky top-0 z-20 flex items-center gap-3 bg-ground/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur",
+				"z-20 flex shrink-0 items-center gap-3 bg-ground/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3",
 				className,
 			)}
 		>
@@ -102,7 +112,10 @@ interface ScreenBodyProps extends HTMLAttributes<HTMLDivElement> {
 export function ScreenBody({ className, children, ...rest }: ScreenBodyProps) {
 	return (
 		<div
-			className={cn("flex flex-1 flex-col gap-3 px-4 pb-4", className)}
+			className={cn(
+				"zl-enter flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4",
+				className,
+			)}
 			{...rest}
 		>
 			{children}
@@ -129,7 +142,7 @@ export function ScreenActions({
 	return (
 		<div
 			className={cn(
-				"sticky bottom-0 z-20 mt-auto flex flex-col gap-2",
+				"z-20 flex shrink-0 flex-col gap-2",
 				"bg-gradient-to-t from-ground via-ground to-transparent",
 				"px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
 				className,

@@ -1,5 +1,5 @@
 import { contentHash, type JsonValue, type MultiPolygon } from "@zero-lag/geo";
-import type { ScalePreset, Selection } from "@zero-lag/schema";
+import type { AreaPiece, ScalePreset, Selection } from "@zero-lag/schema";
 import type { CatalogStop } from "../stops/types";
 
 /**
@@ -15,8 +15,24 @@ function polygonsToJson(
 	);
 }
 
+function pieceToJson(piece: AreaPiece): JsonValue {
+	return {
+		id: piece.id,
+		op: piece.op,
+		source: piece.source,
+		name: piece.name,
+		geometry: polygonsToJson(piece.geometry),
+	};
+}
+
 function selectionToJson(selection: Selection): JsonValue {
-	return { kind: selection.kind, polygon: polygonsToJson(selection.polygon) };
+	if (selection.kind === "composed") {
+		return {
+			kind: "composed",
+			pieces: selection.pieces.map(pieceToJson),
+		};
+	}
+	return { kind: "drawn", polygon: polygonsToJson(selection.polygon) };
 }
 
 /**
@@ -49,6 +65,7 @@ export interface HashableMap {
 	readonly selection: Selection;
 	readonly validHidingArea: MultiPolygon;
 	readonly hidingRadiusMeters: number;
+	readonly modeIds?: readonly string[] | null;
 }
 
 /**
@@ -71,5 +88,11 @@ export function mapContentHash(map: HashableMap): string {
 		selection: selectionToJson(map.selection),
 		validHidingArea: polygonsToJson(map.validHidingArea),
 		hidingRadiusMeters: map.hidingRadiusMeters,
+		/**
+		 * Absent, not null, when every mode counts — so a map with no mode filter
+		 * hashes exactly as it did before filtering existed, and the share codes
+		 * already in circulation keep meaning what they meant.
+		 */
+		...(map.modeIds ? { modeIds: [...map.modeIds].sort() } : {}),
 	});
 }

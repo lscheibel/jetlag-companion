@@ -25,6 +25,8 @@ import {
 	openMap,
 	openPhone,
 	type Phone,
+	setSide,
+	startHiding,
 	waitForSync,
 } from "./harness";
 
@@ -43,15 +45,6 @@ const GPS_JPEG = join(
 test.afterAll(async () => {
 	await closeDb();
 });
-
-async function setSide(
-	phone: Phone,
-	team: string,
-	side: "hider" | "seeker",
-): Promise<void> {
-	await phone.page.getByTestId(`${side}-${team}`).click();
-	await expect(phone.page.getByTestId(`role-${team}`)).toHaveText(side);
-}
 
 async function sessionToken(phone: Phone): Promise<string> {
 	const raw = await phone.page.evaluate(() =>
@@ -86,14 +79,6 @@ async function expectPhase(
 			.or(phone.page.getByTestId("round-phase"));
 		await expect(locator.first()).toContainText(phase, { timeout: 20_000 });
 	}
-}
-
-async function startHiding(host: Phone, minutes: string): Promise<void> {
-	await host.page.getByTestId("hiding-duration").fill(minutes);
-	await host.page.getByTestId("start-hiding").click();
-	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
-		"hiding",
-	);
 }
 
 async function resumeRound(host: Phone): Promise<void> {
@@ -170,20 +155,23 @@ test("1. a full round, end to end", async ({ browser }) => {
 	await setSide(ana, "Sharks", "seeker");
 	await setSide(ana, "Turtles", "seeker");
 
-	await ana.page
-		.getByTestId("rules-card")
-		.getByTestId("rules-input")
-		.fill("no image searching stations");
-	await ana.page.getByTestId("rules-card").getByTestId("save-rules").click();
+	// House rules are a place of their own now, on the tab bar beside the lobby
+	// and the map — the moment you need one is never a moment to go looking.
+	await ana.page.getByTestId("tab-rules").click();
+	await ana.page.getByTestId("rules-input").fill("no image searching stations");
+	await ana.page.getByTestId("save-rules").click();
 	const gameId = await gameIdForCode(code);
 	await expect
 		.poll(() => houseRulesText(gameId))
 		.toBe("no image searching stations");
-	await expect(
-		ben.page.getByTestId("rules-card").getByTestId("rules-text"),
-	).toHaveText("no image searching stations");
+	await ben.page.getByTestId("tab-rules").click();
+	await expect(ben.page.getByTestId("rules-text")).toContainText(
+		"no image searching stations",
+	);
+	await openLobby(ana, code);
+	await openLobby(ben, code);
 
-	await startHiding(ana, "30");
+	await startHiding(phones, code, "30");
 	await expectPhase(phones, "hiding");
 	expect(await roundStatuses(gameId)).toEqual(["hiding"]);
 
@@ -227,7 +215,7 @@ test("1. a full round, end to end", async ({ browser }) => {
 
 test("2. the recorded duration matches a stopwatch", async ({ browser }) => {
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
@@ -265,7 +253,7 @@ test("2. the recorded duration matches a stopwatch", async ({ browser }) => {
 test("3. a pause stops every clock and no positions", async ({ browser }) => {
 	test.setTimeout(120_000);
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
@@ -323,7 +311,7 @@ test("4. the countdown pauses with the game", async ({ browser }) => {
 	await joinTeam(ben, "Hiders");
 	await setSide(ana, "Hiders", "hider");
 	await setSide(ana, "Seekers", "seeker");
-	await startHiding(ana, "0.25");
+	await startHiding([ana, ben], code, "0.25");
 
 	await ana.page.getByTestId("pause-reason").fill("train replacement bus");
 	await ana.page.getByTestId("pause-round").click();
@@ -363,7 +351,7 @@ test("5. leaving your zone tells you and transmits nothing", async ({
 	browser,
 }) => {
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
@@ -403,7 +391,7 @@ test("6. the countdown reaching zero changes nothing by itself", async ({
 	await joinTeam(ben, "Hiders");
 	await setSide(ana, "Hiders", "hider");
 	await setSide(ana, "Seekers", "seeker");
-	await startHiding(ana, "0.05");
+	await startHiding([ana, ben], code, "0.05");
 
 	await openMap(ben, code);
 	await expect(ana.page.getByTestId("start-seeking")).toContainText(
@@ -428,7 +416,7 @@ test("7. a found is markable by anyone and correctable", async ({
 	browser,
 }) => {
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
@@ -486,7 +474,7 @@ test("8. a round that ends with a hider unfound records that", async ({
 	await setSide(ana, "Foxes", "hider");
 	await setSide(ana, "Owls", "hider");
 	await setSide(ana, "Bees", "seeker");
-	await startHiding(ana, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(ben, code);
 	await commitZone(cara, code);
 	await openLobby(ana, code);
@@ -532,7 +520,7 @@ test("9. a photo survives the round and loses its coordinates", async ({
 	browser,
 }) => {
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
@@ -581,7 +569,7 @@ test("10. the suite makes no third-party request, including /photos", async ({
 	browser,
 }) => {
 	const { host, other, code, phones } = await twoTeamLobby(browser);
-	await startHiding(host, "30");
+	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();

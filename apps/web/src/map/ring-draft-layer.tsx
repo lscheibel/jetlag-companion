@@ -42,9 +42,9 @@ const DRAW_LINE = [
 		id: "draw-line",
 		type: "line" as const,
 		paint: {
-			"line-color": "#1d4ed8",
-			"line-width": 2,
-			"line-dasharray": [2, 2],
+			"line-color": "#ffe01f",
+			"line-width": 3,
+			"line-dasharray": [2, 1.5],
 		},
 	},
 ];
@@ -53,9 +53,9 @@ const DRAW_MIDPOINTS = [
 		id: "draw-midpoints",
 		type: "circle" as const,
 		paint: {
-			"circle-color": "#1d4ed8",
+			"circle-color": "#ffe01f",
 			"circle-radius": 5,
-			"circle-stroke-color": "#ffffff",
+			"circle-stroke-color": "#12160b",
 			"circle-stroke-width": 2,
 		},
 	},
@@ -67,7 +67,7 @@ const DRAW_VERTICES = [
 		paint: {
 			"circle-radius": 8,
 			"circle-color": "#ffffff",
-			"circle-stroke-color": "#1d4ed8",
+			"circle-stroke-color": "#ffe01f",
 			"circle-stroke-width": 2,
 		},
 	},

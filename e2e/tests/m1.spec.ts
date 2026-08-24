@@ -17,6 +17,8 @@ import {
 	type Phone,
 	presenceOf,
 	sawPresence,
+	setSide,
+	toggleHost,
 	waitForSync,
 } from "./harness";
 
@@ -37,18 +39,6 @@ import {
 test.afterAll(async () => {
 	await closeDb();
 });
-
-/** Assign a side from the lobby's role panel. Host only. */
-async function setSide(
-	phone: Phone,
-	team: string,
-	side: "hider" | "seeker",
-): Promise<void> {
-	await phone.page.getByTestId(`${side}-${team}`).click();
-	// Read back off the team's own card rather than the button that was pressed,
-	// so this asserts the round's assignment rather than the click.
-	await expect(phone.page.getByTestId(`role-${team}`)).toHaveText(side);
-}
 
 test("1. five phones build two hider teams and three seeker teams", async ({
 	browser,
@@ -87,23 +77,33 @@ test("1. five phones build two hider teams and three seeker teams", async ({
 	 * The same order on every device. Teams are ordered by `createdAt`, so this
 	 * is the order they were made in — and a rename later on does not reshuffle
 	 * it under somebody's thumb. m1-spec §2.
+	 *
+	 * The host's board groups them by the side they play, so the ordering is
+	 * asserted inside each group; everybody else gets one flat list of the teams
+	 * that are not theirs.
 	 */
+	// One board, so every phone reads the same one — including the host's.
 	for (const phone of phones) {
-		const rendered = phone.page
-			.getByTestId("teams")
-			.locator(":scope > li > section");
-		await expect(rendered).toHaveCount(teams.length);
-		for (const [index, team] of teams.entries()) {
-			await expect(rendered.nth(index)).toHaveAttribute(
-				"data-testid",
-				`team-${team}`,
-			);
+		for (const [side, expected] of [
+			["hiders", ["Foxes", "Owls"]],
+			["seekers", ["Bees", "Sharks", "Turtles"]],
+		] as const) {
+			const rendered = phone.page
+				.getByTestId(`side-${side}`)
+				.locator("[data-testid^='team-']");
+			await expect(rendered).toHaveCount(expected.length);
+			for (const [index, team] of expected.entries()) {
+				await expect(rendered.nth(index)).toHaveAttribute(
+					"data-testid",
+					`team-${team}`,
+				);
+			}
 		}
 	}
 
 	// Distinct colours and emoji, chosen by the picker rather than typed in.
 	const swatches = await ana.page
-		.getByTestId("teams")
+		.getByTestId("lobby")
 		.locator("[data-team-color]")
 		.evaluateAll((nodes) =>
 			nodes.map((node) => node.getAttribute("data-team-color")),
@@ -173,7 +173,7 @@ test("3. a team edits itself; a stranger and a non-host are refused", async ({
 	await joinTeam(ben, "Foxes");
 
 	// A non-host member renames their own team and recolours it.
-	await ben.page.getByTestId("edit-Foxes").click();
+	await ben.page.getByTestId("team-Foxes").click();
 	await ben.page.getByTestId("team-name-input").fill("Vixens");
 	await ben.page.getByTestId("team-name-input").press("Enter");
 	await ben.page.getByTestId("color-#0072B2").click();
@@ -186,14 +186,14 @@ test("3. a team edits itself; a stranger and a non-host are refused", async ({
 
 	// Ana is host, but she is not on that team — and how a team presents itself
 	// is the team's business. m1-spec §4.
-	await ana.page.getByTestId("edit-Vixens").click();
+	await ana.page.getByTestId("team-Vixens").click();
 	await ana.page.getByTestId("team-name-input").fill("Hers");
-	await ana.page.getByTestId("team-name-input").press("Enter");
+	await ana.page.getByTestId("team-editor-done").click();
 	await expect(ana.page.getByTestId("rejection-notice")).toBeVisible();
 	await expect(ana.page.getByTestId("rejection-notice")).toContainText(
 		"own members",
 	);
-	await ana.page.getByTestId("dismiss-rejection").click();
+	await ana.page.getByTestId("rejection-notice-dismiss").click();
 	await expect(ben.page.getByTestId("team-Vixens")).toBeVisible();
 
 	// And creating a team is the host's, because team count is gameplay.
@@ -214,23 +214,24 @@ test("4. the host hat is claimable, releasable, and may sit on nobody", async ({
 	await waitForSync(ana);
 	await waitForSync(ben);
 
-	await expect(ana.page.getByTestId("host-badge-Ana")).toBeVisible();
 	await expect(ben.page.getByTestId("create-team")).toHaveCount(0);
 
+	await expect(ana.page.getByTestId("host-badge-Ana")).toBeVisible();
+
 	// More than one at a time is a normal Tuesday, not a conflict. m1-spec §6.
-	await ben.page.getByTestId("claim-host").click();
+	await toggleHost(ben);
 	await expect(ben.page.getByTestId("host-badge-Ben")).toBeVisible();
 	await expect(ana.page.getByTestId("host-badge-Ben")).toBeVisible();
 	await expect(ana.page.getByTestId("host-badge-Ana")).toBeVisible();
 	await expect(ben.page.getByTestId("create-team")).toBeVisible();
 
 	// Stepping down leaves the game running, with the other host still on.
-	await ana.page.getByTestId("release-host").click();
+	await toggleHost(ana);
 	await expect(ben.page.getByTestId("host-badge-Ana")).toHaveCount(0);
 	await expect(ana.page.getByTestId("no-host-banner")).toHaveCount(0);
 
 	// Nobody is host, which is fine and self-healing.
-	await ben.page.getByTestId("release-host").click();
+	await toggleHost(ben);
 	await expect(ana.page.getByTestId("no-host-banner")).toBeVisible();
 	await expect(ben.page.getByTestId("no-host-banner")).toBeVisible();
 
@@ -253,6 +254,7 @@ test("5. removal refuses a rejoin until a host lets them back in", async ({
 	await waitForSync(ana);
 	await waitForSync(ben);
 
+	await ana.page.getByTestId("player-Ben").click();
 	await ana.page.getByTestId("remove-Ben").click();
 	await expect(ana.page.getByTestId("removed-Ben")).toBeVisible();
 
@@ -263,6 +265,7 @@ test("5. removal refuses a rejoin until a host lets them back in", async ({
 	await ben.page.goto("/");
 	expect(await joinRefused(ben, code)).toContain("removed");
 
+	await ana.page.getByTestId("player-Ben").click();
 	await ana.page.getByTestId("readmit-Ben").click();
 	await expect(ana.page.getByTestId("removed-Ben")).toHaveCount(0);
 
@@ -290,6 +293,7 @@ test("6. leaving voluntarily is frictionless to undo", async ({ browser }) => {
 	// view, which is by design ahead of the row it will produce.
 	await expect.poll(() => teamMembershipCount(benId)).toBe(1);
 
+	await ben.page.getByTestId("lobby-menu").click();
 	await ben.page.getByTestId("leave-game").click();
 	await expect(ben.page.getByTestId("create-game")).toBeVisible();
 	await expect(
@@ -302,7 +306,9 @@ test("6. leaving voluntarily is frictionless to undo", async ({ browser }) => {
 	await waitForSync(ben);
 	expect(await playerIdForName(code, "Ben")).toBe(benId);
 	await expect.poll(() => teamMembershipCount(benId)).toBe(0);
-	await expect(ben.page.getByTestId("unassigned")).toContainText("Ben");
+	await expect(
+		ben.page.getByTestId("unassigned").getByTestId("player-Ben"),
+	).toBeVisible();
 
 	await ana.close();
 	await ben.close();
@@ -420,7 +426,7 @@ test("9. a join link shared from a non-host phone works", async ({
 	await cara.page.goto(`/j/${code}`);
 	await cara.page.getByTestId("display-name").fill("Cara");
 	await cara.page.getByTestId("join-game").click();
-	await expect(cara.page.getByTestId("game-code")).toHaveText(code);
+	await expect(cara.page.getByTestId("lobby")).toBeVisible();
 	await waitForSync(cara);
 
 	await expect(ana.page.getByTestId("player-Cara")).toBeVisible();

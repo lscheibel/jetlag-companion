@@ -280,6 +280,33 @@ export const mutators = defineMutators({
 		),
 
 		/**
+		 * Ready, in the player's own words. m1-spec §11.
+		 *
+		 * Self-scoped with no host override at all: the point of a ready check is
+		 * that somebody standing on a platform said yes, and a host who can tick
+		 * it for them has built a progress bar rather than a check. Reversible,
+		 * because people say yes and then get on the wrong train.
+		 */
+		setReady: defineMutator(
+			z.object({ ...withEvent, ready: z.boolean() }),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await tx.mutate.player.update({
+					id: playerId,
+					readyAt: args.ready ? now() : null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "player.readyChanged",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: { ready: args.ready },
+				});
+			},
+		),
+
+		/**
 		 * Leaving is a column, never a delete: `event.actorPlayerId`,
 		 * `answer.answeringPlayerId` and `positionSnapshot.playerId` all point at
 		 * this row, and M14 replays a game with names attached. m1-spec §7.
@@ -687,6 +714,60 @@ export const mutators = defineMutators({
 						roundId: args.roundId,
 						ordinal: args.ordinal,
 						roles: args.roles,
+					},
+				});
+			},
+		),
+
+		/**
+		 * How long the hiders get, set before the whistle rather than at it.
+		 *
+		 * `startHiding` can carry a duration of its own, but a number that only
+		 * exists at the moment of starting is a number nobody can read in the
+		 * briefing beforehand — and the briefing is what a player says they are
+		 * ready for. Pending rounds only: the clock a round is already running on
+		 * is not a setting.
+		 */
+		setHidingDuration: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				hidingDurationMs: z.number().int().positive(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireHost(tx, playerId, "setting the hiding time");
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"setting the hiding time",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"pending",
+						"setting the hiding time",
+					)
+				) {
+					return;
+				}
+
+				await tx.mutate.round.update({
+					id: args.roundId,
+					hidingDurationMs: args.hidingDurationMs,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.hidingDurationSet",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: {
+						roundId: args.roundId,
+						hidingDurationMs: args.hidingDurationMs,
 					},
 				});
 			},

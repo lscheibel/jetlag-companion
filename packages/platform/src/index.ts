@@ -94,6 +94,18 @@ export interface PlatformAdapter {
 		capability(): Capability;
 		write(text: string): Promise<boolean>;
 	};
+	/**
+	 * Handing the link to whatever the phone can hand it to. m1-spec §8.
+	 *
+	 * Reports whether the sheet opened, not whether anybody was sent anything:
+	 * the platform never says where a share went, and a caller that pretended
+	 * otherwise would be guessing. Unavailable on most desktop browsers, which
+	 * is why copying is beside it rather than behind it.
+	 */
+	readonly share: {
+		capability(): Capability;
+		open(input: { url: string; title?: string }): Promise<boolean>;
+	};
 }
 
 /**

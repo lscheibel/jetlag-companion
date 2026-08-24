@@ -292,6 +292,27 @@ const clipboard: PlatformAdapter["clipboard"] = {
 	},
 };
 
+const share: PlatformAdapter["share"] = {
+	capability() {
+		if (typeof navigator === "undefined" || !("share" in navigator)) {
+			return unsupported("unsupported");
+		}
+		return AVAILABLE;
+	},
+
+	async open(input: { url: string; title?: string }): Promise<boolean> {
+		if (!share.capability().available) return false;
+		try {
+			await navigator.share(input);
+			return true;
+		} catch {
+			// Dismissing the sheet rejects, and a dismissal is not a failure worth
+			// reporting to anybody.
+			return false;
+		}
+	},
+};
+
 export const webPlatform: PlatformAdapter = {
 	location,
 	orientation,
@@ -300,4 +321,5 @@ export const webPlatform: PlatformAdapter = {
 	haptics,
 	battery,
 	clipboard,
+	share,
 };

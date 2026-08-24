@@ -36,6 +36,7 @@ export async function writeMapConfig(
 		selection: map.selection,
 		validHidingArea: map.validHidingArea,
 		hidingRadiusMeters: map.hidingRadiusMeters,
+		modeIds: map.modeIds ? [...map.modeIds] : null,
 		sourceTemplateId: options.sourceTemplateId,
 		supersedesConfigId: options.supersedesConfigId,
 		contentHash: map.contentHash,
@@ -99,7 +100,10 @@ export function mapEventPayload(mapConfigId: string, map: BuiltMap) {
 export function starterMap(): BuiltMap {
 	return buildMap(
 		{
-			name: "Berlin — starter map",
+			// A player-facing name: this is what the lobby header and the briefing
+			// call the game, and "starter map" is builder vocabulary rather than
+			// anything a player agreed to play on.
+			name: "All of Berlin",
 			scalePreset: "city",
 			selection: drawnSelection([
 				[13.29, 52.46],

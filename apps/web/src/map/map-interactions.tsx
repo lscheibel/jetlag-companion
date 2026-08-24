@@ -1,4 +1,4 @@
-import type { LngLat } from "@zero-lag/geo";
+import type { BBox, LngLat } from "@zero-lag/geo";
 import { useEffect, useRef } from "react";
 import type { RadiusDraft, RingDraft } from "./draw-gestures";
 import { useMapInstance } from "./map-canvas";
@@ -44,23 +44,32 @@ export function MapFlyTo({
 		| null;
 }) {
 	const map = useMapInstance();
+	const targetRef = useRef(target);
+	targetRef.current = target;
+	const key =
+		target === null
+			? ""
+			: target.kind === "point"
+				? `p:${target.point.join(",")}`
+				: `b:${target.bounds.join(",")}`;
 	useEffect(() => {
-		if (!map || !target) return;
-		if (target.kind === "point") {
+		const next = targetRef.current;
+		if (!map || !next) return;
+		if (next.kind === "point") {
 			map.flyTo({
-				center: [...target.point],
+				center: [...next.point],
 				zoom: Math.max(map.getZoom(), 15),
 			});
 		} else {
 			map.fitBounds(
 				[
-					[target.bounds[0], target.bounds[1]],
-					[target.bounds[2], target.bounds[3]],
+					[next.bounds[0], next.bounds[1]],
+					[next.bounds[2], next.bounds[3]],
 				],
 				{ padding: 48 },
 			);
 		}
-	}, [map, target]);
+	}, [map, key]);
 	return null;
 }
 
@@ -102,6 +111,79 @@ export function MapPointerHandler({
 			onRadiusChange: (draft, cause) => radiusRef.current?.(draft, cause),
 			onRingChange: (draft, cause) => ringRef.current?.(draft, cause),
 		});
+	}, [map]);
+	return null;
+}
+
+export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
+	const map = useMapInstance();
+
+	return (
+		<button
+			aria-label="Show the whole area"
+			className="grid size-11 place-items-center rounded-[14px] border border-hairline bg-surface/90 text-ink shadow-sm backdrop-blur"
+			data-testid="area-fit-selection"
+			disabled={!bounds || !map}
+			onClick={() => {
+				if (!map || !bounds) return;
+				map.fitBounds(
+					[
+						[bounds[0], bounds[1]],
+						[bounds[2], bounds[3]],
+					],
+					{ padding: 48, duration: 500 },
+				);
+			}}
+			type="button"
+		>
+			<svg
+				aria-hidden="true"
+				fill="none"
+				height="20"
+				stroke="currentColor"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth="2"
+				viewBox="0 0 24 24"
+				width="20"
+			>
+				<title>Fit</title>
+				<path d="M8 3H5a2 2 0 0 0-2 2v3" />
+				<path d="M16 3h3a2 2 0 0 1 2 2v3" />
+				<path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+				<path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+			</svg>
+		</button>
+	);
+}
+
+export function MapIdleBounds({
+	onIdle,
+}: {
+	readonly onIdle: (view: { bbox: BBox; zoom: number }) => void;
+}) {
+	const map = useMapInstance();
+	const report = useRef(onIdle);
+	report.current = onIdle;
+
+	useEffect(() => {
+		if (!map) return;
+		const emit = () => {
+			const bounds = map.getBounds();
+			report.current({
+				bbox: [
+					bounds.getWest(),
+					bounds.getSouth(),
+					bounds.getEast(),
+					bounds.getNorth(),
+				],
+				zoom: map.getZoom(),
+			});
+		};
+		map.on("idle", emit);
+		return () => {
+			map.off("idle", emit);
+		};
 	}, [map]);
 	return null;
 }

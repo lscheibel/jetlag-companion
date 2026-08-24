@@ -51,6 +51,14 @@ export type PresenceEntry = {
 	 * counts up from it using only its own. Null when there has never been a fix.
 	 */
 	fixAgeMs: number | null;
+	/**
+	 * How long since this player was last online, measured here, at fan-out.
+	 *
+	 * Zero while they are online. The same clock rule as `fixAgeMs`: one elapsed
+	 * duration, counted on this machine, so a reader can add the time since the
+	 * frame arrived without ever subtracting one device clock from another.
+	 */
+	lastSeenAgeMs: number;
 };
 
 export type EphemeralDown =
@@ -166,6 +174,7 @@ function stampAges(entries: Iterable<PresenceEntry>): PresenceEntry[] {
 	return [...entries].map((entry) => ({
 		...entry,
 		fixAgeMs: entry.fix?.receivedAt == null ? null : now - entry.fix.receivedAt,
+		lastSeenAgeMs: entry.online ? 0 : now - entry.onlineSince,
 	}));
 }
 
@@ -343,7 +352,10 @@ export function attachEphemeralChannel(server: Server, path: string): void {
 			const replaced = [...room.connections].some(
 				(other) => other.playerId === connection?.playerId,
 			);
-			if (entry && !replaced) entry.online = false;
+			if (entry && !replaced) {
+				entry.online = false;
+				entry.onlineSince = Date.now();
+			}
 
 			room.dirty = true;
 			closeRoomIfEmpty(connection.gameId, room);
@@ -477,6 +489,7 @@ async function register(
 			onlineSince: Date.now(),
 			online: true,
 			fixAgeMs: null,
+			lastSeenAgeMs: 0,
 		});
 	}
 	room.dirty = true;

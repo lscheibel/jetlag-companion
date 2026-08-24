@@ -52,6 +52,22 @@ export function joinFailureMessage(reason: JoinFailure): string {
 	}
 }
 
+/**
+ * What a join code resolves to before anybody has typed a name. m1-spec §8.
+ *
+ * A game has no title of its own, so what identifies it here is the code plus
+ * the two facts that tell you it is the right room: how many people are already
+ * waiting in it, and who is running it.
+ */
+const gamePreview = z.object({
+	code: z.string(),
+	status: z.enum(["draft", "lobby", "running"]),
+	playerCount: z.number(),
+	hostName: z.string().nullable(),
+});
+
+export type GamePreview = z.infer<typeof gamePreview>;
+
 const errorBody = z.object({ error: z.string() });
 
 async function post<T>(path: string, body: unknown): Promise<T> {
@@ -70,6 +86,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
+async function get(path: string): Promise<unknown> {
+	const response = await fetch(`${serverUrl()}${path}`);
+	if (!response.ok) {
+		const detail = await response.text();
+		throw new JoinError(
+			readFailure(detail),
+			`${path} failed: ${response.status} ${detail}`,
+		);
+	}
+	return response.json();
+}
+
 function readFailure(body: string): JoinFailure {
 	const parsed = errorBody.safeParse(safeJson(body));
 	if (!parsed.success) return "unknown";
@@ -84,6 +112,16 @@ function safeJson(body: string): unknown {
 	} catch {
 		return null;
 	}
+}
+
+export async function fetchGamePreview(code: string): Promise<GamePreview> {
+	const body = await get(
+		`/api/games/${encodeURIComponent(code.toUpperCase())}`,
+	);
+	const parsed = gamePreview.safeParse(body);
+	if (!parsed.success)
+		throw new JoinError("unknown", "unreadable game preview");
+	return parsed.data;
 }
 
 export async function createGame(displayName: string): Promise<Session> {

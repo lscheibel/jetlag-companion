@@ -1,0 +1,221 @@
+import type { CatalogAdminLevel } from "@zero-lag/catalog";
+import {
+	type BBox,
+	multiPolygonBBox,
+	multiPolygonToRegion,
+	regionArea,
+} from "@zero-lag/geo";
+import type { AreaPieceSource } from "@zero-lag/schema";
+import { Field } from "@zero-lag/ui/components/field";
+import { Surface } from "@zero-lag/ui/components/surface";
+import { cn } from "@zero-lag/ui/lib/utils";
+import { useMemo, useState } from "react";
+import { formatArea } from "../builder/use-builder";
+import { useGameShell } from "../game/shell";
+import { MapFlyTo, MapIdleBounds } from "../map/map-interactions";
+import { EditorMap } from "../setup/area/editor-map";
+import { EditorScreen } from "../setup/area/editor-screen";
+import { GERMANY_BOUNDS } from "../setup/area/labels";
+import { FoldLayer, PreviewLayer } from "../setup/area/layers";
+import { useAreaToolNav } from "../setup/area/tool-nav";
+import { useBoundarySearch } from "../setup/area/use-boundary-search";
+import { useAreaEditor } from "../setup/area/use-editor";
+import { WouldBecome } from "../setup/area/would-become";
+
+type PlaceFilter = "land" | "district" | "ortsteil";
+
+const FILTERS: Record<
+	PlaceFilter,
+	{
+		label: string;
+		adminLevel: CatalogAdminLevel;
+		source: AreaPieceSource;
+	}
+> = {
+	land: { label: "Länder", adminLevel: 4, source: "city" },
+	district: { label: "District", adminLevel: 9, source: "district" },
+	ortsteil: { label: "Ortsteil", adminLevel: 10, source: "district" },
+};
+
+const FILTER_IDS = [
+	"land",
+	"district",
+	"ortsteil",
+] as const satisfies PlaceFilter[];
+
+/** Below this, the map is the whole country and is not a useful search filter. */
+const VIEW_FILTER_ZOOM = 9;
+
+export default function SetupAreaDistricts() {
+	const { session } = useGameShell();
+	const editor = useAreaEditor();
+	const nav = useAreaToolNav();
+	const [filters, setFilters] = useState<Record<PlaceFilter, boolean>>({
+		land: true,
+		district: true,
+		ortsteil: true,
+	});
+	const [query, setQuery] = useState("");
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [view, setView] = useState<{ bbox: BBox; zoom: number } | null>(null);
+	const levels = useMemo(
+		() =>
+			FILTER_IDS.filter((id) => filters[id]).map(
+				(id) => FILTERS[id].adminLevel,
+			),
+		[filters],
+	);
+	const viewBbox = view && view.zoom >= VIEW_FILTER_ZOOM ? view.bbox : null;
+	const search = useBoundarySearch(session, levels, query, viewBbox);
+	const selected = search.rows.find((row) => row.id === selectedId) ?? null;
+	const op = editor.cut ? "subtract" : "add";
+	const preview = selected ? selected.polygons : null;
+	const flyTo = selected
+		? {
+				kind: "bounds" as const,
+				bounds: multiPolygonBBox(selected.polygons) ?? GERMANY_BOUNDS,
+			}
+		: null;
+
+	function commit() {
+		if (!selected) return;
+		const filter = FILTER_IDS.find(
+			(id) => FILTERS[id].adminLevel === selected.adminLevel,
+		);
+		if (!filter) return;
+		editor.addGeometry({
+			source: FILTERS[filter].source,
+			name: selected.name,
+			geometry: selected.polygons,
+		});
+		nav.afterCommit();
+	}
+
+	function toggle(id: PlaceFilter) {
+		setFilters((current) => ({ ...current, [id]: !current[id] }));
+		setSelectedId(null);
+	}
+
+	return (
+		<EditorScreen
+			actionDisabled={!selected}
+			actionLabel={
+				selected
+					? editor.cut
+						? `Take out ${selected.name}`
+						: `Add ${selected.name}`
+					: "Pick a place"
+			}
+			actionTestId="area-district-add"
+			bodyClassName="overflow-hidden"
+			onAction={commit}
+			title={editor.cut ? "Take out a place" : "Add a place"}
+		>
+			<EditorMap
+				bounds={multiPolygonBBox(editor.foldMulti) ?? GERMANY_BOUNDS}
+				className="h-[18rem] shrink-0 rounded-[18px] border border-hairline"
+				fitPadding={12}
+			>
+				<FoldLayer area={editor.foldMulti} />
+				{selected && <PreviewLayer geometry={selected.polygons} op={op} />}
+				<MapIdleBounds onIdle={setView} />
+				<MapFlyTo target={flyTo} />
+			</EditorMap>
+			<div className="shrink-0">
+				<Field
+					autoCapitalize="words"
+					autoComplete="off"
+					data-testid="area-place-search"
+					label="Find a place"
+					onChange={(event) => setQuery(event.target.value)}
+					placeholder="Berlin, Mitte, Schwabing…"
+					type="search"
+					value={query}
+				/>
+			</div>
+			<div
+				className="grid shrink-0 grid-cols-3 gap-1 rounded-[15px] border border-hairline bg-surface p-1"
+				data-testid="area-boundary-tabs"
+			>
+				{FILTER_IDS.map((id) => {
+					const item = FILTERS[id];
+					const on = filters[id];
+					return (
+						<button
+							aria-pressed={on}
+							className={cn(
+								"rounded-[11px] py-2 font-mono text-[0.6rem] uppercase tracking-[0.08em]",
+								on ? "bg-action font-bold text-action-ink" : "text-ink-dim",
+							)}
+							data-testid={`area-boundary-tab-${id}`}
+							key={id}
+							onClick={() => toggle(id)}
+							type="button"
+						>
+							{item.label}
+						</button>
+					);
+				})}
+			</div>
+			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+				{search.ready && search.rows.length === 0 && (
+					<p className="px-1 text-ink-dim text-sm leading-snug">
+						{levels.length === 0
+							? "Turn a kind on to search it."
+							: query.trim()
+								? `Nothing named “${query.trim()}”.`
+								: viewBbox
+									? "Nothing in this view. Pan the map or type a name."
+									: `Type a name, or zoom the map. ${search.total.toLocaleString("en")} in the catalog.`}
+					</p>
+				)}
+				{search.truncated && search.rows.length > 0 && (
+					<p className="eyebrow px-1 text-ink-dim">
+						Showing {search.rows.length} of {search.total.toLocaleString("en")}.
+						Zoom the map or keep typing.
+					</p>
+				)}
+				{search.rows.map((row) => {
+					const region = multiPolygonToRegion(row.polygons);
+					const on = row.id === selectedId;
+					return (
+						<button
+							className={cn(
+								"flex w-full shrink-0 items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+								on ? "border-action" : "border-hairline",
+							)}
+							data-testid={`area-district-${row.name}`}
+							key={row.id}
+							onClick={() => setSelectedId(row.id)}
+							type="button"
+						>
+							<span className="min-w-0 flex-1">
+								<b className="block text-[0.85rem] leading-tight">{row.name}</b>
+								<span className="eyebrow mt-0.5 block text-ink-dim">
+									{row.label} · {formatArea(regionArea(region))}
+								</span>
+							</span>
+							{on ? (
+								<span className="rounded-full bg-live/15 px-2 py-1 font-mono text-[0.6rem] text-live uppercase">
+									{editor.cut ? "Taking out" : "Adding"}
+								</span>
+							) : (
+								<span className="eyebrow text-ink-dim">
+									{editor.cut ? "Take out" : "Add"}
+								</span>
+							)}
+						</button>
+					);
+				})}
+			</div>
+			{preview && (
+				<Surface
+					className="flex shrink-0 items-center justify-between px-3.5 py-2.5"
+					data-testid="area-district-would"
+				>
+					<WouldBecome geometry={preview} op={op} />
+				</Surface>
+			)}
+		</EditorScreen>
+	);
+}

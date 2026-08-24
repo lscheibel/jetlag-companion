@@ -82,9 +82,7 @@ describe("survivingSearchArea", () => {
 	});
 
 	it("ignores another hider team's constraints", () => {
-		const rows = [
-			{ ...INCLUDE_RADIUS, hiderTeamId: "hider-2", enabled: true },
-		];
+		const rows = [{ ...INCLUDE_RADIUS, hiderTeamId: "hider-2", enabled: true }];
 		const forOne = survivingSearchArea(SEED, rows, "hider-1");
 		const empty = survivingSearchArea(SEED, [], "hider-1");
 		expect(forOne.hash).toBe(empty.hash);

@@ -1,0 +1,591 @@
+<!doctype html><html><head><!-- frame-runtime --><base href="/_f/1787255567-ccf0/"><script>window.__FRAME_PREAMBLE={"capabilities":{"artifact":"artifact.oqIe8shs.js","assets":"assets.BkxVItX2.js","comments":"comments.GLuHR3zP.js","db":"db.CRhVHzSt.js","downloads":"downloads.C3GSvEDP.js","embed":"embed.CZsbekoQ.js","mcp":"mcp.D3B2EyQu.js","permissions":"permissions.BNySkLV5.js","room":"room.DE7EMui-.js","sample":"sample.C7z_6W62.js","self":"artifact.oqIe8shs.js","user":"user.BpKav-Rf.js"},"transforms":"_transforms.h3_8GSUa.js","comments":"_comments.BOgkE6qU.js","translate":"_translate.5HCW4BJh.js"}</script><script>(function(){"use strict";var Y=["light","dark","system"],X=/^[A-Za-z0-9_-]{1,64}$/,D=/^[a-zA-Z_:][a-zA-Z0-9_:.-]{0,127}$/,G=new Set(["class","hidden","value","checked"]);function V(e){const t=e.toLowerCase();return t.startsWith("data-")||t.startsWith("aria-")||G.has(t)}var be="http://www.w3.org/1999/xhtml",Z="http://www.w3.org/2000/svg",J=new Set(["script","style","iframe","noscript","noframes","noembed","xmp","plaintext","template","title","textarea","object","embed"]),Q=new Set(["script","style"]);function ee(e){const t=e.localName.toLowerCase();return e.namespaceURI==="http://www.w3.org/1999/xhtml"?!J.has(t):e.namespaceURI===Z?!Q.has(t):!1}var te=new Set(["html","head","body","frameset"]);function re(e){return e.namespaceURI==="http://www.w3.org/1999/xhtml"&&te.has(e.localName)}function ne(e){if(e===null||typeof e!="object")return!1;const t=e;if(typeof t.target!="string"||!X.test(t.target)||t.text!==void 0&&typeof t.text!="string")return!1;if(t.attrsSet!==void 0){if(t.attrsSet===null||typeof t.attrsSet!="object")return!1;for(const[n,s]of Object.entries(t.attrsSet))if(!D.test(n)||typeof s!="string")return!1}if(t.attrsRemoved!==void 0){if(!Array.isArray(t.attrsRemoved))return!1;for(const n of t.attrsRemoved)if(typeof n!="string"||!D.test(n))return!1}return!0}function se(e,t){if(e===null||typeof e!="object")return!1;const{seq:n,elements:s}=e;if(typeof n!="number"||!Number.isSafeInteger(n)||!Array.isArray(s)||s.length===0||s.length>64)return!1;for(let o=0;o<s.length;o++)if(!t(s[o]))return!1;return!0}function ae(e){return e===null||typeof e!="object"?!1:se(e.__frame_patch,ne)}function oe(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function ie(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function le(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&Y.includes(n)}var O="__frame_scroll",ce=150,ue=310,fe=160,pe=3e4;function de(){let e=0,t=!1,n=!1,s=!1,o=0,l=null;const c=i=>{try{sessionStorage.setItem(O,JSON.stringify({y:i}))}catch{}},f=()=>{if(clearTimeout(e),l===null)return;const i=l;l=null,c(i)},S=()=>{if(t){t=!1;return}n=!0,l=scrollY,clearTimeout(e),e=setTimeout(f,ce)};try{addEventListener("scroll",S,{passive:!0}),addEventListener("pagehide",f)}catch{}const v=()=>{let i;try{i=sessionStorage.getItem(O)}catch{return null}if(i===null)return null;let d;try{d=JSON.parse(i)}catch{d=null}const u=d?.y;if(!(typeof u=="number"&&Number.isFinite(u)&&u>=0)){try{sessionStorage.removeItem(O)}catch{}return null}return u};let b=!1;const m=i=>{try{const d=scrollY;scrollTo({top:i,left:0,behavior:"instant"}),o=i,s=!0,clearTimeout(e),l=null,c(i);const u=scrollY;u!==d&&(t=!0),u!==i&&!b&&(b=!0,addEventListener("load",()=>{try{if(scrollY===u){const h=v();m(h!==null?h:o)}}catch{}},{once:!0}))}catch{}},y=()=>{try{return!!location.hash}catch{return!0}};let g=!1;const E=()=>{try{if(g||innerWidth>ue||innerHeight>fe)return;g=!0;const i=Date.now(),d=()=>{try{removeEventListener("resize",d)}catch{}if(Date.now()-i>pe||n||y())return;const u=v();m(u!==null?u:o)};addEventListener("resize",d)}catch{}};let r=!1,p=!1;return{restore(){if(r||(r=!0,y()))return;const i=v();i!==null&&(m(i),E())},promoted(){if(p||(p=!0,y()))return;const i=v();i!==null?(m(i),E()):s&&m(o)}}}var Ee="modulepreload",Ae=function(e){return"/"+e},Re={},me=function(t,n,s){let o=Promise.resolve();function l(c){const f=new Event("vite:preloadError",{cancelable:!0});if(f.payload=c,window.dispatchEvent(f),!f.defaultPrevented)throw c}return o.then(c=>{for(const f of c||[])f.status==="rejected"&&l(f.reason);return t().catch(l)})};(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let s=0;for(let o=0;o<n.length;o++){const l=n[o];try{e(t,l,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[l]}catch{}try{e(t,l,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[l]=="function"&&s++}if(s&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:s},"*")}catch{}})();var he=1e4,_e=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function F(e){for(const t of _e)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}var M=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),j=window.__FRAME_PREAMBLE?.transforms,N=window.__FRAME_PREAMBLE?.comments,I=window.__FRAME_PREAMBLE?.translate,L=/^[\w.-]+\.js$/;function T(e){return me(()=>import("/_runtime/"+e),void 0)}function z(e,t){return{contract:e.contract,changes:new Set(e.changes??[]),flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:new Map,shellOrigin:t,mount:W,pipe:()=>({wrap:(n,s)=>(...o)=>{try{return s(...o)}catch(l){return Promise.reject(l)}}})}}var P=null,w=null;function q(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var B=!1;function ve(e,t){const n=[];for(const s of e.elements){const o=document.querySelector(`[data-id="${s.target}"]`);if(!o){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}if([...Object.keys(s.attrsSet??{}),...s.attrsRemoved??[]].some(l=>!V(l))){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}if(s.text!==void 0&&(!ee(o)||re(o))){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}for(const[l,c]of Object.entries(s.attrsSet??{}))if(!$(o,l)){try{o.setAttribute(l,c)}catch{}H(o,l,c)}for(const l of s.attrsRemoved??[])$(o,l)||(o.removeAttribute(l),H(o,l,null));typeof s.text=="string"&&(o.textContent=s.text),n.push(s.target)}try{document.dispatchEvent(new CustomEvent("claude:edit",{detail:{seq:e.seq,targets:n}}))}catch{}}function H(e,t,n){if(!(e instanceof HTMLInputElement))return;const s=t.toLowerCase();s==="checked"?e.checked=n!==null:s==="value"&&e.type!=="file"&&(e.value=n??"")}function $(e,t){const n=t.toLowerCase(),s=e;return n==="data-id"||(n==="value"||n==="checked")&&(s.__artifactSecret===!0||/^(password|hidden|file)$/.test(s.type??"")||/(^|\s)(cc-|one-time-code|current-password|new-password)/i.test(`${e.getAttribute("autocomplete")??""} ${s.autocomplete??""}`))}function K(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,B=!0):B&&(delete t.dataset.theme,t.style.colorScheme="",B=!1)}var R=new Map;function ye(){let e;const t={u:new Promise(n=>{e=n}),r:n=>{t.done=!0,e(n)},done:!1,nulled:!1};return t}var ge=Object.freeze(Object.assign(Object.create(null),{call:Function.prototype.call,apply:Function.prototype.apply,bind:Function.prototype.bind})),W=(e,t)=>{const n=R.get(e);if(!n||n.done){n?.nulled&&w&&parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:e}},w);return}const s=typeof t=="function"?Object.setPrototypeOf(t,ge):Object.assign(Object.create(null),t);typeof s.then=="function"&&delete s.then,n.r(Object.freeze(s))},U=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(U&&U.writable===!1)){const e=j&&L.test(j)?T(j).catch(()=>{}):Promise.resolve(void 0),t=r=>{if(r.type==="auxclick"&&r.button!==1)return;const p=r.target,i=p&&p.closest?p.closest("a[href],area[href]"):null;if(!i)return;const d=i.getAttribute("href");if(!d)return;let u,h;try{u=new URL(d,document.baseURI),h=new URL(document.baseURI).origin}catch{return}if((u.protocol==="http:"||u.protocol==="https:")&&u.origin!==h){r.preventDefault();const _=(i.getAttribute("target")??"").toLowerCase(),C=r.type==="auxclick"||r.metaKey||r.ctrlKey||r.shiftKey||r.altKey||!["","_self","_top","_parent"].includes(_);parent.postMessage({__frame_nav:!0,url:u.href,newTab:C},"*")}};addEventListener("click",t,!0),addEventListener("auxclick",t,!0);const n={},s=r=>{r.isTrusted&&(n.pointer=!0)},o=r=>{r.isTrusted&&(n.click=!0)};addEventListener("pointermove",s,{capture:!0,passive:!0}),addEventListener("click",o,{capture:!0,passive:!0}),e.then(r=>{r?.wireNav&&(r.wireNav(),removeEventListener("click",t,!0),removeEventListener("auxclick",t,!0),removeEventListener("pointermove",s,!0),removeEventListener("click",o,!0),r.wireEngagement?.(n))});let l=null;try{l=de()}catch{}const c=U?.value??{};q(window,"claude",c);for(const r of Object.keys(M)){if(c[r]!==void 0){q(c,r,c[r]);continue}R.set(r,ye())}if(c.use===void 0){const r=p=>{if(typeof p!="string"||!Object.hasOwn(M,p))return Promise.resolve(null);const i=R.get(p);return i?i.u:Promise.resolve(c[p]??null)};try{Object.defineProperty(c,"use",{value:r,writable:!0,configurable:!0,enumerable:!1})}catch{}}let f=null,S=null,v=0;const b=r=>{r.source!==parent||!F(r.origin)||oe(r.data)&&(f=r.data.__frame_init,w=r.origin,removeEventListener("message",b),clearTimeout(v),S?.())};addEventListener("message",b),parent.postMessage({__frame_connect:!0},"*");const m=new Promise(r=>{S=r,v=setTimeout(()=>{removeEventListener("message",b),r()},he)}),y=document.readyState==="loading"?new Promise(r=>document.addEventListener("DOMContentLoaded",()=>r(),{once:!0})):Promise.resolve();y.then(()=>{try{l?.restore()}catch{}});const g={cb:null},E=r=>{if(!(r.source!==parent||!F(r.origin))&&ie(r.data)){try{l?.promoted()}catch{}g.cb?.()}};addEventListener("message",E),m.then(async()=>{if(!f||!w){for(const a of R.values())a.nulled=!0,a.r(null);return}K(f.theme);const r=w;let p=!1,i=!1;addEventListener("message",a=>{if(a.source!==parent||a.origin!==r)return;le(a.data)&&K(a.data.__frame_theme.theme),ae(a.data)&&ve(a.data.__frame_patch,r);const k=a.data?.__fc_mode;k&&typeof k=="object"&&!p&&N&&L.test(N)&&(p=!0,T(N).then(x=>x.install?.(r,k.on===!0)).catch(()=>{}));const A=a.data?.__ft_cmd;A&&typeof A=="object"&&!i&&I&&L.test(I)&&(i=!0,T(I).then(x=>x.install?.(r,A)).catch(()=>{}))});const d=Object.keys(f.capabilities??{}).filter(a=>Object.hasOwn(M,a)).map(a=>[a,M[a]]).filter(a=>typeof a[1]=="string"&&L.test(a[1])),u=await Promise.allSettled(d.map(([,a])=>T(a))),h=await e,_=w;if(h?.buildBoot||parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},_),h?.buildBoot)try{P=h.buildBoot(f,h.TRANSFORMS??{},{shellOrigin:_,mount:W},a=>parent.postMessage({__frame_cap_telemetry:a},_))}catch{parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},_),P=z(f,_)}else P=z(f,_);const C=a=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:a}},_),we=P;u.forEach((a,k)=>{const A=d[k][0];if(a.status!=="fulfilled"){C(A);return}try{a.value?.install?.(we)}catch{C(A)}});for(const a of R.values())a.done||(a.nulled=!0,a.r(null));await y,parent.postMessage({__frame_ready:!0},w),e.then(a=>a?.installSizeReporter?.(_,g))})}})();</script><!-- /frame-runtime --><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Zero Lag Question Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ── Zero Lag mockup kit ─────────────────────────────────────────────
+   Page chrome is theme-aware. Device screens commit to the app's own
+   field-dark UI (see the sun-glare variant in the Field Map deck).   */
+
+:root{
+  --paper:#F0F3F7; --paper-2:#FFFFFF; --paper-3:#E4E9F0;
+  --ink:#0B111A; --ink-2:#3D4A5C; --ink-3:#6B7A8E;
+  --rule:#CBD5E1; --rule-2:#E2E8F0;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00874B; --red:#DC3A1C; --pink:#C13F94;
+  --glow:0 1px 0 rgba(11,17,26,.06);
+  --band:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+    --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+    --rule:#26303E; --rule-2:#1B2430;
+    --yellow:#FFE01F; --yellow-ink:#12160B;
+    --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+    --glow:0 1px 0 rgba(255,255,255,.04);
+    --band:#0D131C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+  --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+  --rule:#26303E; --rule-2:#1B2430;
+  --yellow:#FFE01F; --yellow-ink:#12160B;
+  --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+  --glow:0 1px 0 rgba(255,255,255,.04);
+  --band:#0D131C;
+}
+
+/* Device screen palette — fixed, it is the product's own theme */
+:root{
+  --s-bg:#0A0D14; --s-1:#141B26; --s-2:#1D2634; --s-3:#293344;
+  --s-ink:#F3F6FA; --s-dim:#93A1B6; --s-line:rgba(255,255,255,.09);
+  --s-yellow:#FFE01F; --s-blue:#3E88E8; --s-green:#22C179;
+  --s-red:#FF5A3C; --s-pink:#E86BB4; --s-amber:#FFA426;
+  /* team identity — Okabe–Ito, from apps/web/src/lobby/palette.ts */
+  --t-vermillion:#D55E00; --t-cobalt:#0072B2; --t-jade:#009E73;
+  --t-orchid:#CC79A7; --t-amber:#E69F00; --t-sky:#56B4E9;
+  --t-citron:#F0E442; --t-slate:#4B4B4B;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table{margin:0}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;text-wrap:balance;margin:0;line-height:1.02;letter-spacing:-.02em}
+p{margin:0}
+.mono{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+.page{max-width:1220px;margin:0 auto;padding:0 24px 96px}
+
+/* ── masthead ─────────────────────────────────────────────── */
+.masthead{padding:64px 0 40px;border-bottom:3px solid var(--ink);position:relative}
+.eyebrow{
+  font-family:"Azeret Mono",ui-monospace,monospace;font-size:12px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap
+}
+.eyebrow b{color:var(--ink);font-weight:700}
+.eyebrow .u{
+  background:var(--blue);color:#fff;width:22px;height:22px;border-radius:5px;
+  display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:0
+}
+.masthead h1{font-size:clamp(44px,7.2vw,88px);max-width:15ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:24px;max-width:62ch;font-size:19px;color:var(--ink-2)}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}
+.tag{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;font-weight:500;letter-spacing:.06em;
+  border:1.5px solid var(--rule);border-radius:999px;padding:6px 13px;color:var(--ink-2);background:var(--paper-2)
+}
+.tag.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+
+/* ── bands ────────────────────────────────────────────────── */
+.band{padding:64px 0 8px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:40px;max-width:760px}
+.kicker{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink);display:inline-flex;align-items:center;gap:9px
+}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(28px,3.6vw,42px)}
+.band-head p{color:var(--ink-2);font-size:17px;max-width:66ch}
+
+/* ── device rack ──────────────────────────────────────────── */
+.rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:44px 36px;align-items:start}
+.rack.two{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.mock{display:flex;flex-direction:column;gap:20px;min-width:0}
+.mock-label{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mock-label .n{
+  font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;
+  background:var(--ink);color:var(--paper);border-radius:4px;padding:3px 7px
+}
+.mock-label h3{font-size:21px}
+.mock-label .who{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--s-bg);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38, 0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--s-ink);font-size:13.5px;line-height:1.4;
+  animation:rise .7s cubic-bezier(.2,.9,.25,1) both;
+}
+.mock:nth-child(2) .device{animation-delay:.09s}
+.mock:nth-child(3) .device{animation-delay:.18s}
+.mock:nth-child(4) .device{animation-delay:.27s}
+@keyframes rise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.statusbar{
+  height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:11px;color:var(--s-ink);letter-spacing:.02em
+}
+.appbar{
+  flex:0 0 auto;padding:6px 16px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between
+}
+.appbar .title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar>div:first-child{min-width:0}
+.scr-body{flex:1 1 auto;padding:0 16px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.tabbar{
+  flex:0 0 auto;height:62px;border-top:1px solid var(--s-line);display:grid;grid-auto-flow:column;
+  align-items:center;padding:0 8px 8px;gap:2px
+}
+.tabbar div{
+  display:grid;place-items:center;gap:3px;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--s-dim);font-family:"Azeret Mono",monospace;padding-top:8px;border-radius:12px
+}
+.tabbar div span{font-size:17px;line-height:1}
+.tabbar div.on{color:var(--s-yellow)}
+
+/* screen atoms */
+.s-card{background:var(--s-1);border:1px solid var(--s-line);border-radius:18px;padding:12px 13px}
+.s-row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+.grow{flex:1 1 auto;min-width:0}
+.dim{color:var(--s-dim)}
+.tiny{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-family:"Azeret Mono",monospace;white-space:nowrap}
+.subnote{font-family:"Archivo",sans-serif;font-size:12px;color:var(--s-dim);margin-top:4px;line-height:1.35}
+.num{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-xl{
+  min-height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;letter-spacing:.01em;
+  background:var(--s-yellow);color:#12160B;border:0;width:100%;position:relative;overflow:hidden;
+  box-shadow:0 5px 0 #B39B00;transition:transform .12s cubic-bezier(.3,1.4,.5,1),box-shadow .12s;cursor:pointer
+}
+.btn-xl:hover{transform:translateY(-2px);box-shadow:0 7px 0 #B39B00}
+.btn-xl:active{transform:translateY(4px);box-shadow:0 1px 0 #B39B00}
+.btn-xl::after{
+  content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);
+  transform:translateX(-120%);animation:sheen 3.6s ease-in-out infinite
+}
+@keyframes sheen{0%,72%{transform:translateX(-120%)}92%,100%{transform:translateX(120%)}}
+.btn-xl.ghost{background:transparent;color:var(--s-ink);border:2px solid var(--s-3);box-shadow:0 5px 0 var(--s-2)}
+.btn-xl.ghost:hover{box-shadow:0 7px 0 var(--s-2)}
+.btn-xl.ghost::after{display:none}
+.btn-xl.red{background:var(--s-red);color:#160604;box-shadow:0 5px 0 #A62A15}
+.btn-xl.red:hover{box-shadow:0 7px 0 #A62A15}
+.btn-xl.green{background:var(--s-green);color:#04180E;box-shadow:0 5px 0 #11784B}
+.btn-xl.green:hover{box-shadow:0 7px 0 #11784B}
+.btn-xl small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.72}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--s-2);color:var(--s-dim);white-space:nowrap
+}
+.pill.live{background:rgba(34,193,121,.16);color:var(--s-green)}
+.pill.stale{background:rgba(255,164,38,.16);color:var(--s-amber)}
+.pill.off{background:rgba(255,90,60,.15);color:var(--s-red)}
+.pill.hot{background:var(--s-yellow);color:#12160B;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.dot.beat{animation:beat 1.9s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.42;transform:scale(.82)}}
+
+.badge{
+  width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:19px;flex:0 0 auto;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)
+}
+.badge.sm{width:28px;height:28px;border-radius:9px;font-size:14px}
+
+.avatars{display:flex}
+.avatars i{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+  font-size:10px;font-weight:700;font-family:"Archivo",sans-serif;background:var(--s-3);color:var(--s-ink);
+  border:2px solid var(--s-1);margin-left:-7px
+}
+.avatars i:first-child{margin-left:0}
+
+/* annotations */
+.anno{list-style:none;margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:14px;position:relative;max-width:44ch}
+.anno::before{content:"";position:absolute;left:4px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--rule)}
+.anno li{position:relative;font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.anno li::before{
+  content:"";position:absolute;left:-20px;top:6px;width:11px;height:11px;border-radius:50%;
+  background:var(--paper);border:3px solid var(--blue)
+}
+.anno li b{color:var(--ink);font-weight:700}
+.anno li.y::before{border-color:var(--yellow)}
+.anno li.g::before{border-color:var(--green)}
+.anno li.r::before{border-color:var(--red)}
+.anno li.p::before{border-color:var(--pink)}
+
+/* prose blocks */
+.note{
+  background:var(--band);border:1px solid var(--rule);border-left:6px solid var(--yellow);
+  border-radius:4px 16px 16px 4px;padding:18px 20px;font-size:15px;color:var(--ink-2);max-width:70ch
+}
+.note b{color:var(--ink)}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden;margin-top:44px}
+.specs div{background:var(--band);padding:18px 20px}
+.specs dt{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.specs dd{margin:0;font-size:14.5px;color:var(--ink-2)}
+.specs dd b{color:var(--ink)}
+
+/* footer / tokens */
+.foot{margin-top:72px;border-top:3px solid var(--ink);padding-top:32px;display:grid;gap:28px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.sw{border-radius:12px;padding:12px 14px 14px;min-width:118px;border:1px solid var(--rule);background:var(--band)}
+.sw i{display:block;height:34px;border-radius:8px;margin-bottom:9px}
+.sw b{display:block;font-size:12.5px}
+.sw span{font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink-3)}
+.foot p{font-size:14px;color:var(--ink-3);max-width:70ch}
+
+@media (max-width:640px){
+  .page{padding:0 16px 64px}
+  .masthead{padding:40px 0 28px}
+  .device{max-width:100%}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+:where(a,button,[tabindex]):focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:6px}
+/* ── question loop ────────────────────────────────────────── */
+.target-strip{display:flex;gap:8px}
+.target{
+  flex:1;display:flex;align-items:center;gap:8px;background:var(--s-1);border:2px solid transparent;
+  border-radius:16px;padding:9px 8px;min-width:0;transition:transform .16s cubic-bezier(.3,1.5,.5,1)
+}
+.target:hover{transform:translateY(-2px)}
+.target.on{border-color:var(--s-yellow);background:rgba(255,224,31,.09)}
+.target b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.qtile{
+  display:flex;align-items:center;gap:11px;background:var(--s-1);border:1px solid var(--s-line);
+  border-radius:18px;padding:11px 12px;transition:transform .16s cubic-bezier(.3,1.4,.5,1),border-color .16s
+}
+.qtile:hover{transform:translateX(3px);border-color:var(--s-3)}
+.qtile.on{border-color:var(--s-yellow);background:rgba(255,224,31,.08)}
+.qtile .ico{
+  width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:20px;flex:0 0 auto;
+  background:var(--s-2)
+}
+.qtile.on .ico{background:var(--s-yellow);color:#12160B}
+.qtile .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px}
+.qtile .cost{
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.06em;background:var(--s-2);
+  border-radius:8px;padding:4px 7px;white-space:nowrap
+}
+.radio-row{display:flex;gap:7px;margin-top:8px}
+.radio-row b{
+  flex:1;text-align:center;border-radius:12px;padding:9px 4px;background:var(--s-2);
+  font-family:"Azeret Mono",monospace;font-size:11px;min-height:40px;display:grid;place-items:center
+}
+.radio-row b.on{background:var(--s-yellow);color:#12160B}
+
+.countdown{position:relative;width:96px;height:96px;flex:0 0 auto}
+.countdown svg{transform:rotate(-90deg)}
+.countdown circle{fill:none;stroke-width:9;stroke-linecap:round}
+.countdown .track{stroke:var(--s-2)}
+.countdown .bar{stroke:var(--s-yellow);stroke-dasharray:264;stroke-dashoffset:70;animation:tick 12s linear infinite}
+@keyframes tick{from{stroke-dashoffset:44}to{stroke-dashoffset:264}}
+.countdown .lab{
+  position:absolute;inset:0;display:grid;place-items:center;font-family:"Azeret Mono",monospace;
+  font-size:19px;font-variant-numeric:tabular-nums
+}
+
+.suggest{
+  border-radius:20px;padding:13px;background:linear-gradient(180deg,rgba(34,193,121,.16),rgba(34,193,121,.05));
+  border:1.5px solid rgba(34,193,121,.5);display:flex;flex-direction:column;gap:8px
+}
+.suggest .verdict{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em;color:var(--s-green);line-height:1}
+.suggest .inputs{display:flex;flex-wrap:wrap;gap:6px}
+.recompute{display:inline-flex;align-items:center;gap:6px;font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--s-dim)}
+.recompute i{width:7px;height:7px;border-radius:50%;background:var(--s-green);animation:beat 1.4s ease-in-out infinite}
+
+.answer-pair{display:flex;gap:9px}
+.answer-pair button{flex:1;min-height:70px;font-size:23px}
+
+.toast{
+  position:absolute;left:12px;right:12px;bottom:16px;background:var(--s-2);border:1px solid var(--s-line);
+  border-left:5px solid var(--s-amber);border-radius:14px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;
+  box-shadow:0 18px 30px -18px rgba(0,0,0,.9);animation:toastin .5s cubic-bezier(.2,.9,.25,1) both .4s
+}
+@keyframes toastin{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.thread{display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.bub{max-width:82%;border-radius:16px;padding:9px 11px;font-size:13px;line-height:1.35}
+.bub.them{background:var(--s-2);border-bottom-left-radius:5px;align-self:flex-start}
+.bub.us{background:rgba(62,136,232,.2);border:1px solid rgba(62,136,232,.4);border-bottom-right-radius:5px;align-self:flex-end}
+.bub .who{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-dim);margin-bottom:4px}
+.bub.sys{align-self:center;background:transparent;border:1px dashed var(--s-line);color:var(--s-dim);font-family:"Azeret Mono",monospace;font-size:10px;text-align:center;max-width:100%}
+
+.arc{position:relative;display:flex;align-items:center;gap:12px}
+.arc .val{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:34px;letter-spacing:-.03em}
+
+/* answer-time timeline (page chrome) */
+.timeline{background:var(--band);border:1px solid var(--rule);border-radius:20px;padding:26px 24px;overflow-x:auto}
+.timeline svg{width:100%;min-width:640px;height:186px;display:block}
+.tl-key{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;font-size:14px;color:var(--ink-2)}
+.tl-key b{color:var(--ink)}
+</style>
+<div class="page">
+
+<header class="masthead">
+  <div class="eyebrow"><span class="u">U</span> Zero Lag · Hide + Seek companion <b>· Deck 03 / 04</b> · Question loop</div>
+  <h1>Ask anything. <em>Answer in one tap</em></h1>
+  <p class="deck">The loop the whole game runs on: a seeker team picks a question and a target, the hider gets a push and a countdown, and the app offers a suggestion it recomputes until the moment of submitting. The suggestion is never a verdict — override is always the same size as accept, and "not possible to answer" is a real answer that draws real cards.</p>
+  <div class="tags">
+    <span class="tag on">M7 — Asking &amp; answering</span>
+    <span class="tag on">M8 — Answer assistance</span>
+    <span class="tag">Answer-time truth</span>
+    <span class="tag">First to the server wins</span>
+  </div>
+</header>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Seeker side</span>
+    <h2>Pick a question, pick who it goes to</h2>
+    <p>One hider team by default. Only questions flagged multi-target in the deck builder can go to several at once, and each targeted team answers and draws independently. Card cost and reward are on the tile, before the tap, not after it.</p>
+  </div>
+
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">3A</span><h3>Pick a question</h3><span class="who">team Eule</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:02</span><span>GPS · 68%</span></div>
+        <div class="appbar"><div><div class="sub">Round 1 · seeking</div><div class="title">Ask</div></div>
+          <span class="pill">6 cards</span></div>
+        <div class="scr-body">
+          <div class="tiny dim">Target</div>
+          <div class="target-strip">
+            <div class="target on"><div class="badge sm" style="background:var(--t-vermillion)">🦊</div><b style="font-size:12.5px">Fuchsbau</b></div>
+            <div class="target"><div class="badge sm" style="background:var(--t-cobalt)">🐙</div><b>Krake</b></div>
+          </div>
+          <div class="tiny dim" style="margin-top:2px">Questions · 4 types enabled</div>
+          <div class="qtile on">
+            <div class="ico">◎</div>
+            <div class="grow"><div class="nm">Radar</div>
+              <div class="tiny dim" style="margin-top:3px">Are you within … of me?</div>
+              <div class="radio-row"><b>0.5 km</b><b class="on">1 km</b><b>3 km</b></div></div>
+          </div>
+          <div class="qtile"><div class="ico">🌡</div>
+            <div class="grow"><div class="nm">Thermometer</div><div class="tiny dim" style="margin-top:3px">Runs over an interval</div></div>
+            <span class="cost">Draw 2</span></div>
+          <div class="qtile"><div class="ico">📷</div>
+            <div class="grow"><div class="nm">Photo</div><div class="tiny dim" style="margin-top:3px">Extended deadline</div></div>
+            <span class="cost">Draw 3</span></div>
+          <div style="flex:1"></div>
+          <button class="btn-xl">Ask Fuchsbau <small>Radar 1 km · they draw 1</small></button>
+        </div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>Target first, question second.</b> Reversing that order is how a question ends up sent to the wrong team in a hurry.</li>
+        <li><b>Disabled questions are gone, not greyed.</b> A host who turned tentacles off should leave no trace of them anywhere in either role's UI.</li>
+        <li class="g">The distance choices come from the map's scale preset, and the host can override any of them per question.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">3B</span><h3>Thermometer running</h3><span class="who">team Eule</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:09</span><span>GPS · 66%</span></div>
+        <div class="appbar"><div><div class="sub">Started 16:02 · 0.5 km</div><div class="title">Thermometer</div></div>
+          <span class="pill live"><i class="dot beat" style="background:currentColor"></i>Running</span></div>
+        <div class="scr-body">
+          <div class="s-card">
+            <div class="arc">
+              <div class="countdown">
+                <svg viewBox="0 0 96 96"><circle class="track" cx="48" cy="48" r="42"></circle>
+                <circle class="bar" cx="48" cy="48" r="42" style="animation:none;stroke-dashoffset:96"></circle></svg>
+                <div class="lab">76%</div>
+              </div>
+              <div class="grow">
+                <div class="tiny dim">Travelled</div>
+                <div class="val">380 m</div>
+                <div class="tiny dim">of 500 m declared</div>
+              </div>
+            </div>
+            <div class="tiny dim" style="margin-top:10px;white-space:normal;line-height:1.5;text-transform:none;letter-spacing:0;font-family:Archivo,sans-serif;font-size:12px">
+              Advisory only. End it wherever you like — the app never gates the button on the distance.
+            </div>
+          </div>
+          <div class="s-card s-row" style="gap:10px">
+            <div class="badge sm" style="background:var(--t-vermillion)">🦊</div>
+            <div class="grow"><b style="font-size:13px">Fuchsbau has been told</b>
+              <div class="subnote">"Eule started a 0.5 km thermometer." Nothing else — there is no question yet.</div></div>
+          </div>
+          <div class="s-card">
+            <div class="tiny dim">Start point</div>
+            <div class="num" style="font-size:12px;margin-top:4px">52.49861, 13.42750 · 16:02:11</div>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn-xl">End thermometer here</button>
+          <div class="tiny dim" style="text-align:center">Cancel this thermometer</div>
+        </div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>A started thermometer is not a question.</b> It is game state with no answer, no card draw and no effect on anyone's deduction map until it is ended somewhere else.</li>
+        <li><b>Both endpoints are recorded</b> — the deduction map needs the pair to construct the bisector, so the pair is stored, not just the delta.</li>
+        <li class="r">The readout is a nudge. There is no minimum distance and no confirmation dialog scolding you for ending early.</li>
+      </ul>
+    </figure>
+
+  </div>
+</section>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Answer-time truth</span>
+    <h2>The question is evaluated when it is answered</h2>
+    <p>Not when it was asked, not against a committed zone, not against a team centroid — against the live position of the player who is answering, at the instant they submit. Which is why the suggestion keeps recomputing while they decide, and can visibly flip mid-decision.</p>
+  </div>
+
+  <div class="timeline">
+    <svg viewBox="0 0 700 200" role="img" aria-label="Timeline from asking to answering">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--rule)"/></marker></defs>
+      <line x1="40" y1="130" x2="670" y2="130" stroke="var(--rule)" stroke-width="2" marker-end="url(#ar)"/>
+      <g font-family="Archivo, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">
+        <text x="28" y="48">Seeker asks</text><text x="158" y="48">Push + haptic</text><text x="466" y="48">Hider submits</text>
+      </g>
+      <g font-family="Azeret Mono, monospace" font-size="10.5" fill="var(--ink-3)">
+        <text x="28" y="66">position recorded</text><text x="158" y="66">countdown starts</text><text x="466" y="66">3 m 36 s on device</text>
+      </g>
+      <rect x="170" y="86" width="350" height="30" rx="9" fill="var(--yellow)" fill-opacity=".15" stroke="var(--yellow)" stroke-dasharray="5 5"/>
+      <text x="184" y="105" font-family="Azeret Mono, monospace" font-size="10.5" fill="var(--ink-2)">suggestion recomputes · the hider keeps moving</text>
+      <g stroke="var(--yellow)" stroke-width="2" opacity=".75">
+        <line x1="200" y1="118" x2="200" y2="130"/><line x1="250" y1="118" x2="250" y2="130"/>
+        <line x1="300" y1="118" x2="300" y2="130"/><line x1="350" y1="118" x2="350" y2="130"/>
+        <line x1="400" y1="118" x2="400" y2="130"/><line x1="450" y1="118" x2="450" y2="130"/>
+        <line x1="500" y1="118" x2="500" y2="130"/>
+      </g>
+      <circle cx="40" cy="130" r="9" fill="var(--blue)"/><circle cx="170" cy="130" r="8" fill="var(--ink-3)"/>
+      <circle cx="520" cy="130" r="12" fill="var(--yellow)"/>
+      <g font-family="Azeret Mono, monospace" font-size="11" fill="var(--ink-3)">
+        <text x="16" y="156">16:02:11</text><text x="146" y="156">16:02:12</text><text x="484" y="156">16:05:47</text>
+      </g>
+      <text x="350" y="190" font-family="Azeret Mono, monospace" font-size="10.5" fill="var(--ink-3)" text-anchor="middle">elapsed measured on the answering device — immune to clock drift</text>
+    </svg>
+  </div>
+  <div class="tl-key">
+    <span><b>Three times are stored:</b> the server's receive time, the client's submit time for display, and the elapsed time the answering device measured.</span>
+    <span><b>Device clocks are never compared to each other.</b> Ordering is a per-game sequence number.</span>
+  </div>
+</section>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Hider side</span>
+    <h2>One tap to accept, one tap to disagree</h2>
+    <p>The suggestion shows its inputs and how fresh they are, so a hider can tell in a glance whether to trust it. Turn location off entirely and the flow is exactly as fast — the buttons are the same buttons, there is simply no suggestion above them.</p>
+  </div>
+
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">3C</span><h3>Answering</h3><span class="who">team Fuchsbau</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:05</span><span>GPS · 41%</span></div>
+        <div class="appbar"><div><div class="sub">From 🦉 Eule · radar</div><div class="title">Within 1 km?</div></div></div>
+        <div class="scr-body">
+          <div class="s-row" style="gap:12px">
+            <div class="countdown"><svg viewBox="0 0 96 96">
+              <circle class="track" cx="48" cy="48" r="42"></circle><circle class="bar" cx="48" cy="48" r="42"></circle></svg>
+              <div class="lab">4:12</div></div>
+            <div class="grow">
+              <div class="tiny dim">Question rules</div>
+              <div class="subnote" style="font-size:12.5px;color:var(--s-ink)">Answer truthfully whether you are inside a 1 km circle drawn around the asking team's position when they asked.</div>
+            </div>
+          </div>
+          <div class="suggest">
+            <div class="s-row spread"><span class="tiny" style="color:var(--s-green)">Suggested answer</span>
+              <span class="recompute"><i></i>Recomputing</span></div>
+            <div class="verdict">Yes</div>
+            <div class="subnote" style="color:var(--s-ink)">You are 820 m from their ask point — inside the circle by 180 m.</div>
+            <div class="inputs">
+              <span class="pill">Your position · 12 s old</span><span class="pill">±30 m</span><span class="pill">Ask point 16:02</span>
+            </div>
+          </div>
+          <div class="answer-pair">
+            <button class="btn-xl green">Yes</button>
+            <button class="btn-xl ghost">No</button>
+          </div>
+          <button class="btn-xl ghost" style="min-height:48px;font-size:14px">Not possible to answer</button>
+          <div class="tiny dim" style="text-align:center">＋ Add a note for Eule</div>
+        </div>
+      </div></div>
+      <ul class="anno">
+        <li class="g"><b>Accept and override are the same size.</b> The moment "Yes" is bigger than "No", the suggestion has quietly become a verdict.</li>
+        <li class="y"><b>Every input is on screen with its age.</b> 12 s old, ±30 m, and the ask point's timestamp — enough to decide whether the app knows what it is talking about.</li>
+        <li class="r"><b>"Not possible to answer"</b> is a legal answer where the question allows it, and it draws the normal reward. It is also its own constraint on the seeker's map.</li>
+        <li><b>No suggestion is a normal state.</b> Location off, no fix, no qualifying POI — the buttons do not move.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">3D</span><h3>Superseded, and the thread</h3><span class="who">team Fuchsbau</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:06</span><span>GPS · 41%</span></div>
+        <div class="appbar"><div><div class="sub">Radar 1 km · answered</div><div class="title">Thread with Eule</div></div>
+          <span class="pill live">Yes</span></div>
+        <div class="scr-body">
+          <div class="thread">
+            <div class="bub sys">16:02 · Eule asked a 1 km radar</div>
+            <div class="bub them"><div class="who">Eule · Lena</div>No rush, we're on the U1 anyway.</div>
+            <div class="bub us"><div class="who">Fuchsbau · Mira</div>Yes — and that was close, we moved four minutes ago.</div>
+            <div class="bub sys">16:05:47 · Answer recorded: <b>Yes</b> · 3 m 36 s to answer</div>
+            <div class="bub them"><div class="who">Eule · Timo</div>Noted. That kills the whole east side for us.</div>
+          </div>
+          <div style="flex:1"></div>
+          <div class="s-card" style="border-color:rgba(62,136,232,.35)">
+            <div class="tiny dim">Correcting an answer</div>
+            <div class="subnote" style="color:var(--s-ink)">A hider can correct an answer after the fact. The constraint it produced updates in place — a correction never adds a second one.</div>
+          </div>
+          <div class="field" style="min-height:52px"><label>Message</label><div class="val dim" style="font-size:14px">Write to Eule…</div></div>
+        </div>
+        <div class="toast">
+          <span style="font-size:17px;line-height:1.2">⚠</span>
+          <div class="grow" style="display:flex;flex-direction:column;gap:8px">
+            <div><b style="font-size:13px">Your answer was discarded</b>
+              <div class="subnote">Mira answered "Yes" first. Hers counts — nothing else changed.</div></div>
+            <span class="pill" style="align-self:flex-end">Got it</span>
+          </div>
+        </div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>First to the server wins.</b> The superseded player gets this notice and nothing more: no error, no retry, no entry in the log.</li>
+        <li><b>Every question is a thread</b> both sides keep talking in, and every answer carries a free-text note. Threads are private to the asking team and their target.</li>
+        <li class="p"><b>The log never shows the discarded answer</b> — because the discard is not a game event.</li>
+      </ul>
+    </figure>
+
+  </div>
+
+  <div class="specs">
+    <div><dt>Deadline</dt><dd>Displayed, never enforced. The ring runs out and the question stays answerable; the elapsed time is recorded either way.</dd></div>
+    <div><dt>Answer targets</dt><dd>Yes / No at <b>74&nbsp;px</b> tall, side by side, equal weight. Secondary answers keep 48&nbsp;px.</dd></div>
+    <div><dt>Multi-target</dt><dd>One per-question flag, off by default. Each targeted team answers, draws and folds independently.</dd></div>
+    <div><dt>One definition</dt><dd>The suggestion runs the same constraint definition the seeker's map folds — evaluated as a point test instead of a geometry. They cannot drift apart.</dd></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div>
+    <div class="kicker" style="margin-bottom:16px">State colours</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#22C179"></i><b>Suggested / yes</b><span>#22C179</span></div>
+      <div class="sw"><i style="background:#FFE01F"></i><b>Awaiting you</b><span>#FFE01F</span></div>
+      <div class="sw"><i style="background:#FFA426"></i><b>Superseded</b><span>#FFA426</span></div>
+      <div class="sw"><i style="background:#3E88E8"></i><b>Your team's words</b><span>#3E88E8</span></div>
+    </div>
+  </div>
+  <p>Deck 03 of 04 · Device screens show the app's field-dark theme; the page around them follows your system theme. A companion to <b>Jet Lag: The Game — Hide + Seek</b>, which it credits and does not replace.</p>
+</footer>
+
+</div>
+
+</body></html>

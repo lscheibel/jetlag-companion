@@ -55,6 +55,8 @@ interface MapCanvasProps {
 	readonly initialCenter: LngLat;
 	/** Derived from the valid hiding area, never stored. m2-spec §2. */
 	readonly initialBounds: BBox | null;
+	/** Mini-maps need a few pixels; 48px on a 6.5rem strip fits the world. */
+	readonly fitPadding?: number;
 	readonly onStatusChange: (status: MapStatus) => void;
 	readonly children: ReactNode;
 }
@@ -62,6 +64,7 @@ interface MapCanvasProps {
 export function MapCanvas({
 	initialCenter,
 	initialBounds,
+	fitPadding = 48,
 	onStatusChange,
 	children,
 }: MapCanvasProps) {
@@ -75,7 +78,7 @@ export function MapCanvas({
 	 * later would yank the view out from under a thumb that has already started
 	 * panning.
 	 */
-	const opening = useRef({ initialCenter, initialBounds });
+	const opening = useRef({ initialCenter, initialBounds, fitPadding });
 	const report = useRef(onStatusChange);
 	report.current = onStatusChange;
 
@@ -103,7 +106,7 @@ export function MapCanvas({
 					[bounds[0], bounds[1]],
 					[bounds[2], bounds[3]],
 				],
-				{ padding: 48, animate: false },
+				{ padding: opening.current.fitPadding, animate: false },
 			);
 		}
 
@@ -173,7 +176,7 @@ export function MapCanvas({
 			>
 				{ATTRIBUTION}
 			</p>
-			<MapContext value={map}>{map ? children : null}</MapContext>
+			<MapContext value={map}>{children}</MapContext>
 		</div>
 	);
 }

@@ -11,6 +11,7 @@ import { mutators, queries } from "@zero-lag/schema";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { FoundSheet } from "../game/found-sheet";
+import { GameTabs } from "../game/game-tabs";
 import { HiderSelector } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
 import { RoundBar } from "../game/round-bar";
@@ -805,6 +806,13 @@ export default function MapRoute() {
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
 			)}
+
+			{/*
+			 * Below the map's own sheets rather than above them: a sheet is an
+			 * answer in progress and covering it with navigation would be worse
+			 * than covering navigation with it. m3-spec §9.
+			 */}
+			<GameTabs className="fixed inset-x-0 bottom-0 z-20" code={session.code} />
 		</main>
 	);
 }

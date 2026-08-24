@@ -9,9 +9,9 @@ import {
 } from "./db";
 import {
 	createGame,
-	createTeam,
+	createTeamInHarness,
 	joinGame,
-	joinTeam,
+	joinTeamInHarness,
 	openDebug,
 	openPhone,
 	type Phone,
@@ -47,12 +47,12 @@ async function onlyQuestionId(phone: Phone): Promise<string> {
 
 /** Two teams, the host seeking and everyone else hiding. */
 async function setUpRound(host: Phone, others: Phone[]): Promise<void> {
-	await createTeam(host, "Hiders");
-	await createTeam(host, "Seekers");
-	await joinTeam(host, "Seekers");
+	await createTeamInHarness(host, "Hiders");
+	await createTeamInHarness(host, "Seekers");
+	await joinTeamInHarness(host, "Seekers");
 	for (const phone of others) {
 		await expect(phone.page.getByTestId("team-Hiders")).toBeVisible();
-		await joinTeam(phone, "Hiders");
+		await joinTeamInHarness(phone, "Hiders");
 	}
 	await host.page
 		.getByTestId("hider-team")
@@ -96,7 +96,7 @@ test("2. a force-quit phone rejoins and converges with no host action", async ({
 	await openDebug(ana, code);
 	await openDebug(ben, code);
 
-	await createTeam(ana, "Hiders");
+	await createTeamInHarness(ana, "Hiders");
 	await expect(ben.page.getByTestId("team-Hiders")).toBeVisible();
 
 	// Force-quit: same device, same storage, new process.
@@ -122,7 +122,7 @@ test("2. a force-quit phone rejoins and converges with no host action", async ({
 	await revived.setOffline(true);
 
 	// A change made while it was away.
-	await createTeam(ana, "Seekers");
+	await createTeamInHarness(ana, "Seekers");
 	await expect(revivedPage.getByTestId("team-Seekers")).toHaveCount(0);
 
 	await revived.setOffline(false);

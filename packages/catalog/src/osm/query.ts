@@ -9,8 +9,16 @@ import {
 import { boundaryLabel } from "./admin-level";
 import { type ParsedBoundary, parseBoundaryLine } from "./boundary";
 
-/** The two levels a city game actually picks as include/exclude polygons. */
-export type CatalogAdminLevel = 9 | 10;
+/**
+ * Levels the area picker offers: Land, Bezirk, and Ortsteil, for the whole
+ * German extract. Seeker's include/exclude on the play map still uses 9 and 10.
+ */
+export const CATALOG_ADMIN_LEVELS = [4, 9, 10] as const;
+export type CatalogAdminLevel = (typeof CATALOG_ADMIN_LEVELS)[number];
+
+function isCatalogAdminLevel(level: number): level is CatalogAdminLevel {
+	return level === 4 || level === 9 || level === 10;
+}
 
 /**
  * Compact boundary for bbox queries. Identified by OSM type/id because the
@@ -28,7 +36,7 @@ export interface CatalogBoundary {
 export function catalogBoundaryFromParsed(
 	parsed: ParsedBoundary,
 ): CatalogBoundary | null {
-	if (parsed.adminLevel !== 9 && parsed.adminLevel !== 10) return null;
+	if (!isCatalogAdminLevel(parsed.adminLevel)) return null;
 	const polygons = parsed.region.polygons;
 	const bbox = multiPolygonBBox(polygons);
 	if (!bbox) return null;
@@ -72,6 +80,56 @@ export function boundariesInBBox(
 			(row) => row.adminLevel === adminLevel && bboxesOverlap(row.bbox, bbox),
 		)
 		.sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
+
+/**
+ * The place picker searches the whole catalog by name. Sending every Bezirk
+ * and Ortsteil in Germany to the phone is not an option; the first hundred
+ * after a prefix-biased sort is.
+ */
+export const BOUNDARY_SEARCH_LIMIT = 100;
+
+export interface BoundarySearch {
+	readonly matches: CatalogBoundary[];
+	readonly total: number;
+}
+
+export function boundariesMatching(
+	catalog: readonly CatalogBoundary[],
+	adminLevel: CatalogAdminLevel | readonly CatalogAdminLevel[],
+	query: string,
+	limit: number = BOUNDARY_SEARCH_LIMIT,
+	bbox?: BBox | null,
+): BoundarySearch {
+	const levels = new Set(
+		typeof adminLevel === "number" ? [adminLevel] : adminLevel,
+	);
+	const needle = query.trim().toLowerCase();
+	const hits = catalog.filter((row) => {
+		if (!levels.has(row.adminLevel)) return false;
+		if (bbox && !bboxesOverlap(row.bbox, bbox)) return false;
+		if (needle && !row.name.toLowerCase().includes(needle)) return false;
+		return true;
+	});
+	const sorted = hits.slice().sort((a, b) => {
+		if (needle) {
+			const byRank =
+				nameMatchRank(a.name, needle) - nameMatchRank(b.name, needle);
+			if (byRank !== 0) return byRank;
+		}
+		if (a.adminLevel !== b.adminLevel) return a.adminLevel - b.adminLevel;
+		return a.name.localeCompare(b.name, "de");
+	});
+	return { matches: sorted.slice(0, limit), total: sorted.length };
+}
+
+function nameMatchRank(name: string, needle: string): number {
+	const lower = name.toLowerCase();
+	if (lower.startsWith(needle)) return 0;
+	if (lower.split(/[\s/-]+/).some((token) => token.startsWith(needle))) {
+		return 1;
+	}
+	return 2;
 }
 
 export function boundaryContaining(

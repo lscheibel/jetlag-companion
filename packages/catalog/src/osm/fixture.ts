@@ -14,7 +14,7 @@ import type { CatalogBoundary } from "./query";
 function box(
 	id: string,
 	name: string,
-	adminLevel: 9 | 10,
+	adminLevel: 4 | 9 | 10,
 	labelPrefix: string,
 	west: number,
 	south: number,
@@ -43,6 +43,8 @@ function box(
 }
 
 export const BERLIN_FIXTURE_BOUNDARIES: readonly CatalogBoundary[] = [
+	box("relation/40001", "Berlin", 4, "Land", 13.08, 52.32, 13.77, 52.68),
+	box("relation/40002", "Hamburg", 4, "Land", 9.7, 53.4, 10.4, 53.7),
 	box("relation/90001", "Mitte", 9, "Bezirk", 13.35, 52.5, 13.44, 52.55),
 	box(
 		"relation/90002",

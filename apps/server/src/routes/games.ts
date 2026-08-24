@@ -144,6 +144,54 @@ games.post("/", async (c) => {
 	});
 });
 
+/**
+ * What a code resolves to, before anybody types their name. m1-spec §8.
+ *
+ * The join screen asks this first so a wrong code says so while the keyboard is
+ * still up, and a right one can announce what it found. Unauthenticated on
+ * purpose — the code is the invitation — and it discloses nothing that is not
+ * already being read aloud in the room the code came from.
+ */
+games.get("/:code", async (c) => {
+	const code = c.req.param("code").toUpperCase();
+
+	const [game] = await db
+		.select()
+		.from(drizzleSchema.game)
+		.where(
+			and(
+				eq(drizzleSchema.game.code, code),
+				inArray(drizzleSchema.game.status, [...JOINABLE]),
+			),
+		)
+		.limit(1);
+
+	// A game that has ended is not a different answer from one that never
+	// existed: neither of them is a game this code can get you into.
+	if (!game) return c.json({ error: "no_such_game" }, 404);
+
+	const players = await db
+		.select({
+			displayName: drizzleSchema.player.displayName,
+			isHost: drizzleSchema.player.isHost,
+			leftAt: drizzleSchema.player.leftAt,
+			removedByPlayerId: drizzleSchema.player.removedByPlayerId,
+		})
+		.from(drizzleSchema.player)
+		.where(eq(drizzleSchema.player.gameId, game.id));
+
+	const present = players.filter(
+		(player) => player.leftAt === null && player.removedByPlayerId === null,
+	);
+
+	return c.json({
+		code: game.code,
+		status: game.status,
+		playerCount: present.length,
+		hostName: present.find((player) => player.isHost)?.displayName ?? null,
+	});
+});
+
 games.post("/join", async (c) => {
 	const parsed = joinBody.safeParse(await c.req.json());
 	if (!parsed.success) {

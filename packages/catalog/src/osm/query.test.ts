@@ -3,6 +3,7 @@ import { BERLIN_FIXTURE_BOUNDARIES } from "./fixture";
 import {
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
+	boundariesMatching,
 	boundaryContaining,
 } from "./query";
 
@@ -21,6 +22,11 @@ describe("boundariesInBBox", () => {
 		expect(names).toContain("Mitte");
 		expect(names).toContain("Friedrichshain-Kreuzberg");
 		expect(names).not.toContain("Spandau");
+	});
+
+	it("lists Berlin the Land at admin 4", () => {
+		const found = boundariesInBBox(BERLIN_FIXTURE_BOUNDARIES, STARTER, 4);
+		expect(found.map((row) => row.name)).toEqual(["Berlin"]);
 	});
 
 	it("lists Ortsteile separately from Bezirke", () => {
@@ -45,12 +51,68 @@ describe("boundaryContaining", () => {
 	});
 });
 
+describe("boundariesMatching", () => {
+	it("lists every Land without a bbox, including ones outside Berlin", () => {
+		const found = boundariesMatching(BERLIN_FIXTURE_BOUNDARIES, 4, "");
+		expect(found.matches.map((row) => row.name)).toEqual(["Berlin", "Hamburg"]);
+		expect(found.total).toBe(2);
+		expect(
+			boundariesInBBox(BERLIN_FIXTURE_BOUNDARIES, STARTER, 4).map(
+				(row) => row.name,
+			),
+		).toEqual(["Berlin"]);
+	});
+
+	it("finds a Bezirk by name even when it sits outside a Berlin bbox", () => {
+		const found = boundariesMatching(BERLIN_FIXTURE_BOUNDARIES, 9, "span");
+		expect(found.matches.map((row) => row.name)).toEqual(["Spandau"]);
+		expect(
+			boundariesInBBox(BERLIN_FIXTURE_BOUNDARIES, STARTER, 9).map(
+				(row) => row.name,
+			),
+		).not.toContain("Spandau");
+	});
+
+	it("ranks a token prefix ahead of a name that only contains the query", () => {
+		const found = boundariesMatching(BERLIN_FIXTURE_BOUNDARIES, 10, "berg");
+		expect(found.matches.map((row) => row.name)).toEqual([
+			"Prenzlauer Berg",
+			"Kreuzberg",
+		]);
+	});
+
+	it("caps the list and still reports how many matched", () => {
+		const found = boundariesMatching(BERLIN_FIXTURE_BOUNDARIES, 9, "", 2);
+		expect(found.matches).toHaveLength(2);
+		expect(found.total).toBeGreaterThan(2);
+	});
+
+	it("narrows a name search to a bbox and can mix admin levels", () => {
+		const found = boundariesMatching(
+			BERLIN_FIXTURE_BOUNDARIES,
+			[4, 9],
+			"span",
+			100,
+			STARTER,
+		);
+		expect(found.matches.map((row) => row.name)).toEqual([]);
+		const wide = boundariesMatching(BERLIN_FIXTURE_BOUNDARIES, [4, 9], "span");
+		expect(wide.matches.map((row) => row.name)).toEqual(["Spandau"]);
+	});
+});
+
 describe("boundariesFromGeojsonseq", () => {
-	it("keeps admin_level 9 and skips anything else", () => {
-		const rows = boundariesFromGeojsonseq(BEZIRK_LINE);
-		expect(rows).toHaveLength(1);
-		expect(rows[0]?.name).toBe("Testbezirk");
-		expect(rows[0]?.adminLevel).toBe(9);
-		expect(rows[0]?.id).toBe("relation/100");
+	it("keeps admin_level 4, 9 and 10 and skips the rest", () => {
+		const land =
+			'{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[13.0,52.3],[13.8,52.3],[13.8,52.7],[13.0,52.7],[13.0,52.3]]]]},"properties":{"@type":"relation","@id":4,"boundary":"administrative","admin_level":"4","name":"Berlin"}}';
+		const gemeinde =
+			'{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[13.3,52.5],[13.4,52.5],[13.4,52.55],[13.3,52.55],[13.3,52.5]]]]},"properties":{"@type":"relation","@id":8,"boundary":"administrative","admin_level":"8","name":"A Gemeinde"}}';
+		const rows = boundariesFromGeojsonseq(
+			`${land}\n${BEZIRK_LINE}\n${gemeinde}`,
+		);
+		expect(rows.map((row) => row.name).sort()).toEqual([
+			"Berlin",
+			"Testbezirk",
+		]);
 	});
 });

@@ -104,6 +104,14 @@ export const mapConfig = pgTable("mapConfig", {
 	 * thing. Per-mode radii return with the toggles in M18. m4-spec §3.
 	 */
 	hidingRadiusMeters: doublePrecision("hidingRadiusMeters").notNull(),
+	/**
+	 * Which modes of transit count, or null for all of them. m4-spec §5.
+	 *
+	 * Null rather than the full list on purpose: "everything" is not the same
+	 * statement as "these eight", and a feed that grows a ninth mode should not
+	 * silently leave it out of every map made before it existed.
+	 */
+	modeIds: jsonb("modeIds").$type<string[]>(),
 	sourceTemplateId: text("sourceTemplateId"),
 	/** m4-spec §8: a map change is a new row, never an update in place. */
 	supersedesConfigId: text("supersedesConfigId"),
@@ -197,6 +205,15 @@ export const player = pgTable(
 		 * anyone needs authority over anyone. m1-spec §6.
 		 */
 		isHost: boolean("isHost").notNull().default(false),
+		/**
+		 * When this player said they were ready, or null. m1-spec §11.
+		 *
+		 * Ready is a person's own word, never a team's and never the host's on
+		 * their behalf, so it lives on the player rather than on the round: the
+		 * lobby is the only place it is read, and the host's start is held until
+		 * every active player has one.
+		 */
+		readyAt: epochMs("readyAt"),
 		/**
 		 * Departure is a column, never a delete: `event.actorPlayerId`,
 		 * `answer.answeringPlayerId` and `positionSnapshot.playerId` all point

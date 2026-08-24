@@ -142,6 +142,12 @@ export const EVENT_TYPES = [
 	"player.renamed",
 	"player.left",
 	"player.removed",
+	/**
+	 * Ready is per person and reversible, so one event carries both directions
+	 * rather than a pair that have to be read together to know where somebody
+	 * stands. m1-spec §11.
+	 */
+	"player.readyChanged",
 	"team.created",
 	"team.updated",
 	"team.deleted",
@@ -149,6 +155,8 @@ export const EVENT_TYPES = [
 	"team.memberLeft",
 	"round.created",
 	"round.rolesAssigned",
+	/** The lobby dial, set before the whistle rather than at it. m5-spec §5. */
+	"round.hidingDurationSet",
 	"round.hidingStarted",
 	"round.seekingStarted",
 	"round.ended",
@@ -226,16 +234,42 @@ export const SCALE_PRESETS = [
 
 export type ScalePreset = (typeof SCALE_PRESETS)[number];
 
+export const AREA_PIECE_SOURCES = [
+	"city",
+	"district",
+	"drawn",
+	"circle",
+	"file",
+] as const;
+
+export type AreaPieceSource = (typeof AREA_PIECE_SOURCES)[number];
+
+/**
+ * One add or cut in the ordered list that makes a game area. Folded in order:
+ * a district added after a subtraction puts part of it back.
+ */
+export type AreaPiece = {
+	readonly id: string;
+	readonly op: "add" | "subtract";
+	readonly source: AreaPieceSource;
+	readonly name: string;
+	readonly geometry: StoredMultiPolygon;
+};
+
 /**
  * What the host picked, stored beside the geometry it produced. m4-spec §3.
  *
- * One arm today, and a discriminated union anyway: M18's stop toggles and a
- * boundary-shaped area both arrive as a new arm rather than as a migration. The
- * pair is stored because `selection` is the host's own vertices and
- * `validHidingArea` is the normalised result, and reopening the builder wants
- * the former.
+ * `drawn` is a single ring (the M4 builder). `composed` is the setup editor's
+ * list of pieces. The pair is stored because `selection` is the host's own
+ * vertices and `validHidingArea` is the normalised result, and reopening the
+ * editor wants the former.
  */
-export type Selection = {
-	readonly kind: "drawn";
-	readonly polygon: StoredMultiPolygon;
-};
+export type Selection =
+	| {
+			readonly kind: "drawn";
+			readonly polygon: StoredMultiPolygon;
+	  }
+	| {
+			readonly kind: "composed";
+			readonly pieces: readonly AreaPiece[];
+	  };

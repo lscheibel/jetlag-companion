@@ -76,14 +76,6 @@ type Capture =
 			panHeld: boolean;
 	  }
 	| {
-			kind: "create-radius";
-			startPoint: LngLat;
-			start: { x: number; y: number };
-			live: RadiusDraft;
-			moved: boolean;
-			panHeld: boolean;
-	  }
-	| {
 			kind: "maybe-tap";
 			startPoint: LngLat;
 			start: { x: number; y: number };
@@ -153,15 +145,12 @@ export function bindMapPointers(
 				return;
 			}
 			if (!mode.center) {
-				event.preventDefault?.();
-				map.dragPan.disable();
 				capture = {
-					kind: "create-radius",
+					kind: "maybe-tap",
 					startPoint: point,
 					start: pixel,
-					live: { center: null, radiusMeters: mode.radiusMeters },
 					moved: false,
-					panHeld: true,
+					panHeld: false,
 				};
 				return;
 			}
@@ -266,22 +255,6 @@ export function bindMapPointers(
 			return;
 		}
 
-		if (capture.kind === "create-radius" && capture.moved) {
-			if (!capture.live.center) {
-				capture.live = applyRadiusGesture(capture.live, {
-					kind: "tap",
-					point: capture.startPoint,
-				});
-			}
-			capture.live = applyRadiusGesture(capture.live, {
-				kind: "move",
-				handle: { kind: "radius-edge" },
-				point,
-			});
-			session.onRadiusChange(capture.live, "move");
-			return;
-		}
-
 		if (capture.kind === "maybe-tap" && capture.moved) {
 			capture = null;
 		}
@@ -296,13 +269,6 @@ export function bindMapPointers(
 
 		if (!was.moved) {
 			const mode = session.getMode();
-			if (was.kind === "create-radius") {
-				session.onRadiusChange(
-					applyRadiusGesture(was.live, { kind: "tap", point: was.startPoint }),
-					"tap",
-				);
-				return;
-			}
 			if (was.kind === "maybe-tap" && mode.kind === "radius") {
 				session.onRadiusChange(
 					applyRadiusGesture(
@@ -346,13 +312,6 @@ export function bindMapPointers(
 		if (was.kind === "handle") {
 			session.onRingChange(
 				applyRingGesture(was.liveRing, { kind: "end" }),
-				"end",
-			);
-			return;
-		}
-		if (was.kind === "create-radius") {
-			session.onRadiusChange(
-				applyRadiusGesture(was.live, { kind: "end" }),
 				"end",
 			);
 		}

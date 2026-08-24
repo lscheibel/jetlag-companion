@@ -81,7 +81,7 @@ export type MapTool =
 export type BoundaryListItem = {
 	readonly id: string;
 	readonly name: string;
-	readonly adminLevel: 9 | 10;
+	readonly adminLevel: 4 | 9 | 10;
 	readonly label: string;
 };
 

@@ -8,7 +8,7 @@ import {
 } from "./geojson";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
-export type CircleDraftKind = "measure" | "constraint" | "zone";
+export type CircleDraftKind = "measure" | "constraint" | "zone" | "area";
 
 const MEASURE_FILL = [
 	{
@@ -171,6 +171,63 @@ function ZoneCircleDraft({
 	return null;
 }
 
+const AREA_FILL = [
+	{
+		id: "area-draft-fill",
+		type: "fill" as const,
+		paint: {
+			"fill-color": "#ffe01f",
+			"fill-opacity": 0.22,
+			"fill-outline-color": "rgba(0,0,0,0)",
+		},
+	},
+];
+const AREA_OUTLINE = [
+	{
+		id: "area-draft-outline",
+		type: "line" as const,
+		paint: {
+			"line-color": "#ffe01f",
+			"line-width": 3,
+			"line-dasharray": [2, 1.5],
+		},
+	},
+];
+const AREA_SPOKE = [
+	{
+		id: "area-draft-line",
+		type: "line" as const,
+		paint: { "line-color": "#ffe01f", "line-width": 3 },
+	},
+];
+const AREA_VERTICES = [
+	{
+		id: "area-draft-vertices",
+		type: "circle" as const,
+		paint: {
+			"circle-color": "#ffffff",
+			"circle-radius": 8,
+			"circle-stroke-color": "#ffe01f",
+			"circle-stroke-width": 2,
+		},
+	},
+];
+
+function AreaCircleDraft({
+	center,
+	radiusMeters,
+}: {
+	readonly center: LngLat | null;
+	readonly radiusMeters: number;
+}) {
+	const { fill, spoke, vertices } = useCircleGeometry(center, radiusMeters);
+	useGeoJsonLayer("area-draft-fill-source", fill, AREA_FILL);
+	useGeoJsonLayer("area-draft-outline-source", fill, AREA_OUTLINE);
+	useGeoJsonLayer("area-draft-line-source", spoke, AREA_SPOKE);
+	useGeoJsonLayer("area-draft-vertices-source", vertices, AREA_VERTICES);
+	return null;
+}
+
 /**
  * A live radius draft: fill, optional circumference, spoke to the east handle,
  * and centre + edge vertices. Paint stays per product colour.
@@ -191,6 +248,9 @@ export function CircleDraftLayer({
 		return (
 			<ConstraintCircleDraft center={center} radiusMeters={radiusMeters} />
 		);
+	}
+	if (kind === "area") {
+		return <AreaCircleDraft center={center} radiusMeters={radiusMeters} />;
 	}
 	return <ZoneCircleDraft center={center} radiusMeters={radiusMeters} />;
 }

@@ -14,8 +14,20 @@ import { useMapInstance } from "./map-canvas";
  * mount order does not weaken when there are two screens. m4-spec §9.
  */
 const LAYER_ORDER = [
+	"setup-fold-mask",
+	"setup-fold-outline-case",
+	"setup-fold-outline",
+	"setup-fold-stops",
 	"area-fill",
 	"game-area-outline",
+	"piece-preview-fill",
+	"piece-preview-outline",
+	"piece-cut-fill",
+	"piece-cut-outline",
+	"area-draft-fill",
+	"area-draft-outline",
+	"area-draft-line",
+	"area-draft-vertices",
 	"buildings-3d",
 	"eliminated-fill",
 	"surviving-outline",
@@ -63,6 +75,7 @@ export function useGeoJsonLayer(
 ): void {
 	const map = useMapInstance();
 	const openingData = useRef(data);
+	openingData.current = data;
 
 	useEffect(() => {
 		if (!map) return;

@@ -1,0 +1,897 @@
+<!doctype html><html><head><!-- frame-runtime --><base href="/_f/1787565326-d701/"><script>window.__FRAME_PREAMBLE={"capabilities":{"artifact":"artifact.oqIe8shs.js","assets":"assets.BkxVItX2.js","comments":"comments.GLuHR3zP.js","db":"db.CRhVHzSt.js","downloads":"downloads.C3GSvEDP.js","embed":"embed.CZsbekoQ.js","mcp":"mcp.D3B2EyQu.js","permissions":"permissions.BNySkLV5.js","room":"room.DE7EMui-.js","sample":"sample.C7z_6W62.js","self":"artifact.oqIe8shs.js","user":"user.BpKav-Rf.js"},"transforms":"_transforms.h3_8GSUa.js","comments":"_comments.BOgkE6qU.js","translate":"_translate.5HCW4BJh.js"}</script><script>(function(){"use strict";var Y=["light","dark","system"],X=/^[A-Za-z0-9_-]{1,64}$/,D=/^[a-zA-Z_:][a-zA-Z0-9_:.-]{0,127}$/,G=new Set(["class","hidden","value","checked"]);function V(e){const t=e.toLowerCase();return t.startsWith("data-")||t.startsWith("aria-")||G.has(t)}var be="http://www.w3.org/1999/xhtml",Z="http://www.w3.org/2000/svg",J=new Set(["script","style","iframe","noscript","noframes","noembed","xmp","plaintext","template","title","textarea","object","embed"]),Q=new Set(["script","style"]);function ee(e){const t=e.localName.toLowerCase();return e.namespaceURI==="http://www.w3.org/1999/xhtml"?!J.has(t):e.namespaceURI===Z?!Q.has(t):!1}var te=new Set(["html","head","body","frameset"]);function re(e){return e.namespaceURI==="http://www.w3.org/1999/xhtml"&&te.has(e.localName)}function ne(e){if(e===null||typeof e!="object")return!1;const t=e;if(typeof t.target!="string"||!X.test(t.target)||t.text!==void 0&&typeof t.text!="string")return!1;if(t.attrsSet!==void 0){if(t.attrsSet===null||typeof t.attrsSet!="object")return!1;for(const[n,s]of Object.entries(t.attrsSet))if(!D.test(n)||typeof s!="string")return!1}if(t.attrsRemoved!==void 0){if(!Array.isArray(t.attrsRemoved))return!1;for(const n of t.attrsRemoved)if(typeof n!="string"||!D.test(n))return!1}return!0}function se(e,t){if(e===null||typeof e!="object")return!1;const{seq:n,elements:s}=e;if(typeof n!="number"||!Number.isSafeInteger(n)||!Array.isArray(s)||s.length===0||s.length>64)return!1;for(let o=0;o<s.length;o++)if(!t(s[o]))return!1;return!0}function ae(e){return e===null||typeof e!="object"?!1:se(e.__frame_patch,ne)}function oe(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function ie(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function le(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&Y.includes(n)}var O="__frame_scroll",ce=150,ue=310,fe=160,pe=3e4;function de(){let e=0,t=!1,n=!1,s=!1,o=0,l=null;const c=i=>{try{sessionStorage.setItem(O,JSON.stringify({y:i}))}catch{}},f=()=>{if(clearTimeout(e),l===null)return;const i=l;l=null,c(i)},S=()=>{if(t){t=!1;return}n=!0,l=scrollY,clearTimeout(e),e=setTimeout(f,ce)};try{addEventListener("scroll",S,{passive:!0}),addEventListener("pagehide",f)}catch{}const v=()=>{let i;try{i=sessionStorage.getItem(O)}catch{return null}if(i===null)return null;let d;try{d=JSON.parse(i)}catch{d=null}const u=d?.y;if(!(typeof u=="number"&&Number.isFinite(u)&&u>=0)){try{sessionStorage.removeItem(O)}catch{}return null}return u};let b=!1;const m=i=>{try{const d=scrollY;scrollTo({top:i,left:0,behavior:"instant"}),o=i,s=!0,clearTimeout(e),l=null,c(i);const u=scrollY;u!==d&&(t=!0),u!==i&&!b&&(b=!0,addEventListener("load",()=>{try{if(scrollY===u){const h=v();m(h!==null?h:o)}}catch{}},{once:!0}))}catch{}},y=()=>{try{return!!location.hash}catch{return!0}};let g=!1;const E=()=>{try{if(g||innerWidth>ue||innerHeight>fe)return;g=!0;const i=Date.now(),d=()=>{try{removeEventListener("resize",d)}catch{}if(Date.now()-i>pe||n||y())return;const u=v();m(u!==null?u:o)};addEventListener("resize",d)}catch{}};let r=!1,p=!1;return{restore(){if(r||(r=!0,y()))return;const i=v();i!==null&&(m(i),E())},promoted(){if(p||(p=!0,y()))return;const i=v();i!==null?(m(i),E()):s&&m(o)}}}var Ee="modulepreload",Ae=function(e){return"/"+e},Re={},me=function(t,n,s){let o=Promise.resolve();function l(c){const f=new Event("vite:preloadError",{cancelable:!0});if(f.payload=c,window.dispatchEvent(f),!f.defaultPrevented)throw c}return o.then(c=>{for(const f of c||[])f.status==="rejected"&&l(f.reason);return t().catch(l)})};(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let s=0;for(let o=0;o<n.length;o++){const l=n[o];try{e(t,l,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[l]}catch{}try{e(t,l,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[l]=="function"&&s++}if(s&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:s},"*")}catch{}})();var he=1e4,_e=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function F(e){for(const t of _e)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}var M=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),j=window.__FRAME_PREAMBLE?.transforms,N=window.__FRAME_PREAMBLE?.comments,I=window.__FRAME_PREAMBLE?.translate,L=/^[\w.-]+\.js$/;function T(e){return me(()=>import("/_runtime/"+e),void 0)}function z(e,t){return{contract:e.contract,changes:new Set(e.changes??[]),flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:new Map,shellOrigin:t,mount:W,pipe:()=>({wrap:(n,s)=>(...o)=>{try{return s(...o)}catch(l){return Promise.reject(l)}}})}}var P=null,w=null;function q(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var B=!1;function ve(e,t){const n=[];for(const s of e.elements){const o=document.querySelector(`[data-id="${s.target}"]`);if(!o){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}if([...Object.keys(s.attrsSet??{}),...s.attrsRemoved??[]].some(l=>!V(l))){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}if(s.text!==void 0&&(!ee(o)||re(o))){parent.postMessage({__frame_patch_miss:{seq:e.seq}},t);return}for(const[l,c]of Object.entries(s.attrsSet??{}))if(!$(o,l)){try{o.setAttribute(l,c)}catch{}H(o,l,c)}for(const l of s.attrsRemoved??[])$(o,l)||(o.removeAttribute(l),H(o,l,null));typeof s.text=="string"&&(o.textContent=s.text),n.push(s.target)}try{document.dispatchEvent(new CustomEvent("claude:edit",{detail:{seq:e.seq,targets:n}}))}catch{}}function H(e,t,n){if(!(e instanceof HTMLInputElement))return;const s=t.toLowerCase();s==="checked"?e.checked=n!==null:s==="value"&&e.type!=="file"&&(e.value=n??"")}function $(e,t){const n=t.toLowerCase(),s=e;return n==="data-id"||(n==="value"||n==="checked")&&(s.__artifactSecret===!0||/^(password|hidden|file)$/.test(s.type??"")||/(^|\s)(cc-|one-time-code|current-password|new-password)/i.test(`${e.getAttribute("autocomplete")??""} ${s.autocomplete??""}`))}function K(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,B=!0):B&&(delete t.dataset.theme,t.style.colorScheme="",B=!1)}var R=new Map;function ye(){let e;const t={u:new Promise(n=>{e=n}),r:n=>{t.done=!0,e(n)},done:!1,nulled:!1};return t}var ge=Object.freeze(Object.assign(Object.create(null),{call:Function.prototype.call,apply:Function.prototype.apply,bind:Function.prototype.bind})),W=(e,t)=>{const n=R.get(e);if(!n||n.done){n?.nulled&&w&&parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:e}},w);return}const s=typeof t=="function"?Object.setPrototypeOf(t,ge):Object.assign(Object.create(null),t);typeof s.then=="function"&&delete s.then,n.r(Object.freeze(s))},U=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(U&&U.writable===!1)){const e=j&&L.test(j)?T(j).catch(()=>{}):Promise.resolve(void 0),t=r=>{if(r.type==="auxclick"&&r.button!==1)return;const p=r.target,i=p&&p.closest?p.closest("a[href],area[href]"):null;if(!i)return;const d=i.getAttribute("href");if(!d)return;let u,h;try{u=new URL(d,document.baseURI),h=new URL(document.baseURI).origin}catch{return}if((u.protocol==="http:"||u.protocol==="https:")&&u.origin!==h){r.preventDefault();const _=(i.getAttribute("target")??"").toLowerCase(),C=r.type==="auxclick"||r.metaKey||r.ctrlKey||r.shiftKey||r.altKey||!["","_self","_top","_parent"].includes(_);parent.postMessage({__frame_nav:!0,url:u.href,newTab:C},"*")}};addEventListener("click",t,!0),addEventListener("auxclick",t,!0);const n={},s=r=>{r.isTrusted&&(n.pointer=!0)},o=r=>{r.isTrusted&&(n.click=!0)};addEventListener("pointermove",s,{capture:!0,passive:!0}),addEventListener("click",o,{capture:!0,passive:!0}),e.then(r=>{r?.wireNav&&(r.wireNav(),removeEventListener("click",t,!0),removeEventListener("auxclick",t,!0),removeEventListener("pointermove",s,!0),removeEventListener("click",o,!0),r.wireEngagement?.(n))});let l=null;try{l=de()}catch{}const c=U?.value??{};q(window,"claude",c);for(const r of Object.keys(M)){if(c[r]!==void 0){q(c,r,c[r]);continue}R.set(r,ye())}if(c.use===void 0){const r=p=>{if(typeof p!="string"||!Object.hasOwn(M,p))return Promise.resolve(null);const i=R.get(p);return i?i.u:Promise.resolve(c[p]??null)};try{Object.defineProperty(c,"use",{value:r,writable:!0,configurable:!0,enumerable:!1})}catch{}}let f=null,S=null,v=0;const b=r=>{r.source!==parent||!F(r.origin)||oe(r.data)&&(f=r.data.__frame_init,w=r.origin,removeEventListener("message",b),clearTimeout(v),S?.())};addEventListener("message",b),parent.postMessage({__frame_connect:!0},"*");const m=new Promise(r=>{S=r,v=setTimeout(()=>{removeEventListener("message",b),r()},he)}),y=document.readyState==="loading"?new Promise(r=>document.addEventListener("DOMContentLoaded",()=>r(),{once:!0})):Promise.resolve();y.then(()=>{try{l?.restore()}catch{}});const g={cb:null},E=r=>{if(!(r.source!==parent||!F(r.origin))&&ie(r.data)){try{l?.promoted()}catch{}g.cb?.()}};addEventListener("message",E),m.then(async()=>{if(!f||!w){for(const a of R.values())a.nulled=!0,a.r(null);return}K(f.theme);const r=w;let p=!1,i=!1;addEventListener("message",a=>{if(a.source!==parent||a.origin!==r)return;le(a.data)&&K(a.data.__frame_theme.theme),ae(a.data)&&ve(a.data.__frame_patch,r);const k=a.data?.__fc_mode;k&&typeof k=="object"&&!p&&N&&L.test(N)&&(p=!0,T(N).then(x=>x.install?.(r,k.on===!0)).catch(()=>{}));const A=a.data?.__ft_cmd;A&&typeof A=="object"&&!i&&I&&L.test(I)&&(i=!0,T(I).then(x=>x.install?.(r,A)).catch(()=>{}))});const d=Object.keys(f.capabilities??{}).filter(a=>Object.hasOwn(M,a)).map(a=>[a,M[a]]).filter(a=>typeof a[1]=="string"&&L.test(a[1])),u=await Promise.allSettled(d.map(([,a])=>T(a))),h=await e,_=w;if(h?.buildBoot||parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},_),h?.buildBoot)try{P=h.buildBoot(f,h.TRANSFORMS??{},{shellOrigin:_,mount:W},a=>parent.postMessage({__frame_cap_telemetry:a},_))}catch{parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},_),P=z(f,_)}else P=z(f,_);const C=a=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:a}},_),we=P;u.forEach((a,k)=>{const A=d[k][0];if(a.status!=="fulfilled"){C(A);return}try{a.value?.install?.(we)}catch{C(A)}});for(const a of R.values())a.done||(a.nulled=!0,a.r(null));await y,parent.postMessage({__frame_ready:!0},w),e.then(a=>a?.installSizeReporter?.(_,g))})}})();</script><!-- /frame-runtime --><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Zero Lag Lobby</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ── Zero Lag mockup kit ─────────────────────────────────────────────
+   Page chrome is theme-aware. Device screens commit to the app's own
+   field-dark UI (see the sun-glare variant in the Field Map deck).   */
+
+:root{
+  --paper:#F0F3F7; --paper-2:#FFFFFF; --paper-3:#E4E9F0;
+  --ink:#0B111A; --ink-2:#3D4A5C; --ink-3:#6B7A8E;
+  --rule:#CBD5E1; --rule-2:#E2E8F0;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00874B; --red:#DC3A1C; --pink:#C13F94;
+  --glow:0 1px 0 rgba(11,17,26,.06);
+  --band:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+    --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+    --rule:#26303E; --rule-2:#1B2430;
+    --yellow:#FFE01F; --yellow-ink:#12160B;
+    --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+    --glow:0 1px 0 rgba(255,255,255,.04);
+    --band:#0D131C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+  --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+  --rule:#26303E; --rule-2:#1B2430;
+  --yellow:#FFE01F; --yellow-ink:#12160B;
+  --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+  --glow:0 1px 0 rgba(255,255,255,.04);
+  --band:#0D131C;
+}
+
+/* ── device screen: the app's own tokens ───────────────────────────────
+   Deliberately the same role names the shipped packages/ui/src/styles/
+   tokens.css uses, so a mockup translates into utilities without a
+   dictionary — and so that needing a colour these roles do not cover is a
+   visible signal that the token set is missing one.               */
+.device{
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-ink:#12160b; --action-press:#b39b00;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c; --curse:#e86bb4;
+  --transit-u:#3e88e8; --transit-s:#22c179; --transit-tram:#e8b93e;
+  --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6; --map-hiding-area:#ffe01f;
+}
+.device.light{
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f; --curse:#c13f94;
+  --transit-u:#0f5fc2; --transit-s:#00794a; --transit-tram:#8a6a00;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c; --map-hiding-area:#e0ae00;
+  border-color:#111925;
+}
+/* team identity — Okabe–Ito, from apps/web/src/lobby/palette.ts */
+:root{
+  --t-vermillion:#d55e00; --t-cobalt:#0072b2; --t-jade:#009e73;
+  --t-orchid:#cc79a7; --t-amber:#e69f00; --t-sky:#56b4e9;
+  --t-citron:#f0e442; --t-slate:#4b4b4b;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table{margin:0}
+/* Buttons carry their look from their class, never from the user agent. */
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;text-wrap:balance;margin:0;line-height:1.02;letter-spacing:-.02em}
+p{margin:0}
+.mono{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+.page{max-width:1220px;margin:0 auto;padding:0 24px 96px}
+
+/* ── masthead ─────────────────────────────────────────────── */
+.masthead{padding:64px 0 40px;border-bottom:3px solid var(--ink);position:relative}
+.eyebrow{
+  font-family:"Azeret Mono",ui-monospace,monospace;font-size:12px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap
+}
+.eyebrow b{color:var(--ink);font-weight:700}
+.eyebrow .u{
+  background:var(--blue);color:#fff;width:22px;height:22px;border-radius:5px;
+  display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:0
+}
+.masthead h1{font-size:clamp(44px,7.2vw,88px);max-width:15ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:24px;max-width:62ch;font-size:19px;color:var(--ink-2)}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}
+.tag{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;font-weight:500;letter-spacing:.06em;
+  border:1.5px solid var(--rule);border-radius:999px;padding:6px 13px;color:var(--ink-2);background:var(--paper-2)
+}
+.tag.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+
+/* ── bands ────────────────────────────────────────────────── */
+.band{padding:64px 0 8px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:40px;max-width:760px}
+.kicker{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink);display:inline-flex;align-items:center;gap:9px
+}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(28px,3.6vw,42px)}
+.band-head p{color:var(--ink-2);font-size:17px;max-width:66ch}
+
+/* ── device rack ──────────────────────────────────────────── */
+.rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:44px 36px;align-items:start}
+.rack.two{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.mock{display:flex;flex-direction:column;gap:20px;min-width:0}
+.mock-label{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mock-label .n{
+  font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;
+  background:var(--ink);color:var(--paper);border-radius:4px;padding:3px 7px
+}
+.mock-label h3{font-size:21px}
+.mock-label .who{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38, 0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+  animation:rise .7s cubic-bezier(.2,.9,.25,1) both;
+}
+.mock:nth-child(2) .device{animation-delay:.09s}
+.mock:nth-child(3) .device{animation-delay:.18s}
+.mock:nth-child(4) .device{animation-delay:.27s}
+@keyframes rise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.statusbar{
+  height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:11px;color:var(--ink);letter-spacing:.02em
+}
+.appbar{
+  flex:0 0 auto;padding:6px 16px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between
+}
+.appbar .title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar>div:first-child{min-width:0}
+.scr-body{flex:1 1 auto;padding:0 16px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.tabbar{
+  flex:0 0 auto;height:62px;border-top:1px solid var(--hairline);display:grid;grid-auto-flow:column;
+  align-items:center;padding:0 8px 8px;gap:2px
+}
+.tabbar div{
+  display:grid;place-items:center;gap:3px;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-dim);font-family:"Azeret Mono",monospace;padding-top:8px;border-radius:12px
+}
+.tabbar div span{font-size:17px;line-height:1}
+.tabbar div.on{color:var(--action)}
+
+/* screen atoms */
+.s-card{background:var(--surface);border:1px solid var(--hairline);border-radius:18px;padding:12px 13px}
+.s-row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+.grow{flex:1 1 auto;min-width:0}
+.dim{color:var(--ink-dim)}
+.tiny{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-family:"Azeret Mono",monospace;white-space:nowrap}
+.subnote{font-family:"Archivo",sans-serif;font-size:12px;color:var(--ink-dim);margin-top:4px;line-height:1.35}
+.num{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-xl{
+  min-height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;letter-spacing:.01em;
+  background:var(--action);color:#12160B;border:0;width:100%;position:relative;overflow:hidden;
+  box-shadow:0 5px 0 #B39B00;transition:transform .12s cubic-bezier(.3,1.4,.5,1),box-shadow .12s;cursor:pointer
+}
+.btn-xl:hover{transform:translateY(-2px);box-shadow:0 7px 0 #B39B00}
+.btn-xl:active{transform:translateY(4px);box-shadow:0 1px 0 #B39B00}
+.btn-xl::after{
+  content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);
+  transform:translateX(-120%);animation:sheen 3.6s ease-in-out infinite
+}
+@keyframes sheen{0%,72%{transform:translateX(-120%)}92%,100%{transform:translateX(120%)}}
+.btn-xl.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:0 5px 0 var(--surface-raised)}
+.btn-xl.ghost:hover{box-shadow:0 7px 0 var(--surface-raised)}
+.btn-xl.ghost::after{display:none}
+.btn-xl.red{background:var(--offline);color:#160604;box-shadow:0 5px 0 #A62A15}
+.btn-xl.red:hover{box-shadow:0 7px 0 #A62A15}
+.btn-xl.green{background:var(--live);color:#04180E;box-shadow:0 5px 0 #11784B}
+.btn-xl.green:hover{box-shadow:0 7px 0 #11784B}
+.btn-xl small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.72}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--surface-raised);color:var(--ink-dim);white-space:nowrap
+}
+.pill.live{background:rgba(34,193,121,.16);color:var(--live)}
+.pill.stale{background:rgba(255,164,38,.16);color:var(--stale)}
+.pill.off{background:rgba(255,90,60,.15);color:var(--offline)}
+.pill.hot{background:var(--action);color:#12160B;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.dot.beat{animation:beat 1.9s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.42;transform:scale(.82)}}
+
+.badge{
+  width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:19px;flex:0 0 auto;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)
+}
+.badge.sm{width:28px;height:28px;border-radius:9px;font-size:14px}
+
+.avatars{display:flex}
+.avatars i{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+  font-size:10px;font-weight:700;font-family:"Archivo",sans-serif;background:var(--hairline-strong);color:var(--ink);
+  border:2px solid var(--surface);margin-left:-7px
+}
+.avatars i:first-child{margin-left:0}
+
+/* annotations */
+.anno{list-style:none;margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:14px;position:relative;max-width:44ch}
+.anno::before{content:"";position:absolute;left:4px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--rule)}
+.anno li{position:relative;font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.anno li::before{
+  content:"";position:absolute;left:-20px;top:6px;width:11px;height:11px;border-radius:50%;
+  background:var(--paper);border:3px solid var(--blue)
+}
+.anno li b{color:var(--ink);font-weight:700}
+.anno li.y::before{border-color:var(--yellow)}
+.anno li.g::before{border-color:var(--green)}
+.anno li.r::before{border-color:var(--red)}
+.anno li.p::before{border-color:var(--pink)}
+
+/* prose blocks */
+.note{
+  background:var(--band);border:1px solid var(--rule);border-left:6px solid var(--yellow);
+  border-radius:4px 16px 16px 4px;padding:18px 20px;font-size:15px;color:var(--ink-2);max-width:70ch
+}
+.note b{color:var(--ink)}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden;margin-top:44px}
+.specs div{background:var(--band);padding:18px 20px}
+.specs dt{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.specs dd{margin:0;font-size:14.5px;color:var(--ink-2)}
+.specs dd b{color:var(--ink)}
+
+/* footer / tokens */
+.foot{margin-top:72px;border-top:3px solid var(--ink);padding-top:32px;display:grid;gap:28px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.sw{border-radius:12px;padding:12px 14px 14px;min-width:118px;border:1px solid var(--rule);background:var(--band)}
+.sw i{display:block;height:34px;border-radius:8px;margin-bottom:9px}
+.sw b{display:block;font-size:12.5px}
+.sw span{font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink-3)}
+.foot p{font-size:14px;color:var(--ink-3);max-width:70ch}
+
+@media (max-width:640px){
+  .page{padding:0 16px 64px}
+  .masthead{padding:40px 0 28px}
+  .device{max-width:100%}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+:where(a,button,[tabindex]):focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:6px}
+/* ── lobby-specific screen parts ─────────────────────────── */
+.code-boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.code-boxes b{
+  aspect-ratio:1;border-radius:16px;background:var(--surface);border:2px solid var(--hairline-strong);
+  display:grid;place-items:center;font-family:"Azeret Mono",monospace;font-size:30px;font-weight:700
+}
+.code-boxes b.empty{border-style:dashed;border-color:var(--surface-raised);color:var(--hairline-strong)}
+.code-boxes b.caret{border-color:var(--action);animation:caret 1.1s steps(1) infinite}
+@keyframes caret{0%,50%{border-color:var(--action)}50.01%,100%{border-color:var(--hairline-strong)}}
+
+.qr{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:20px;padding:14px;
+  display:flex;align-items:center;gap:14px
+}
+.qr svg{width:74px;height:74px;flex:0 0 auto;border-radius:8px;background:#fff;padding:5px}
+
+.field{
+  background:var(--surface);border:2px solid var(--hairline-strong);border-radius:18px;padding:11px 14px;
+  display:flex;flex-direction:column;gap:3px;min-height:62px;justify-content:center
+}
+.field label{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim)}
+.field .val{font-size:17px;font-weight:600}
+.field.focus{border-color:var(--action);box-shadow:0 0 0 4px rgba(255,224,31,.13)}
+
+.emoji-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.emoji-grid b{
+  aspect-ratio:1;border-radius:18px;background:var(--surface);border:2px solid transparent;
+  display:grid;place-items:center;font-size:27px;transition:transform .16s cubic-bezier(.3,1.5,.5,1)
+}
+.emoji-grid b:hover{transform:translateY(-3px) scale(1.05)}
+.emoji-grid b.on{border-color:var(--action);background:rgba(255,224,31,.1);animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.14)}100%{transform:scale(1)}}
+
+.swatch-row{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+.swatch-row b{aspect-ratio:1;border-radius:11px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.14);transition:transform .16s}
+.swatch-row b:hover{transform:translateY(-3px)}
+.swatch-row b.on{box-shadow:0 0 0 3px var(--ground),0 0 0 6px var(--action);transform:translateY(-3px)}
+
+.team-card{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:20px;padding:7px 11px;
+  display:flex;align-items:center;gap:10px;border-left:5px solid var(--tc,var(--hairline-strong));
+  transition:transform .16s cubic-bezier(.3,1.4,.5,1),background .16s
+}
+.team-card:hover{transform:translateX(3px);background:var(--surface-raised)}
+.team-card.mine{background:rgba(255,224,31,.07);border-color:rgba(255,224,31,.35)}
+.team-card .name{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px;letter-spacing:-.01em}
+.team-card .avatars i{width:22px;height:22px;font-size:9px}
+.team-card .badge{width:32px;height:32px;border-radius:11px;font-size:16px}
+.join-btn{
+  border-radius:14px;background:var(--hairline-strong);min-width:56px;min-height:42px;display:grid;place-items:center;
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)
+}
+.join-btn.mine{background:var(--action);color:#12160B;font-weight:700}
+
+.sec-head{display:flex;align-items:center;gap:9px}
+.sec-head .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+.sec-head .rule{height:1px;background:var(--hairline);flex:1}
+.sec-head .tally{font-family:"Azeret Mono",monospace;font-size:10px;color:var(--ink-dim)}
+
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--hairline);
+  border-radius:26px 26px 0 0;padding:10px 16px 18px;display:flex;flex-direction:column;gap:11px;
+  box-shadow:0 -24px 40px -20px rgba(0,0,0,.85);animation:slideup .5s cubic-bezier(.2,.9,.25,1) both .3s
+}
+@keyframes slideup{from{transform:translateY(70%)}to{transform:none}}
+.grabber{width:44px;height:5px;border-radius:3px;background:var(--hairline-strong);margin:0 auto 4px}
+.scrim{position:absolute;inset:0;background:rgba(5,8,14,.62);backdrop-filter:blur(1.5px)}
+
+.ready-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--surface);
+  border:1px solid var(--hairline)
+}
+.ready-row.ok{border-color:rgba(34,193,121,.4);background:rgba(34,193,121,.08)}
+.check{
+  width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:14px;font-weight:700;
+  background:var(--surface-raised);color:var(--ink-dim);flex:0 0 auto
+}
+.check.ok{background:var(--live);color:#04180E}
+.check.wait{color:var(--stale);animation:beat 1.6s ease-in-out infinite}
+
+.rule-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--hairline)}
+.rule-item:last-child{border-bottom:0}
+.rule-item .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--hairline-strong);flex:0 0 auto;display:grid;place-items:center;font-size:13px}
+.rule-item .box.on{background:var(--action);border-color:var(--action);color:#12160B;font-weight:700}
+
+.progress{height:10px;border-radius:6px;background:var(--surface-raised);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:6px;background:var(--live);width:60%;animation:fill 1.6s cubic-bezier(.2,.9,.25,1) both .5s}
+@keyframes fill{from{width:0}}
+
+/* ── what holds the start ─────────────────────────────────────────── */
+/* The lobby is the one place the app does refuse: not because a rule was
+   broken, but because a game with an empty team cannot begin. It says
+   which thing, and the thing is tappable. */
+.blocked{
+  border-radius:18px;padding:11px 12px;background:rgb(255 164 38 / .1);
+  border:1px solid rgb(255 164 38 / .4);display:flex;flex-direction:column;gap:8px
+}
+.blocked .why{display:flex;align-items:center;gap:9px;font-size:12.5px;line-height:1.3}
+.blocked .why .go{
+  margin-left:auto;font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--stale);white-space:nowrap
+}
+.dot-warn{width:7px;height:7px;border-radius:50%;background:var(--stale);flex:0 0 auto}
+
+/* Role picker inside the team drawer */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.seg b{
+  min-height:46px;border-radius:14px;background:var(--surface-raised);display:flex;align-items:center;
+  justify-content:center;gap:7px;font-size:13px;font-weight:600
+}
+.seg b.on{background:var(--action);color:var(--action-ink)}
+
+/* Members, inside the same drawer */
+.member{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--hairline)}
+.member:last-child{border-bottom:0}
+.member .move{
+  font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-dim);border:1px solid var(--hairline);border-radius:10px;padding:6px 9px;min-height:34px;
+  display:grid;place-items:center;white-space:nowrap
+}
+
+/* Ready check: people, grouped by the team they are on */
+.team-group{display:flex;flex-direction:column;gap:5px}
+.team-group .gh{display:flex;align-items:center;gap:8px;padding:2px 2px 1px}
+.team-group .gh .nm{font-size:12.5px;font-weight:700}
+.team-group .gh .tally{
+  margin-left:auto;font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.06em;color:var(--ink-dim)
+}
+.person{
+  display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:13px;background:var(--surface);
+  border:1px solid var(--hairline);font-size:13px
+}
+.person.ok{border-color:rgb(34 193 121 / .35);background:rgb(34 193 121 / .07)}
+.person.me{border-color:rgb(255 224 31 / .45)}
+.person .tick{
+  width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:700;
+  background:var(--surface-raised);color:var(--ink-faint);flex:0 0 auto
+}
+.person .tick.ok{background:var(--live);color:#04180e}
+.person .when{
+  margin-left:auto;font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-faint);white-space:nowrap
+}
+
+/* Hold-to-start: the fill is the confirmation */
+.hold{position:relative;overflow:hidden}
+.hold .fill{position:absolute;inset:0;background:rgb(255 255 255 / .28);transform-origin:left;
+  transform:scaleX(.42);animation:hold-fill 2.6s ease-in-out infinite}
+@keyframes hold-fill{0%{transform:scaleX(0)}60%,100%{transform:scaleX(.62)}}
+
+/* ── invite ───────────────────────────────────────────────────────── */
+/* The code is not a badge to wear all game; it is something you hand to
+   somebody once. So it lives behind the share control. */
+.icon-btn{
+  width:42px;height:42px;border-radius:14px;background:var(--surface);border:1px solid var(--hairline);
+  display:grid;place-items:center;font-size:17px;color:var(--ink);flex:0 0 auto;
+  transition:transform .16s cubic-bezier(.3,1.5,.5,1)
+}
+.icon-btn:hover{transform:scale(1.07)}
+.code-big{
+  font-family:"Azeret Mono",monospace;font-size:38px;font-weight:700;letter-spacing:.16em;
+  text-align:center;line-height:1
+}
+.qr-big{background:#fff;border-radius:18px;padding:12px;width:150px;height:150px;margin:0 auto}
+.qr-big svg{width:100%;height:100%;display:block}
+
+/* ── your team, on a player's lobby ───────────────────────────────── */
+.my-team{
+  border-radius:22px;padding:14px;background:var(--surface);border:2px solid var(--action);
+  display:flex;flex-direction:column;gap:11px
+}
+.my-team .top{display:flex;align-items:center;gap:12px}
+.my-team .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:21px;letter-spacing:-.02em}
+.other{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:13px;background:var(--surface);
+  border:1px solid var(--hairline);font-size:12.5px
+}
+.other .cnt{margin-left:auto;font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-faint)}
+
+/* ── assigning people ─────────────────────────────────────────────── */
+.assign-row{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:15px;background:var(--surface);
+  border:1px solid var(--hairline)
+}
+.assign-row.loose{border-color:rgb(255 164 38 / .5);background:rgb(255 164 38 / .08)}
+.assign-row .to{
+  font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  border:1px solid var(--hairline);border-radius:11px;padding:7px 10px;min-height:36px;display:grid;
+  place-items:center;white-space:nowrap;margin-left:auto
+}
+.assign-row.loose .to{background:var(--action);color:var(--action-ink);border-color:var(--action);font-weight:700}
+.pick-team{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;background:var(--surface);
+  border:2px solid var(--hairline);transition:transform .16s cubic-bezier(.3,1.4,.5,1)
+}
+.pick-team:hover{transform:translateX(3px)}
+.pick-team .side{
+  margin-left:auto;font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-faint)
+}
+
+/* ── the briefing ─────────────────────────────────────────────────── */
+/* What a player is agreeing to when they say they are ready: where the
+   game is, and whatever the host wrote down. Read-only — the rules are
+   the host's text, not a form. */
+.area-card{
+  border-radius:20px;overflow:hidden;background:var(--surface);border:1px solid var(--hairline);
+  display:flex;flex-direction:column
+}
+.area-card .strip{position:relative;height:104px;background:var(--map-land)}
+.area-card .strip svg{position:absolute;inset:0;width:100%;height:100%}
+.area-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hairline)}
+.area-card .facts div{background:var(--surface);padding:9px 11px}
+.area-card .facts dt{
+  font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-dim)
+}
+.area-card .facts dd{margin:2px 0 0;font-size:13px;font-weight:600}
+
+.rule-read{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--hairline)}
+.rule-read:last-child{border-bottom:0}
+.rule-read .n{
+  font-family:"Azeret Mono",monospace;font-size:10px;color:var(--ink-faint);flex:0 0 auto;
+  width:16px;text-align:right;padding-top:2px
+}
+</style>
+<div class="page">
+<header class="masthead">
+  <div class="eyebrow"><span class="u">U</span> Zero Lag &middot; Hide + Seek companion <b>&middot; Deck 01 / 05</b> &middot; Lobby</div>
+  <h1>Nine people into <em>five teams</em></h1>
+  <p class="deck">Between opening a game and starting one. The host has a room to arrange; everybody else has a team to belong to and a button to press. Those are two different screens, and pretending otherwise gives eight people a control panel for a job that is not theirs.</p>
+  <div class="tags">
+    <span class="tag on">M1 &mdash; Teams and lobby</span>
+    <span class="tag on">M5 &mdash; Ready check &amp; house rules</span>
+    <span class="tag">Host and player views</span>
+    <span class="tag">Ready is per person</span>
+  </div>
+</header>
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Two lobbies</span>
+    <h2>The host arranges the room. Everybody else joins it.</h2>
+    <p>Same game, same moment, different job. The host is composing teams and watching for what is in the way; a player wants to know which team they are on, change it if it is wrong, and say they are ready. Giving both the same screen would mean eight people scrolling past controls they will never touch.</p>
+  </div>
+  <div class="rack"><figure class="mock"><div class="mock-label"><span class="n">A1</span><h3>Host board</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:41</span><span>84%</span></div>
+  <div class="appbar"><div class="grow"><div class="sub">9 players &middot; 5 teams</div><div class="title">Kreuzberg Sprint</div></div><button class="icon-btn" aria-label="Invite people"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+  <div class="scr-body" style="gap:5px;padding-bottom:8px">
+    <div class="sec-head"><span class="lab">Hiders</span><span class="rule"></span><span class="tally">2 teams</span></div>
+    <div class="team-card mine" style="--tc:var(--t-vermillion)">
+      <div class="badge" style="background:var(--t-vermillion)">&#129418;</div>
+      <div class="grow"><div class="name">Fuchsbau</div><div class="subnote" style="margin-top:1px">Nils &middot; Mira</div></div><div class="join-btn mine">You</div>
+    </div><div class="team-card " style="--tc:var(--t-cobalt)">
+      <div class="badge" style="background:var(--t-cobalt)">&#128025;</div>
+      <div class="grow"><div class="name">Krake</div><div class="subnote" style="margin-top:1px">Jo &middot; Pia</div></div>
+    </div>
+    <div class="sec-head"><span class="lab">Seekers</span><span class="rule"></span><span class="tally">3 teams</span></div>
+    <div class="team-card " style="--tc:var(--t-jade)">
+      <div class="badge" style="background:var(--t-jade)">&#129417;</div>
+      <div class="grow"><div class="name">Eule</div><div class="subnote" style="margin-top:1px">Lena &middot; Timo</div></div>
+    </div><div class="team-card " style="--tc:var(--t-amber)">
+      <div class="badge" style="background:var(--t-amber)">&#128029;</div>
+      <div class="grow"><div class="name">Bienen</div><div class="subnote" style="margin-top:1px">Sami</div></div>
+    </div><div class="team-card " style="--tc:var(--t-sky)">
+      <div class="badge" style="background:var(--t-sky)">&#129416;</div>
+      <div class="grow"><div class="name">Haie</div></div><span class="pill stale">Empty</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="blocked">
+      <div class="why"><span class="dot-warn"></span><span>Haie has nobody on it</span><span class="go">Fix &#8250;</span></div>
+      <div class="why"><span class="dot-warn"></span><span>Rasmus is not on a team</span><span class="go">Fix &#8250;</span></div>
+    </div>
+    <button class="btn-xl" disabled style="opacity:.45;min-height:54px">Open the ready check</button>
+  </div>
+</div></div><ul class="anno"><li class="r"><b>The block names the thing, not the rule.</b> &ldquo;Haie has nobody on it&rdquo; beats &ldquo;invalid configuration&rdquo;, and each line is a tap to the place that fixes it.</li><li class="y"><b>The action stays visible while it is unavailable.</b> Hiding it would leave a host hunting for a button that is not there; greying it out says the button is real and something is in its way.</li><li class=""><b>Role is a property of the round.</b> These two headings swap between rounds; the cards underneath do not move.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">A2</span><h3>Player lobby</h3><span class="who">any player</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:42</span><span>76%</span></div>
+  <div class="appbar"><div class="grow"><div class="sub">9 players &middot; 5 teams</div><div class="title">Kreuzberg Sprint</div></div><button class="icon-btn" aria-label="Invite people"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+  <div class="scr-body" style="gap:10px">
+    <div class="tiny dim">Your team</div>
+    <div class="my-team">
+      <div class="top">
+        <div class="badge" style="background:var(--t-vermillion);width:46px;height:46px;border-radius:15px;font-size:23px">&#129418;</div>
+        <div class="grow"><div class="nm">Fuchsbau</div>
+          <div class="subnote" style="margin-top:2px">Hiding &middot; with Nils</div></div>
+      </div>
+      <button class="btn-xl ghost" style="min-height:48px;font-size:14px">Edit team</button>
+    </div>
+    <div class="tiny dim" style="margin-top:2px">Everyone else</div>
+    <div class="other"><span class="badge sm" style="background:var(--t-cobalt)">&#128025;</span>
+      <span>Krake</span><span class="cnt">Hiding &middot; 2</span></div>
+    <div class="other"><span class="badge sm" style="background:var(--t-jade)">&#129417;</span>
+      <span>Eule</span><span class="cnt">Seeking &middot; 2</span></div>
+    <div class="other"><span class="badge sm" style="background:var(--t-amber)">&#128029;</span>
+      <span>Bienen</span><span class="cnt">Seeking &middot; 1</span></div>
+    <div class="other"><span class="badge sm" style="background:var(--t-sky)">&#129416;</span>
+      <span>Haie</span><span class="cnt">Seeking &middot; 0</span></div>
+    <div style="flex:1"></div>
+    <div class="subnote" style="text-align:center;margin:0">Pia is setting things up. She will start once everyone is ready.</div>
+    <button class="btn-xl green">Read the briefing</button>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>Your team, then everybody else, then the only button you own.</b> Two things to do here: fix your team if it is wrong, and get yourself ready.</li><li class="g"><b>The other teams are a list, not a menu.</b> They are worth seeing &mdash; who is playing, which side, how many &mdash; and worth nothing to tap.</li><li class="p"><b>It says who is in charge and what they are waiting for</b>, so nobody wonders whether the game is stuck on them.</li><li class="r"><b>Before the host has put you anywhere</b> this screen says so in place of the team card, and the button waits &mdash; there is nothing to be ready for yet.</li><li class=""><b>The button opens the briefing the first time</b> and reads &ldquo;I&#8217;m ready&rdquo; after that. Saying you are ready without having seen the area is not a thing worth allowing.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">A3</span><h3>Asking people in</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:41</span><span>84%</span></div>
+  <div class="appbar"><div class="grow"><div class="sub">9 players &middot; 5 teams</div><div class="title">Kreuzberg Sprint</div></div><button class="icon-btn" aria-label="Invite people"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+  <div class="scr-body" style="gap:5px;opacity:.45">
+    <div class="sec-head"><span class="lab">Hiders</span><span class="rule"></span><span class="tally">2 teams</span></div>
+    <div class="team-card " style="--tc:var(--t-vermillion)">
+      <div class="badge" style="background:var(--t-vermillion)">&#129418;</div>
+      <div class="grow"><div class="name">Fuchsbau</div><div class="subnote" style="margin-top:1px">Nils &middot; Mira</div></div>
+    </div><div class="team-card " style="--tc:var(--t-cobalt)">
+      <div class="badge" style="background:var(--t-cobalt)">&#128025;</div>
+      <div class="grow"><div class="name">Krake</div><div class="subnote" style="margin-top:1px">Jo &middot; Pia</div></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div style="text-align:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:19px">Ask people in</div>
+    <div class="qr-big"><svg viewBox="0 0 33 33" role="img" aria-label="QR code"><g fill="#0a0d14">
+  <path d="M0 0h9v9H0zM2 2h5v5H2zM24 0h9v9h-9zM26 2h5v5h-5zM0 24h9v9H0zM2 26h5v5H2z"/>
+  <rect x="11" y="1" width="2" height="2"/><rect x="14" y="1" width="3" height="2"/><rect x="19" y="2" width="2" height="3"/>
+  <rect x="12" y="5" width="4" height="2"/><rect x="17" y="6" width="2" height="2"/><rect x="11" y="9" width="2" height="3"/>
+  <rect x="15" y="10" width="3" height="2"/><rect x="20" y="9" width="2" height="2"/><rect x="1" y="11" width="3" height="2"/>
+  <rect x="5" y="12" width="2" height="3"/><rect x="8" y="14" width="2" height="2"/><rect x="11" y="14" width="2" height="4"/>
+  <rect x="14" y="16" width="4" height="2"/><rect x="19" y="14" width="2" height="3"/><rect x="22" y="16" width="3" height="2"/>
+  <rect x="26" y="11" width="2" height="3"/><rect x="29" y="13" width="3" height="2"/><rect x="24" y="19" width="2" height="2"/>
+  <rect x="27" y="20" width="3" height="3"/><rect x="31" y="18" width="2" height="4"/><rect x="11" y="20" width="3" height="2"/>
+  <rect x="15" y="21" width="2" height="3"/><rect x="19" y="23" width="4" height="2"/><rect x="12" y="25" width="2" height="3"/>
+  <rect x="16" y="27" width="3" height="2"/><rect x="21" y="28" width="2" height="3"/><rect x="25" y="26" width="3" height="2"/>
+  <rect x="29" y="29" width="3" height="3"/><rect x="11" y="30" width="2" height="2"/><rect x="1" y="16" width="2" height="2"/>
+  <rect x="4" y="19" width="3" height="2"/><rect x="1" y="21" width="2" height="2"/>
+</g></svg></div>
+    <div>
+      <div class="tiny dim" style="text-align:center;margin-bottom:6px">Or read this out</div>
+      <div class="code-big">KRZB</div>
+    </div>
+    <div class="s-row" style="gap:9px">
+      <button class="btn-xl ghost" style="flex:1;min-height:52px;font-size:14px">Copy link</button>
+      <button class="btn-xl" style="flex:1;min-height:52px;font-size:15px">Share</button>
+    </div>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>The code is not a badge to wear all game.</b> It is something you hand over once, so it lives behind the share control rather than sitting in the header for four hours.</li><li class="g"><b>QR first, code second, link third</b> &mdash; in the order they actually get used. Reading four characters aloud is the fallback, not the plan.</li><li class="">Same sheet for a player, because anybody can pull a friend in.</li></ul></figure></div>
+</section>
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Two different jobs</span>
+    <h2>A team is a name and a face. Who is on it is another question.</h2>
+    <p>These were one drawer and it was doing too much: renaming a team and moving a person between teams have nothing in common except appearing near each other. Splitting them gives the identity sheet room for the pickers and gives membership a screen that can show everybody at once &mdash; including the people who are not on a team yet.</p>
+  </div>
+  <div class="rack"><figure class="mock"><div class="mock-label"><span class="n">B1</span><h3>Making a team</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:43</span><span>84%</span></div>
+  <div class="appbar"><div class="grow"><div class="sub">9 players &middot; 5 teams</div><div class="title">Kreuzberg Sprint</div></div><button class="icon-btn" aria-label="Invite people"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+  <div class="scr-body" style="gap:5px;opacity:.45">
+    <div class="sec-head"><span class="lab">Hiders</span><span class="rule"></span><span class="tally">2 teams</span></div>
+    <div class="team-card " style="--tc:var(--t-vermillion)">
+      <div class="badge" style="background:var(--t-vermillion)">&#129418;</div>
+      <div class="grow"><div class="name">Fuchsbau</div><div class="subnote" style="margin-top:1px">Nils &middot; Mira</div></div>
+    </div><div class="team-card " style="--tc:var(--t-cobalt)">
+      <div class="badge" style="background:var(--t-cobalt)">&#128025;</div>
+      <div class="grow"><div class="name">Krake</div><div class="subnote" style="margin-top:1px">Jo &middot; Pia</div></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="s-row" style="gap:11px">
+      <div class="badge" style="background:var(--t-vermillion)">&#129418;</div>
+      <div class="grow"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:17px">New team</div>
+        <div class="subnote" style="margin-top:1px">A name, a side, a face</div></div>
+    </div>
+    <div class="field"><label>Name</label><div class="val">Fuchsbau<span class='caret-bar'></span></div></div>
+    <div class="seg"><b class="on">&#129418; Hiding</b><b>&#129417; Seeking</b></div>
+    <div class="emoji-grid"><b class="on">&#129418;</b><b class="">&#128025;</b><b>&#128029;</b><b>&#129417;</b></div>
+    <div class="swatch-row">
+      <b class="on" style="background:var(--t-vermillion)"></b><b class="" style="background:var(--t-cobalt)"></b>
+      <b style="background:var(--t-jade)"></b><b style="background:var(--t-orchid)"></b>
+      <b style="background:var(--t-amber)"></b><b style="background:var(--t-sky)"></b>
+      <b style="background:var(--t-citron)"></b><b style="background:var(--t-slate)"></b>
+    </div>
+    <button class="btn-xl">Create team</button>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>The same sheet that edits a team creates one.</b> Name, side, face, colour &mdash; in that order, in one place, whether the team exists yet or not.</li><li class="g"><b>Eight emoji, eight colours, curated.</b> Silhouettes that survive being a 16&nbsp;px map marker; none of them takes a skin-tone modifier.</li><li class="">The first untaken colour and face are pre-selected, so a new team is distinct without anyone choosing.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">B2</span><h3>Editing a team</h3><span class="who">host or member</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:43</span><span>84%</span></div>
+  <div class="appbar"><div class="grow"><div class="sub">9 players &middot; 5 teams</div><div class="title">Kreuzberg Sprint</div></div><button class="icon-btn" aria-label="Invite people"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></button></div>
+  <div class="scr-body" style="gap:5px;opacity:.45">
+    <div class="sec-head"><span class="lab">Hiders</span><span class="rule"></span><span class="tally">2 teams</span></div>
+    <div class="team-card " style="--tc:var(--t-vermillion)">
+      <div class="badge" style="background:var(--t-vermillion)">&#129418;</div>
+      <div class="grow"><div class="name">Fuchsbau</div><div class="subnote" style="margin-top:1px">Nils &middot; Mira</div></div>
+    </div><div class="team-card " style="--tc:var(--t-cobalt)">
+      <div class="badge" style="background:var(--t-cobalt)">&#128025;</div>
+      <div class="grow"><div class="name">Krake</div><div class="subnote" style="margin-top:1px">Jo &middot; Pia</div></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="s-row" style="gap:11px">
+      <div class="badge" style="background:var(--t-cobalt)">&#128025;</div>
+      <div class="grow"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:17px">Krake</div>
+        <div class="subnote" style="margin-top:1px">Cobalt &middot; hiding</div></div>
+    </div>
+    <div class="field"><label>Name</label><div class="val">Krake</div></div>
+    <div class="seg"><b class="on">&#129418; Hiding</b><b>&#129417; Seeking</b></div>
+    <div class="emoji-grid"><b class="">&#129418;</b><b class="on">&#128025;</b><b>&#128029;</b><b>&#129417;</b></div>
+    <div class="swatch-row">
+      <b class="" style="background:var(--t-vermillion)"></b><b class="on" style="background:var(--t-cobalt)"></b>
+      <b style="background:var(--t-jade)"></b><b style="background:var(--t-orchid)"></b>
+      <b style="background:var(--t-amber)"></b><b style="background:var(--t-sky)"></b>
+      <b style="background:var(--t-citron)"></b><b style="background:var(--t-slate)"></b>
+    </div>
+    <div class="s-row" style="gap:9px">
+      <button class="btn-xl ghost" style="flex:1">Remove</button>
+      <button class="btn-xl" style="flex:2">Save</button>
+    </div>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>Identical, and now genuinely short.</b> No members list, no host controls, nothing that belongs to a different question.</li><li class="p"><b>A player editing their own team sees exactly this.</b> It is the one thing in the lobby a non-host actually owns.</li><li class="r">Destructive sits left and quiet, confirmation sits right and loud, and neither is smaller than a thumb.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">B3</span><h3>Players</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:44</span><span>84%</span></div>
+  <div class="appbar"><button class="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button><div class="grow"><div class="sub">9 in the game</div><div class="title">Players</div></div><span class="pill stale">1 loose</span></div>
+  <div class="scr-body" style="gap:9px">
+    <div class="team-group" style="gap:5px">
+      <div class="gh"><span class="dot-warn"></span><span class="nm">Not on a team</span><span class="tally">1</span></div>
+      <div class="assign-row loose"><div class="avatars"><i>R</i></div><span>Rasmus</span>
+        <span class="to">Put on a team</span></div>
+    </div>
+    <div class="team-group" style="gap:5px">
+      <div class="gh"><span class="badge sm" style="background:var(--t-vermillion)">&#129418;</span>
+        <span class="nm">Fuchsbau</span><span class="tally">Hiding</span></div><div class="assign-row"><div class="avatars"><i>N</i></div><span>Nils</span><span class="to">Move</span></div><div class="assign-row"><div class="avatars"><i>MK</i></div><span>Mira</span><span class="to">Move</span></div>
+    </div>
+    <div class="team-group" style="gap:5px">
+      <div class="gh"><span class="badge sm" style="background:var(--t-cobalt)">&#128025;</span>
+        <span class="nm">Krake</span><span class="tally">Hiding</span></div><div class="assign-row"><div class="avatars"><i>J</i></div><span>Jo</span><span class="to">Move</span></div><div class="assign-row"><div class="avatars"><i>P</i></div><span>Pia</span><span class="pill">Host</span><span class="to">Move</span></div>
+    </div>
+    <div class="team-group" style="gap:5px">
+      <div class="gh"><span class="badge sm" style="background:var(--t-sky)">&#129416;</span>
+        <span class="nm">Haie</span><span class="tally">Seeking</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="subnote" style="text-align:center;margin:0">People arrive without a team. Putting them on one is the host&#8217;s job.</div>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>Everybody, under the team they are on</b>, with the people who are on none of them at the top in the colour of a problem.</li><li class="g"><b>This is where the host assigns people.</b> The blocked line on the board lands here; so does an empty team, so does a host tidying up before the whistle.</li><li class=""><b>An empty team still gets its heading.</b> Leaving it out would hide the very thing standing in the way of starting.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">B4</span><h3>Putting someone on a team</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:44</span><span>84%</span></div>
+  <div class="appbar"><button class="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button><div class="grow"><div class="sub">9 in the game</div><div class="title">Players</div></div><span class="pill stale">1 loose</span></div>
+  <div class="scr-body" style="gap:9px;opacity:.45">
+    <div class="team-group" style="gap:5px">
+      <div class="gh"><span class="dot-warn"></span><span class="nm">Not on a team</span><span class="tally">1</span></div>
+      <div class="assign-row loose"><div class="avatars"><i>R</i></div><span>Rasmus</span>
+        <span class="to">Put on a team</span></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="s-row" style="gap:11px">
+      <div class="avatars"><i>R</i></div>
+      <div class="grow"><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:17px">Put Rasmus on</div>
+        <div class="subnote" style="margin-top:1px">He will see it straight away</div></div>
+    </div>
+    <div class="pick-team" style="border-color:var(--action);background:rgb(255 224 31 / .08)">
+      <span class="badge sm" style="background:var(--t-sky)">&#129416;</span>
+      <span style="font-weight:600">Haie</span><span class="side">Seeking &middot; empty</span></div>
+    <div class="pick-team"><span class="badge sm" style="background:var(--t-amber)">&#128029;</span>
+      <span style="font-weight:600">Bienen</span><span class="side">Seeking &middot; 1</span></div>
+    <div class="pick-team"><span class="badge sm" style="background:var(--t-jade)">&#129417;</span>
+      <span style="font-weight:600">Eule</span><span class="side">Seeking &middot; 2</span></div>
+    <div class="pick-team"><span class="badge sm" style="background:var(--t-cobalt)">&#128025;</span>
+      <span style="font-weight:600">Krake</span><span class="side">Hiding &middot; 2</span></div>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>The teams are ordered by how much they need somebody</b> &mdash; the empty one first, then the smallest. The host is usually solving a shortage, not browsing.</li><li class="g"><b>Each row says which side it plays and how many are on it</b>, which is the whole basis of the decision.</li><li class="p">It lands immediately on the other person&#8217;s phone. No invitation, no confirmation &mdash; teams get rearranged out loud in a group of friends.</li></ul></figure></div>
+</section>
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">The one refusal</span>
+    <h2>Blocking, and the much longer list of things that only get a remark</h2>
+    <p>The app has no opinion it is willing to enforce once a round is running &mdash; hand limits, curse costs and hiding zones all warn and carry on. The lobby is different, because the four conditions below are not rules anybody agreed to. They are the difference between a game and a broken one.</p>
+  </div>
+  <div class="matrix-wrap" style="overflow-x:auto">
+<table class="matrix" style="min-width:520px">
+  <thead><tr><th>What holds the start</th><th>Why it has to</th><th>What the lobby does</th></tr></thead>
+  <tbody>
+    <tr><td class="row-h">A team with nobody on it</td><td class="self">It cannot hide or seek</td><td class="no">Blocks</td></tr>
+    <tr><td class="row-h">A player on no team</td><td class="self">They would sit out the round</td><td class="no">Blocks</td></tr>
+    <tr><td class="row-h">No hider team, or no seeker team</td><td class="self">There is no game</td><td class="no">Blocks</td></tr>
+    <tr><td class="row-h">Somebody not ready yet</td><td class="self">They may still be on a train</td><td class="no">Blocks</td></tr>
+    <tr><td class="row-h">A team of one against a team of four</td><td class="self">Lopsided, and sometimes the point</td><td class="yes">Says so, allows it</td></tr>
+    <tr><td class="row-h">Somebody offline right now</td><td class="self">Signal comes back</td><td class="yes">Says so, allows it</td></tr>
+  </tbody>
+</table></div>
+  <div class="note" style="margin-top:26px"><b>Everything else is a remark.</b> Lopsided teams, somebody temporarily offline, one seeker team against three hiders &mdash; all of it gets said out loud and none of it stands in the way. Deciding a five-against-one is a bad idea is the group&#8217;s job, not the app&#8217;s.</div>
+</section>
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Before the whistle</span>
+    <h2>Ready is something a person says</h2>
+    <p>Not a team, and not the host on their behalf. Everybody marks themselves &mdash; after one screen showing what they are marking themselves ready for &mdash; grouped under the team they are on so the gaps are obvious at a glance. The host gets the start only once the last person has said yes.</p>
+  </div>
+  <div class="rack"><figure class="mock"><div class="mock-label"><span class="n">C1</span><h3>Ready check</h3><span class="who">any player</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:59</span><span>82%</span></div>
+  <div class="appbar"><button class="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button><div class="grow"><div class="sub">Round 1 &middot; hiding phase 60 min</div><div class="title">Ready check</div></div></div>
+  <div class="scr-body" style="gap:8px">
+    <div class="s-card" style="padding:9px 12px">
+      <div class="s-row spread"><span class="tiny dim">Everyone ready</span>
+        <span class="num" style="font-size:15px">6 / 9</span></div>
+      <div class="progress" style="margin-top:8px"><i style="width:66%"></i></div>
+    </div>
+    <div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-vermillion)">&#129418;</span>
+        <span class="nm">Fuchsbau</span><span class="tally">1 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Nils</span><span class="when">14:56</span></div><div class="person me"><span class="tick ">&#183;</span><span>Mira</span></div>
+    </div><div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-cobalt)">&#128025;</span>
+        <span class="nm">Krake</span><span class="tally">2 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Jo</span><span class="when">14:57</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Pia</span><span class="when">14:57</span></div>
+    </div><div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-jade)">&#129417;</span>
+        <span class="nm">Eule</span><span class="tally">1 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Lena</span><span class="when">14:58</span></div><div class="person "><span class="tick ">&#183;</span><span>Timo</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="subnote" style="text-align:center;margin:0">Still to say yes: Timo and Sami.</div>
+    <button class="btn-xl green">I&#8217;m ready</button>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>Individual states, grouped by team.</b> Six of nine, and the two missing names are readable without counting ticks.</li><li class="g"><b>Your own row is marked</b> and the action at the bottom is yours alone. Nobody can mark anybody else ready.</li><li class=""><b>The line above the button names who is missing</b> &mdash; and leaves you out of it, because your own answer is the button.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">C2</span><h3>All nine in</h3><span class="who">host</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:59</span><span>82%</span></div>
+  <div class="appbar"><button class="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button><div class="grow"><div class="sub">Round 1 &middot; hiding phase 60 min</div><div class="title">Ready check</div></div></div>
+  <div class="scr-body" style="gap:8px">
+    <div class="s-card" style="padding:9px 12px">
+      <div class="s-row spread"><span class="tiny dim">Everyone ready</span>
+        <span class="num" style="font-size:15px">9 / 9</span></div>
+      <div class="progress" style="margin-top:8px"><i style="width:100%"></i></div>
+    </div>
+    <div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-vermillion)">&#129418;</span>
+        <span class="nm">Fuchsbau</span><span class="tally">2 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Nils</span><span class="when">14:56</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Mira</span><span class="when">14:58</span></div>
+    </div><div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-cobalt)">&#128025;</span>
+        <span class="nm">Krake</span><span class="tally">2 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Jo</span><span class="when">14:57</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Pia</span><span class="when">14:57</span></div>
+    </div><div class="team-group">
+      <div class="gh"><span class="badge sm" style="background:var(--t-jade)">&#129417;</span>
+        <span class="nm">Eule</span><span class="tally">2 / 2</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Lena</span><span class="when">14:58</span></div><div class="person ok"><span class="tick ok">&#10003;</span><span>Timo</span><span class="when">14:59</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="subnote" style="text-align:center;margin:0">Holding starts the 60-minute hiding countdown for everyone.</div>
+    <button class="btn-xl green hold"><span class="fill"></span><span style="position:relative">Hold to start the game</span></button>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>The start only appears once</b> the last person is in. Before that the host sees the same screen with their own ready button, because the host is a player too.</li><li class="g"><b>Held, not tapped.</b> The fill is the confirmation; let go early and nothing happened, which is a friendlier undo than a dialog asking whether you meant it.</li><li class="p"><b>The button says what it starts</b> &mdash; the hiding countdown, not &ldquo;the game&rdquo; in the abstract. Sixty minutes begin the moment it lands.</li></ul></figure><figure class="mock"><div class="mock-label"><span class="n">C3</span><h3>The briefing</h3><span class="who">any player</span></div><div class="device"><div class="notch"></div><div class="screen">
+  <div class="statusbar"><span>14:55</span><span>82%</span></div>
+  <div class="appbar"><button class="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg></button><div class="grow"><div class="sub">Before you say you are ready</div>
+    <div class="title">The briefing</div></div></div>
+  <div class="scr-body" style="gap:11px">
+    <div class="area-card">
+      <div class="strip"><svg viewBox="0 0 320 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="320" height="400" fill="var(--map-land)"/>
+  <g fill="var(--map-block)">
+    <rect x="8" y="16" width="66" height="42" rx="5"/><rect x="84" y="10" width="52" height="50" rx="5"/>
+    <rect x="150" y="22" width="72" height="38" rx="5"/><rect x="236" y="16" width="60" height="54" rx="5"/>
+    <rect x="14" y="104" width="56" height="60" rx="5"/><rect x="82" y="110" width="68" height="40" rx="5"/>
+    <rect x="176" y="100" width="48" height="52" rx="5"/><rect x="238" y="106" width="62" height="44" rx="5"/>
+    <rect x="10" y="196" width="64" height="50" rx="5"/><rect x="96" y="188" width="54" height="46" rx="5"/>
+    <rect x="172" y="192" width="78" height="40" rx="5"/><rect x="262" y="196" width="46" height="56" rx="5"/>
+    <rect x="18" y="312" width="56" height="46" rx="5"/><rect x="98" y="320" width="70" height="40" rx="5"/>
+    <rect x="192" y="316" width="48" height="52" rx="5"/><rect x="258" y="326" width="52" height="42" rx="5"/>
+  </g>
+  <path fill="var(--map-park)" d="M158 70h82a10 10 0 0 1 10 10v30a10 10 0 0 1-10 10h-82a10 10 0 0 1-10-10V80a10 10 0 0 1 10-10z"/>
+  <path fill="var(--map-water)" d="M-6 262c62-16 96 28 154 18s108-26 172-14v34c-58-6-90 26-172 16s-92-30-154-14z"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="var(--transit-u)" stroke-width="6" d="M6 92h100l56 56h156"/>
+    <path stroke="var(--transit-u)" stroke-width="6" d="M62 6v196l70 70v130"/>
+    <path stroke="var(--transit-s)" stroke-width="6.5" d="M-6 344h74l76-72h80l92-70"/>
+    <path stroke="var(--transit-tram)" stroke-width="3.5" d="M246 8v112l54 54"/>
+  </g>
+  <g fill="var(--map-land)" stroke="var(--map-station)" stroke-width="2.2">
+    <circle cx="62" cy="92" r="4.4"/><circle cx="106" cy="92" r="4.4"/><circle cx="162" cy="148" r="4.4"/>
+    <circle cx="246" cy="148" r="4.4"/><circle cx="62" cy="202" r="4.4"/><circle cx="132" cy="272" r="4.4"/>
+    <circle cx="148" cy="272" r="4.4"/><circle cx="228" cy="272" r="4.4"/><circle cx="68" cy="344" r="4.4"/>
+  </g>
+</svg>
+        <svg viewBox="0 0 320 400" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%">
+          <path d="M40 90 L182 62 L272 140 L244 276 L112 312 L30 214 Z" fill="var(--map-hiding-area)"
+            fill-opacity=".15" stroke="var(--map-hiding-area)" stroke-width="2.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <dl class="facts">
+        <div><dt>Where</dt><dd>All of Berlin</dd></div>
+        <div><dt>In play</dt><dd>720 stops</dd></div>
+        <div><dt>Time to hide</dt><dd>75 min</dd></div>
+        <div><dt>Hiding zone</dt><dd>400 m</dd></div>
+      </dl>
+    </div>
+    <div class="s-row spread" style="padding:0 3px">
+      <span class="tiny dim">House rules</span><span class="tiny dim">Written by Pia</span>
+    </div>
+    <div class="s-card" style="padding:4px 13px">
+      <div class="rule-read"><span class="n">1</span><div class="grow"><b>No image searching station names.</b>
+        <div class="subnote">Maps and departure boards are fine.</div></div></div>
+      <div class="rule-read"><span class="n">2</span><div class="grow"><b>Buses count as transit.</b>
+        <div class="subnote">Even the ones the map calls regional.</div></div></div>
+      <div class="rule-read"><span class="n">3</span><div class="grow"><b>Back at G&ouml;rlitzer by 21:00</b>, whatever the round is doing.</div></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="subnote" style="text-align:center;margin:0">All of this stays two taps away for the rest of the game.</div>
+    <button class="btn-xl green">I&#8217;m ready</button>
+  </div>
+</div></div><ul class="anno"><li class="y"><b>One screen stands between a player and being ready</b>, and it is the screen that tells them what they are agreeing to: where the game is, how long they get, and whatever the host wrote down.</li><li class="g"><b>Read-only.</b> The rules are the host&#8217;s text, not a form &mdash; no checkboxes, nothing to tick off. Reading them is the acknowledgement, and the button at the bottom is the only control.</li><li class="p"><b>The area is a picture before it is a number.</b> Four facts underneath, because &ldquo;400 m&rdquo; means something only next to the shape it applies to.</li><li class=""><b>If the host has written no rules the section is absent</b> and the briefing is the area alone. If the rules change after somebody has read them, they see it again before the round starts.</li></ul></figure></div>
+  <div class="specs">
+    <div><dt>Ready</dt><dd>Per person, tapped by that person. A team is ready when everyone on it is, and that is arithmetic rather than a second action.</dd></div>
+    <div><dt>Starting</dt><dd>Held, not tapped. It begins the hiding countdown for nine people at once, which deserves 700&nbsp;ms of intent.</dd></div>
+    <div><dt>The code</dt><dd>Behind the share control on every lobby screen, host or not. Anybody can pull a friend in.</dd></div>
+    <div><dt>House rules</dt><dd>Free text the host wrote. Read-only for everybody else, shown once before being ready, and reachable in two taps for the rest of the game.</dd></div>
+  </div>
+</section>
+<footer class="foot">
+  <div>
+    <div class="kicker" style="margin-bottom:16px">Drawn in the shipped tokens</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#ffe01f"></i><b>action</b><span>the one loud thing</span></div>
+      <div class="sw"><i style="background:#22c179"></i><b>live</b><span>ready, online</span></div>
+      <div class="sw"><i style="background:#ffa426"></i><b>stale</b><span>in the way</span></div>
+      <div class="sw"><i style="background:#d55e00"></i><b>team</b><span>Okabe&ndash;Ito, eight of them</span></div>
+    </div>
+  </div>
+  <p>Deck 01 of 05 &middot; Drawn with the role tokens the app ships in <b>packages/ui/src/styles/tokens.css</b>. Joining a game lives in the Setup deck; this one picks up once you are in. A companion to <b>Jet Lag: The Game &mdash; Hide + Seek</b>, which it credits and does not replace.</p>
+</footer>
+</div>
+</body></html>

@@ -64,7 +64,7 @@ function eventAt(
 }
 
 describe("bindMapPointers", () => {
-	it("sizes a radius from touch events without a mouse down", () => {
+	it("places a centre on tap without holding pan", () => {
 		const map = createFakeMap();
 		let mode: PointerMode = {
 			kind: "radius",
@@ -82,16 +82,43 @@ describe("bindMapPointers", () => {
 			onRingChange() {},
 		});
 
-		const edge = offsetLngLat(CENTER, 400, 0);
 		map.emit("touchstart", eventAt(CENTER[0], CENTER[1], map));
+		expect(map.panEnabled).toBe(true);
+		map.emit("touchend", eventAt(CENTER[0], CENTER[1], map));
+
+		expect(radii[0]?.center).toEqual([...CENTER]);
+		expect(map.panEnabled).toBe(true);
+	});
+
+	it("drags the radius edge after a centre is placed", () => {
+		const map = createFakeMap();
+		let mode: PointerMode = {
+			kind: "radius",
+			center: CENTER,
+			radiusMeters: 500,
+		};
+		const radii: RadiusDraft[] = [];
+		bindMapPointers(map, {
+			getMode: () => mode,
+			onTap() {},
+			onRadiusChange(draft) {
+				radii.push(draft);
+				mode = { kind: "radius", ...draft };
+			},
+			onRingChange() {},
+		});
+
+		const edge = offsetLngLat(CENTER, 500, 0);
+		const farther = offsetLngLat(CENTER, 900, 0);
+		map.emit("touchstart", eventAt(edge[0], edge[1], map));
 		expect(map.panEnabled).toBe(false);
-		map.emit("touchmove", eventAt(edge[0], edge[1], map));
-		map.emit("touchend", eventAt(edge[0], edge[1], map));
+		map.emit("touchmove", eventAt(farther[0], farther[1], map));
+		map.emit("touchend", eventAt(farther[0], farther[1], map));
 
 		expect(radii.length).toBeGreaterThan(0);
 		const last = radii[radii.length - 1];
 		expect(last?.center).toEqual([...CENTER]);
-		expect(last?.radiusMeters).toBeGreaterThan(300);
+		expect(last?.radiusMeters).toBeGreaterThan(700);
 		expect(map.panEnabled).toBe(true);
 	});
 

@@ -10,6 +10,7 @@ import {
 
 import "./index.css";
 import type { Route } from "./+types/root";
+import { Wordmark } from "./setup/wordmark";
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
@@ -35,6 +36,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
 	return <Outlet />;
+}
+
+/**
+ * What is on screen while a route resolves something on a cold start. SPA mode
+ * allows this on the root route only, and today exactly one kind of arrival
+ * reaches it: a link or a scanned QR code, whose join code is being looked up
+ * before there is anything to ask. A blank frame is what that would open on
+ * otherwise, which on a platform reads as an app that failed to start.
+ */
+export function HydrateFallback() {
+	return (
+		<main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-ground text-ink">
+			<Wordmark className="text-4xl" />
+			<p className="eyebrow">One moment…</p>
+		</main>
+	);
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

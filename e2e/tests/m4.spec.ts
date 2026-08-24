@@ -16,10 +16,10 @@ import {
 	BOWTIE,
 	BOX,
 	createGame,
-	createTeam,
+	createTeamInHarness,
 	drawRing,
 	joinGame,
-	joinTeam,
+	joinTeamInHarness,
 	LARGE_BOX,
 	nameAndApply,
 	nameAndSave,
@@ -31,6 +31,7 @@ import {
 	type Phone,
 	SMALL_BOX,
 	stationsInside,
+	toggleHost,
 	waitForSync,
 } from "./harness";
 
@@ -220,7 +221,7 @@ test("9. two hosts saving is last write wins, and the log holds both", async ({
 	const second = await openPhone(browser, "Second");
 	await joinGame(second, code);
 	await openLobby(second, code);
-	await second.page.getByTestId("claim-host").click();
+	await toggleHost(second);
 	await expect(second.page.getByTestId("host-badge-Second")).toBeVisible();
 
 	await openBuilder(first, code);
@@ -238,13 +239,19 @@ test("9. two hosts saving is last write wins, and the log holds both", async ({
 	expect(config.name).toBe("Second host's map");
 	expect(config.supersedesConfigId).not.toBeNull();
 
+	/**
+	 * Four, not three: opening a game applies the starter board, and pressing
+	 * through the setup wizard applies the size the host agreed to on the way
+	 * past. The two the test is about are the last two.
+	 */
 	const events = await mapEvents(gameId);
 	expect(events.map((event) => event.type)).toEqual([
 		"map.applied",
 		"map.changed",
 		"map.changed",
+		"map.changed",
 	]);
-	expect(events[2]?.seq).toBeGreaterThan(events[1]?.seq ?? 0);
+	expect(events.at(-1)?.seq).toBeGreaterThan(events.at(-2)?.seq ?? 0);
 	expect(await templateCount()).toBeGreaterThanOrEqual(0);
 
 	await first.close();
@@ -285,11 +292,11 @@ async function runningRound(host: Phone, hider: Phone, code: string) {
 	await openDebug(host, code);
 	await openDebug(hider, code);
 
-	await createTeam(host, "Hiders");
-	await createTeam(host, "Seekers");
-	await joinTeam(host, "Seekers");
+	await createTeamInHarness(host, "Hiders");
+	await createTeamInHarness(host, "Seekers");
+	await joinTeamInHarness(host, "Seekers");
 	await expect(hider.page.getByTestId("team-Hiders")).toBeVisible();
-	await joinTeam(hider, "Hiders");
+	await joinTeamInHarness(hider, "Hiders");
 
 	await host.page
 		.getByTestId("hider-team")

@@ -261,28 +261,92 @@ export async function openPhone(
 	};
 }
 
-/** Creating and joining both land in the lobby at `/g/:code`. m1-spec §8. */
+/**
+ * The area step has no default. Berlin the Land is the city-tab choice that
+ * stands in for the old starter board.
+ */
+export async function chooseBerlinArea(phone: Phone): Promise<void> {
+	await phone.page.getByTestId("setup-area-district").waitFor();
+	await phone.page.getByTestId("setup-area-district").click();
+	await phone.page.getByTestId("area-district-Berlin").waitFor();
+	await phone.page.getByTestId("area-district-Berlin").click();
+	await phone.page.getByTestId("area-district-add").click();
+	await expect(phone.page.getByTestId("area-editor")).toBeVisible();
+	await phone.page.getByTestId("area-use").click();
+	await expect(phone.page.getByTestId("setup-area-chosen")).toBeVisible({
+		timeout: 20_000,
+	});
+}
+
+/**
+ * Creating and joining both land in the lobby at `/g/:code`, and both are now
+ * wizards rather than one form: the start screen picks a door, and the name is
+ * asked for inside the flow it opened. m1-spec §8.
+ */
 export async function createGame(phone: Phone): Promise<string> {
-	await phone.page.getByTestId("display-name").fill(phone.name);
 	await phone.page.getByTestId("create-game").click();
-	await expect(phone.page.getByTestId("game-code")).toBeVisible();
-	return (await phone.page.getByTestId("game-code").textContent()) ?? "";
+	await phone.page.getByTestId("display-name").fill(phone.name);
+	await phone.page.getByTestId("create-confirm").click();
+
+	/**
+	 * The wizard: area, transit, size, review. Area has no default — the host
+	 * picks Berlin (or a district) before the rest of the flow has counts that
+	 * mean anything.
+	 */
+	await chooseBerlinArea(phone);
+	await phone.page.getByTestId("setup-area-continue").click();
+	await phone.page.getByTestId("setup-transit-continue").click();
+	await phone.page.getByTestId("setup-size-continue").click();
+	await phone.page.getByTestId("setup-open-lobby").click();
+
+	/**
+	 * Read off the URL rather than the screen. The join code is not worn in the
+	 * lobby header any more — it is something you hand over once, so it lives
+	 * behind the share control — and the address bar is where it is always true.
+	 */
+	await expect(phone.page.getByTestId("lobby")).toBeVisible();
+	return codeFromUrl(phone);
+}
+
+function codeFromUrl(phone: Phone): string {
+	return new URL(phone.page.url()).pathname.split("/")[2] ?? "";
+}
+
+/** Both doors land in the same place, and this is what "landed" means. */
+async function expectInLobby(phone: Phone, code: string): Promise<void> {
+	await expect(phone.page.getByTestId("lobby")).toBeVisible();
+	expect(codeFromUrl(phone)).toBe(code);
 }
 
 export async function joinGame(phone: Phone, code: string): Promise<void> {
+	await enterJoinCode(phone, code);
 	await phone.page.getByTestId("display-name").fill(phone.name);
-	await phone.page.getByTestId("join-code").fill(code);
 	await phone.page.getByTestId("join-game").click();
-	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
+	await expectInLobby(phone, code);
 }
 
 /** Join and get refused, which is only possible after a host removed you. */
 export async function joinRefused(phone: Phone, code: string): Promise<string> {
+	await enterJoinCode(phone, code);
 	await phone.page.getByTestId("display-name").fill(phone.name);
-	await phone.page.getByTestId("join-code").fill(code);
 	await phone.page.getByTestId("join-game").click();
-	await expect(phone.page.getByTestId("landing-error")).toBeVisible();
-	return (await phone.page.getByTestId("landing-error").textContent()) ?? "";
+	await expect(phone.page.getByTestId("join-error")).toBeVisible();
+	return (await phone.page.getByTestId("join-error").textContent()) ?? "";
+}
+
+/**
+ * The first of the join wizard's two steps. Continue stays disabled until the
+ * code has resolved to a real game, so waiting for the preview is waiting for
+ * the button.
+ */
+async function enterJoinCode(phone: Phone, code: string): Promise<void> {
+	// From the front door: a phone that has just been refused is still standing
+	// on the step that refused it.
+	await phone.page.goto("/");
+	await phone.page.getByTestId("join-by-code").click();
+	await phone.page.getByTestId("join-code").fill(code);
+	await expect(phone.page.getByTestId("join-preview")).toBeVisible();
+	await phone.page.getByTestId("join-continue").click();
 }
 
 /** The M0 debug harness, which lives under the game's own URL. m1-spec §8. */
@@ -293,7 +357,7 @@ export async function openDebug(phone: Phone, code: string): Promise<void> {
 
 export async function openLobby(phone: Phone, code: string): Promise<void> {
 	await phone.page.goto(`/g/${code}`);
-	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
+	await expectInLobby(phone, code);
 }
 
 /** The map. m2-spec §12. */
@@ -369,15 +433,126 @@ export function sawPresence(phone: Phone): boolean {
 	return phone.frames.some((frame) => frame.includes('"presence"'));
 }
 
+/**
+ * The lobby, reworked: a team is made in the identity drawer, and who is on it
+ * is settled on the players screen. Two different questions, two places.
+ */
 export async function createTeam(phone: Phone, name: string): Promise<void> {
+	await phone.page.getByTestId("create-team").click();
+	await phone.page.getByTestId("team-name-input").fill(name);
+	await phone.page.getByTestId("team-editor-done").click();
+	await expect(phone.page.getByTestId(`team-${name}`)).toBeVisible();
+}
+
+/** Which side a team plays, set in the same drawer that named it. Host only. */
+export async function setSide(
+	phone: Phone,
+	team: string,
+	side: "hider" | "seeker",
+): Promise<void> {
+	await phone.page.getByTestId(`team-${team}`).click();
+	await phone.page.getByTestId(`side-${side}`).click();
+	await phone.page.getByTestId("team-editor-done").click();
+	// Read back off the board's own grouping rather than the button that was
+	// pressed, so this asserts the round's assignment rather than the click.
+	await expect(
+		phone.page.getByTestId(`side-${side}s`).getByTestId(`team-${team}`),
+	).toBeVisible();
+}
+
+/**
+ * The M0 debug harness has roster controls of its own — a flat list of teams
+ * with a name field beside it — and the specs that drive it are testing sync
+ * rather than the lobby. They are deliberately separate from the lobby helpers
+ * above: the lobby moved and the harness did not.
+ */
+export async function createTeamInHarness(
+	phone: Phone,
+	name: string,
+): Promise<void> {
 	await phone.page.getByTestId("team-name").fill(name);
 	await phone.page.getByTestId("create-team").click();
 	await expect(phone.page.getByTestId(`team-${name}`)).toBeVisible();
 }
 
-export async function joinTeam(phone: Phone, name: string): Promise<void> {
+export async function joinTeamInHarness(
+	phone: Phone,
+	name: string,
+): Promise<void> {
 	await phone.page.getByTestId(`join-${name}`).click();
 	await expect(phone.page.getByTestId(`leave-${name}`)).toBeVisible();
+}
+
+/**
+ * The host hat, from the game menu. Claimable by anyone and droppable by
+ * whoever is wearing it — more than one at a time is fine. m1-spec §6.
+ */
+export async function toggleHost(phone: Phone): Promise<void> {
+	await phone.page.getByTestId("lobby-menu").click();
+	const claim = phone.page.getByTestId("claim-host");
+	if (await claim.isVisible()) await claim.click();
+	else await phone.page.getByTestId("release-host").click();
+}
+
+/**
+ * Ready is per person, so every phone says it for itself — on the lobby, next
+ * to everybody else's tick. m1-spec §11.
+ *
+ * The briefing gates it: saying you are ready without having seen the area is
+ * not a thing worth allowing, so the first tap reads it.
+ */
+export async function readyUp(phone: Phone, code: string): Promise<void> {
+	await phone.page.goto(`/g/${code}`);
+	const briefing = phone.page.getByTestId("read-briefing");
+	if (await briefing.isVisible()) {
+		await briefing.click();
+		await phone.page.getByTestId("mark-ready").click();
+	} else {
+		await phone.page.getByTestId("mark-ready").click();
+	}
+	await expect(phone.page.getByTestId(`ready-state-${phone.name}`)).toHaveText(
+		"ready",
+	);
+}
+
+/**
+ * The whistle. Held rather than tapped, and only offered once the last person
+ * has said yes — so everybody rides up first. The host is `phones[0]`.
+ */
+export async function startHiding(
+	phones: readonly Phone[],
+	code: string,
+	minutes?: string,
+): Promise<void> {
+	const host = phones[0];
+	if (!host) throw new Error("startHiding needs at least the host");
+	for (const phone of phones) await readyUp(phone, code);
+	await host.page.goto(`/g/${code}`);
+	if (minutes) {
+		await host.page.getByTestId("lobby-menu").click();
+		await host.page.getByTestId("hiding-duration").fill(minutes);
+		await host.page.getByTestId("lobby-menu-sheet-scrim").click();
+	}
+	// A hold, not a tap: the fill is the confirmation.
+	await host.page.getByTestId("start-hiding").click({ delay: 1_000 });
+	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
+		"hiding",
+		{ timeout: 20_000 },
+	);
+}
+
+/**
+ * Putting somebody on a team. Players join by opening the team; a host can
+ * also move anyone from that person's sheet. m1-spec §5.
+ */
+export async function joinTeam(phone: Phone, name: string): Promise<void> {
+	await phone.page.getByTestId(`team-${name}`).click();
+	await phone.page.getByTestId(`join-${name}`).click();
+	await expect(
+		phone.page
+			.getByTestId(`members-${name}`)
+			.getByTestId(`player-${phone.name}`),
+	).toBeVisible();
 }
 
 // --- M4: the game area builder --------------------------------------------

@@ -1,0 +1,759 @@
+<meta charset="utf-8">
+<title>Zero Lag Field Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ── Zero Lag mockup kit ─────────────────────────────────────────────
+   Page chrome is theme-aware. Device screens commit to the app's own
+   field-dark UI (see the sun-glare variant in the Field Map deck).   */
+
+:root{
+  --paper:#F0F3F7; --paper-2:#FFFFFF; --paper-3:#E4E9F0;
+  --ink:#0B111A; --ink-2:#3D4A5C; --ink-3:#6B7A8E;
+  --rule:#CBD5E1; --rule-2:#E2E8F0;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00874B; --red:#DC3A1C; --pink:#C13F94;
+  --glow:0 1px 0 rgba(11,17,26,.06);
+  --band:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+    --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+    --rule:#26303E; --rule-2:#1B2430;
+    --yellow:#FFE01F; --yellow-ink:#12160B;
+    --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+    --glow:0 1px 0 rgba(255,255,255,.04);
+    --band:#0D131C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#080B11; --paper-2:#111721; --paper-3:#1A212D;
+  --ink:#EDF1F7; --ink-2:#AEBBCC; --ink-3:#7A8798;
+  --rule:#26303E; --rule-2:#1B2430;
+  --yellow:#FFE01F; --yellow-ink:#12160B;
+  --blue:#4F94F0; --green:#22C179; --red:#FF5A3C; --pink:#E86BB4;
+  --glow:0 1px 0 rgba(255,255,255,.04);
+  --band:#0D131C;
+}
+
+/* Device screen palette — fixed, it is the product's own theme */
+:root{
+  --s-bg:#0A0D14; --s-1:#141B26; --s-2:#1D2634; --s-3:#293344;
+  --s-ink:#F3F6FA; --s-dim:#93A1B6; --s-line:rgba(255,255,255,.09);
+  --s-yellow:#FFE01F; --s-blue:#3E88E8; --s-green:#22C179;
+  --s-red:#FF5A3C; --s-pink:#E86BB4; --s-amber:#FFA426;
+  /* team identity — Okabe–Ito, from apps/web/src/lobby/palette.ts */
+  --t-vermillion:#D55E00; --t-cobalt:#0072B2; --t-jade:#009E73;
+  --t-orchid:#CC79A7; --t-amber:#E69F00; --t-sky:#56B4E9;
+  --t-citron:#F0E442; --t-slate:#4B4B4B;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table{margin:0}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;text-wrap:balance;margin:0;line-height:1.02;letter-spacing:-.02em}
+p{margin:0}
+.mono{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+.page{max-width:1220px;margin:0 auto;padding:0 24px 96px}
+
+/* ── masthead ─────────────────────────────────────────────── */
+.masthead{padding:64px 0 40px;border-bottom:3px solid var(--ink);position:relative}
+.eyebrow{
+  font-family:"Azeret Mono",ui-monospace,monospace;font-size:12px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap
+}
+.eyebrow b{color:var(--ink);font-weight:700}
+.eyebrow .u{
+  background:var(--blue);color:#fff;width:22px;height:22px;border-radius:5px;
+  display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:0
+}
+.masthead h1{font-size:clamp(44px,7.2vw,88px);max-width:15ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:24px;max-width:62ch;font-size:19px;color:var(--ink-2)}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}
+.tag{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;font-weight:500;letter-spacing:.06em;
+  border:1.5px solid var(--rule);border-radius:999px;padding:6px 13px;color:var(--ink-2);background:var(--paper-2)
+}
+.tag.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+
+/* ── bands ────────────────────────────────────────────────── */
+.band{padding:64px 0 8px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:40px;max-width:760px}
+.kicker{
+  font-family:"Azeret Mono",monospace;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink);display:inline-flex;align-items:center;gap:9px
+}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(28px,3.6vw,42px)}
+.band-head p{color:var(--ink-2);font-size:17px;max-width:66ch}
+
+/* ── device rack ──────────────────────────────────────────── */
+.rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:44px 36px;align-items:start}
+.rack.two{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.mock{display:flex;flex-direction:column;gap:20px;min-width:0}
+.mock-label{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mock-label .n{
+  font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;
+  background:var(--ink);color:var(--paper);border-radius:4px;padding:3px 7px
+}
+.mock-label h3{font-size:21px}
+.mock-label .who{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--s-bg);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38, 0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--s-ink);font-size:13.5px;line-height:1.4;
+  animation:rise .7s cubic-bezier(.2,.9,.25,1) both;
+}
+.mock:nth-child(2) .device{animation-delay:.09s}
+.mock:nth-child(3) .device{animation-delay:.18s}
+.mock:nth-child(4) .device{animation-delay:.27s}
+@keyframes rise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.statusbar{
+  height:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:11px;color:var(--s-ink);letter-spacing:.02em
+}
+.appbar{
+  flex:0 0 auto;padding:6px 16px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between
+}
+.appbar .title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar>div:first-child{min-width:0}
+.scr-body{flex:1 1 auto;padding:0 16px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.tabbar{
+  flex:0 0 auto;height:62px;border-top:1px solid var(--s-line);display:grid;grid-auto-flow:column;
+  align-items:center;padding:0 8px 8px;gap:2px
+}
+.tabbar div{
+  display:grid;place-items:center;gap:3px;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--s-dim);font-family:"Azeret Mono",monospace;padding-top:8px;border-radius:12px
+}
+.tabbar div span{font-size:17px;line-height:1}
+.tabbar div.on{color:var(--s-yellow)}
+
+/* screen atoms */
+.s-card{background:var(--s-1);border:1px solid var(--s-line);border-radius:18px;padding:12px 13px}
+.s-row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+.grow{flex:1 1 auto;min-width:0}
+.dim{color:var(--s-dim)}
+.tiny{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-family:"Azeret Mono",monospace;white-space:nowrap}
+.subnote{font-family:"Archivo",sans-serif;font-size:12px;color:var(--s-dim);margin-top:4px;line-height:1.35}
+.num{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-xl{
+  min-height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;letter-spacing:.01em;
+  background:var(--s-yellow);color:#12160B;border:0;width:100%;position:relative;overflow:hidden;
+  box-shadow:0 5px 0 #B39B00;transition:transform .12s cubic-bezier(.3,1.4,.5,1),box-shadow .12s;cursor:pointer
+}
+.btn-xl:hover{transform:translateY(-2px);box-shadow:0 7px 0 #B39B00}
+.btn-xl:active{transform:translateY(4px);box-shadow:0 1px 0 #B39B00}
+.btn-xl::after{
+  content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);
+  transform:translateX(-120%);animation:sheen 3.6s ease-in-out infinite
+}
+@keyframes sheen{0%,72%{transform:translateX(-120%)}92%,100%{transform:translateX(120%)}}
+.btn-xl.ghost{background:transparent;color:var(--s-ink);border:2px solid var(--s-3);box-shadow:0 5px 0 var(--s-2)}
+.btn-xl.ghost:hover{box-shadow:0 7px 0 var(--s-2)}
+.btn-xl.ghost::after{display:none}
+.btn-xl.red{background:var(--s-red);color:#160604;box-shadow:0 5px 0 #A62A15}
+.btn-xl.red:hover{box-shadow:0 7px 0 #A62A15}
+.btn-xl.green{background:var(--s-green);color:#04180E;box-shadow:0 5px 0 #11784B}
+.btn-xl.green:hover{box-shadow:0 7px 0 #11784B}
+.btn-xl small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.72}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--s-2);color:var(--s-dim);white-space:nowrap
+}
+.pill.live{background:rgba(34,193,121,.16);color:var(--s-green)}
+.pill.stale{background:rgba(255,164,38,.16);color:var(--s-amber)}
+.pill.off{background:rgba(255,90,60,.15);color:var(--s-red)}
+.pill.hot{background:var(--s-yellow);color:#12160B;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.dot.beat{animation:beat 1.9s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.42;transform:scale(.82)}}
+
+.badge{
+  width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:19px;flex:0 0 auto;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)
+}
+.badge.sm{width:28px;height:28px;border-radius:9px;font-size:14px}
+
+.avatars{display:flex}
+.avatars i{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+  font-size:10px;font-weight:700;font-family:"Archivo",sans-serif;background:var(--s-3);color:var(--s-ink);
+  border:2px solid var(--s-1);margin-left:-7px
+}
+.avatars i:first-child{margin-left:0}
+
+/* annotations */
+.anno{list-style:none;margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:14px;position:relative;max-width:44ch}
+.anno::before{content:"";position:absolute;left:4px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--rule)}
+.anno li{position:relative;font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.anno li::before{
+  content:"";position:absolute;left:-20px;top:6px;width:11px;height:11px;border-radius:50%;
+  background:var(--paper);border:3px solid var(--blue)
+}
+.anno li b{color:var(--ink);font-weight:700}
+.anno li.y::before{border-color:var(--yellow)}
+.anno li.g::before{border-color:var(--green)}
+.anno li.r::before{border-color:var(--red)}
+.anno li.p::before{border-color:var(--pink)}
+
+/* prose blocks */
+.note{
+  background:var(--band);border:1px solid var(--rule);border-left:6px solid var(--yellow);
+  border-radius:4px 16px 16px 4px;padding:18px 20px;font-size:15px;color:var(--ink-2);max-width:70ch
+}
+.note b{color:var(--ink)}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden;margin-top:44px}
+.specs div{background:var(--band);padding:18px 20px}
+.specs dt{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.specs dd{margin:0;font-size:14.5px;color:var(--ink-2)}
+.specs dd b{color:var(--ink)}
+
+/* footer / tokens */
+.foot{margin-top:72px;border-top:3px solid var(--ink);padding-top:32px;display:grid;gap:28px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.sw{border-radius:12px;padding:12px 14px 14px;min-width:118px;border:1px solid var(--rule);background:var(--band)}
+.sw i{display:block;height:34px;border-radius:8px;margin-bottom:9px}
+.sw b{display:block;font-size:12.5px}
+.sw span{font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink-3)}
+.foot p{font-size:14px;color:var(--ink-3);max-width:70ch}
+
+@media (max-width:640px){
+  .page{padding:0 16px 64px}
+  .masthead{padding:40px 0 28px}
+  .device{max-width:100%}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+:where(a,button,[tabindex]):focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:6px}
+/* ── map-specific ─────────────────────────────────────────── */
+.device{--m-land:#0E1420;--m-block:#131C29;--m-water:#153450;--m-park:#123020;
+        --m-u:#3E88E8;--m-s:#22C179;--m-tram:#E8B93E;--m-station:#E7EDF6;--m-zone:#FFE01F}
+.device.sun{
+  --s-bg:#F5F8FB;--s-1:#FFFFFF;--s-2:#E6ECF3;--s-3:#C3CFDC;
+  --s-ink:#08111C;--s-dim:#4A5869;--s-line:rgba(8,17,28,.14);
+  --s-green:#00794A;--s-red:#C7300F;--s-blue:#0F5FC2;--s-amber:#9A6100;
+  --m-land:#E9EFF5;--m-block:#DAE3EC;--m-water:#B6D4EE;--m-park:#C7E4C6;
+  --m-u:#0F5FC2;--m-s:#00794A;--m-tram:#8A6A00;--m-station:#08111C;--m-zone:#E0AE00;
+  border-color:#111925
+}
+.device.sun .btn-xl.ghost{border-color:var(--s-3)}
+.device.sun .pill{background:var(--s-2);color:var(--s-dim)}
+.device.sun .statusbar{color:var(--s-ink)}
+
+.map{position:relative;flex:1 1 auto;margin:0 -16px;overflow:hidden;background:var(--m-land)}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.map .overlay{position:absolute;inset:0;pointer-events:none}
+
+.ring-pulse{animation:ringpulse 3.2s ease-out infinite;transform-origin:center}
+@keyframes ringpulse{0%{r:14;opacity:.55}70%{opacity:0}100%{r:44;opacity:0}}
+.sweep{transform-origin:150px 252px;animation:spin 4.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.drop{animation:drop .6s cubic-bezier(.25,1.4,.45,1) both}
+.drop.d2{animation-delay:.12s}.drop.d3{animation-delay:.24s}.drop.d4{animation-delay:.36s}
+@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+.dash{stroke-dasharray:6 7;animation:march 1.4s linear infinite}
+@keyframes march{to{stroke-dashoffset:-26}}
+
+.floaters{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:9px}
+.fab{
+  width:48px;height:48px;border-radius:16px;background:rgba(20,27,38,.9);border:1px solid var(--s-line);
+  display:grid;place-items:center;font-size:19px;backdrop-filter:blur(8px);color:var(--s-ink);
+  transition:transform .16s cubic-bezier(.3,1.5,.5,1)
+}
+.device.sun .fab{background:rgba(255,255,255,.92)}
+.fab:hover{transform:scale(1.08)}
+.fab.on{background:var(--s-yellow);color:#12160B;border-color:var(--s-yellow)}
+
+.mapchips{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.mapchip{
+  display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 11px 6px 7px;
+  background:rgba(20,27,38,.88);border:1px solid var(--s-line);backdrop-filter:blur(8px);
+  font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.03em;white-space:nowrap;
+  max-width:196px;overflow:hidden;text-overflow:ellipsis
+}
+.mapchip em{font-style:normal;color:var(--s-dim)}
+.device.sun .mapchip{background:rgba(255,255,255,.9)}
+.mapchip .badge{width:22px;height:22px;border-radius:7px;font-size:12px;box-shadow:none}
+
+.seeker-row{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;
+  background:var(--surface-raised);border:1px solid var(--hairline)
+}
+.seeker-row .src{
+  display:block;margin-top:2px;font-family:"Azeret Mono",monospace;font-size:8.5px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint)
+}
+.seeker-row.stale-row{opacity:.55}
+.peek{
+  background:var(--s-1);border:1px solid var(--s-line);border-radius:22px;padding:11px 13px;
+  display:flex;flex-direction:column;gap:9px;margin-top:10px
+}
+.hider-strip{display:flex;gap:8px;overflow:hidden}
+.hider-strip>div{
+  flex:1;background:var(--s-2);border-radius:14px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;min-width:0
+}
+.hider-strip .tiny{overflow:hidden;text-overflow:ellipsis}
+
+.tool-row{display:flex;gap:8px}
+.tool{
+  flex:1;background:var(--s-1);border:1px solid var(--s-line);border-radius:18px;padding:10px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
+  font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--s-dim);
+  transition:transform .16s cubic-bezier(.3,1.5,.5,1)
+}
+.tool span{font-size:21px;line-height:1}
+.tool:hover{transform:translateY(-3px)}
+.tool.on{background:rgba(255,224,31,.12);border-color:var(--s-yellow);color:var(--s-yellow)}
+
+.readout{display:flex;flex-direction:column;gap:6px}
+.readout .leg{display:flex;justify-content:space-between;font-family:"Azeret Mono",monospace;font-size:11.5px;padding:5px 0;border-bottom:1px dashed var(--s-line)}
+.readout .leg:last-child{border-bottom:0}
+.readout .total{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em}
+
+/* visibility matrix (page chrome, not a screen) */
+.matrix{width:100%;border-collapse:separate;border-spacing:4px;font-size:14px;min-width:560px}
+.matrix th{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;text-align:left;padding:6px 10px}
+.matrix td{background:var(--band);border:1px solid var(--rule);border-radius:10px;padding:11px 12px;text-align:center;font-family:"Azeret Mono",monospace;font-size:12px}
+.matrix td.row-h{text-align:left;font-family:"Archivo",sans-serif;font-weight:600;font-size:14px;white-space:nowrap}
+.matrix td.yes{background:rgba(0,135,75,.13);border-color:rgba(0,135,75,.4);color:var(--green);font-weight:700}
+.matrix td.no{background:rgba(220,58,28,.1);border-color:rgba(220,58,28,.35);color:var(--red)}
+.matrix td.self{background:var(--paper-3);color:var(--ink-3)}
+.matrix-wrap{overflow-x:auto;padding-bottom:6px}
+.matrix-key{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:13.5px;color:var(--ink-2)}
+</style>
+<div class="page">
+
+<header class="masthead">
+  <div class="eyebrow"><span class="u">U</span> Zero Lag · Hide + Seek companion <b>· Deck 02 / 04</b> · Field map</div>
+  <h1>The map knows more <em>than it says</em></h1>
+  <p class="deck">Both roles get the same map and a different truth on top of it. Hiders watch every seeker team move; a seeker team sees only its own dots, and sees everyone else honestly labelled as present-but-hidden. Staleness is drawn, not hidden. The toolkit puts the things people currently open Google Maps for inside the app.</p>
+  <div class="tags">
+    <span class="tag on">M2 — Live map &amp; visibility</span>
+    <span class="tag on">M3 — Map toolkit</span>
+    <span class="tag">Sun-glare theme</span>
+    <span class="tag">One-handed reach</span>
+  </div>
+</header>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Two roles, one canvas</span>
+    <h2>Asymmetry you can see at a glance</h2>
+    <p>The valid hiding area is drawn as what it is — the union of enabled station radii, dashed because it constrains hiding spots and not travel. Everything above it is position data, and position data is the only thing the visibility rules ever touch.</p>
+  </div>
+
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">2A</span><h3>Seeker map</h3><span class="who">team Eule</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:04</span><span>◍ GPS · 71%</span></div>
+        <div class="appbar"><div><div class="sub">Round 1 · seeking</div><div class="title">Kreuzberg</div></div>
+          <span class="pill hot num">41:22</span></div>
+        <div class="scr-body" style="padding-bottom:0">
+          <div class="map"><svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="320" height="460" fill="var(--m-land)"/>
+  <g fill="var(--m-block)">
+    <rect x="10" y="24" width="62" height="44" rx="5"/><rect x="82" y="18" width="48" height="52" rx="5"/>
+    <rect x="146" y="30" width="74" height="38" rx="5"/><rect x="234" y="24" width="58" height="60" rx="5"/>
+    <rect x="16" y="118" width="54" height="66" rx="5"/><rect x="86" y="122" width="70" height="40" rx="5"/>
+    <rect x="180" y="112" width="46" height="52" rx="5"/><rect x="244" y="118" width="62" height="44" rx="5"/>
+    <rect x="12" y="206" width="66" height="52" rx="5"/><rect x="98" y="196" width="52" height="46" rx="5"/>
+    <rect x="176" y="200" width="80" height="40" rx="5"/><rect x="268" y="206" width="44" height="58" rx="5"/>
+    <rect x="20" y="364" width="58" height="48" rx="5"/><rect x="100" y="374" width="72" height="42" rx="5"/>
+    <rect x="196" y="368" width="50" height="56" rx="5"/><rect x="262" y="380" width="52" height="44" rx="5"/>
+  </g>
+  <path fill="var(--m-park)" d="M162 74 h84 a10 10 0 0 1 10 10 v34 a10 10 0 0 1-10 10 h-84 a10 10 0 0 1-10-10 v-34 a10 10 0 0 1 10-10 z"/>
+  <path fill="var(--m-water)" d="M-6 288 C58 272 96 318 158 308 S268 280 326 292 L326 330 C268 324 236 356 158 346 S58 312 -6 328 Z"/>
+  <g fill="var(--m-zone)" fill-opacity=".11" stroke="var(--m-zone)" stroke-opacity=".45" stroke-width="1.4" stroke-dasharray="5 5">
+    <circle cx="64" cy="96" r="40"/><circle cx="136" cy="284" r="40"/><circle cx="150" cy="316" r="40"/>
+    <circle cx="232" cy="316" r="40"/><circle cx="166" cy="154" r="40"/><circle cx="252" cy="154" r="40"/>
+    <circle cx="72" cy="392" r="40"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M8 96 H108 L166 154 H316"/>
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M64 6 V212 L136 284 V456"/>
+    <path stroke="var(--m-s)" stroke-width="7" d="M-6 392 H72 L150 316 H232 L316 244"/>
+    <path stroke="var(--m-tram)" stroke-width="3.5" d="M252 8 V126 L306 180"/>
+  </g>
+  <g fill="var(--m-land)" stroke="var(--m-station)" stroke-width="2.4">
+    <circle cx="64" cy="96" r="4.6"/><circle cx="108" cy="96" r="4.6"/><circle cx="166" cy="154" r="4.6"/>
+    <circle cx="252" cy="154" r="4.6"/><circle cx="64" cy="212" r="4.6"/><circle cx="136" cy="284" r="4.6"/>
+    <circle cx="150" cy="316" r="4.6"/><circle cx="232" cy="316" r="4.6"/><circle cx="72" cy="392" r="4.6"/>
+    <circle cx="136" cy="404" r="4.6"/><circle cx="252" cy="8" r="4.6"/>
+  </g>
+</svg>
+    <svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" class="overlay-svg" style="position:absolute;inset:0;width:100%;height:100%"><g>
+    <circle cx="150" cy="252" r="14" fill="var(--m-u)" fill-opacity=".18"/>
+    <circle class="ring-pulse" cx="150" cy="252" r="14" fill="none" stroke="var(--m-u)" stroke-width="2"/>
+    <g class="sweep"><path d="M150 252 L124 206 A52 52 0 0 1 176 206 Z" fill="var(--m-u)" fill-opacity=".22"/></g>
+    <circle cx="150" cy="252" r="8" fill="var(--m-u)" stroke="#fff" stroke-width="2.4"/>
+  </g><g class="drop d2" opacity="1">
+      <path d="M96 216 l-7 -11 a13 13 0 1 1 14 0 z" fill="#009E73" stroke="#0A0D14" stroke-width="1.5"/>
+      <circle cx="96" cy="195" r="11" fill="#009E73" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>
+      <text x="96" y="200" font-size="13" text-anchor="middle">🦉</text>
+    </g></svg>
+    <div class="mapchips">
+      <span class="mapchip"><span class="badge" style="background:var(--t-jade)">🦉</span>Eule · your team</span>
+      <span class="mapchip"><span class="badge" style="background:var(--t-amber)">🐝</span>Bienen · <em>hidden</em></span>
+      <span class="mapchip"><span class="badge" style="background:var(--t-sky)">🦈</span>Haie · <em>hidden</em></span>
+    </div>
+    <div class="floaters">
+      <div class="fab">◎</div><div class="fab">⟳</div><div class="fab on">▲</div><div class="fab">⌥</div>
+    </div>
+  </div>
+          <div class="peek">
+            <div class="s-row spread"><span class="tiny dim">Hider teams</span><span class="tiny dim">Tap to ask</span></div>
+            <div class="hider-strip">
+              <div><div class="s-row" style="gap:7px"><div class="badge sm" style="background:var(--t-vermillion)">🦊</div><b style="font-size:13px">Fuchsbau</b></div>
+                <span class="tiny dim">Asked 4</span></div>
+              <div><div class="s-row" style="gap:7px"><div class="badge sm" style="background:var(--t-cobalt)">🐙</div><b style="font-size:13px">Krake</b></div>
+                <span class="tiny dim">Asked 2</span></div>
+            </div>
+            <button class="btn-xl">Ask a question</button>
+          </div>
+        </div>
+        <div class="tabbar"><div><span>▦</span>Lobby</div><div class="on"><span>◈</span>Map</div><div><span>☰</span>Rules</div><div><span>◔</span>Log</div></div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>Other seeker teams are named, not placed.</b> "In game · position hidden" is the honest sentence; pretending they do not exist would be a different lie.</li>
+        <li><b>Own position carries its accuracy</b> as a ring and its heading as a cone. Both are drawn from the same sample, so they cannot disagree.</li>
+        <li class="g">Controls live on the right edge at 48&nbsp;px, inside the reach of a right thumb holding a phone at chest height.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">2B</span><h3>Hider map</h3><span class="who">team Fuchsbau</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:04</span><span>◍ GPS · 43%</span></div>
+        <div class="appbar"><div><div class="sub">Hidden 38 min</div><div class="title">Three seekers</div></div>
+          <span class="pill live"><i class="dot beat" style="background:currentColor"></i>Zone ok</span></div>
+        <div class="scr-body" style="padding-bottom:0">
+          <div class="map"><svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="320" height="460" fill="var(--m-land)"/>
+  <g fill="var(--m-block)">
+    <rect x="10" y="24" width="62" height="44" rx="5"/><rect x="82" y="18" width="48" height="52" rx="5"/>
+    <rect x="146" y="30" width="74" height="38" rx="5"/><rect x="234" y="24" width="58" height="60" rx="5"/>
+    <rect x="16" y="118" width="54" height="66" rx="5"/><rect x="86" y="122" width="70" height="40" rx="5"/>
+    <rect x="180" y="112" width="46" height="52" rx="5"/><rect x="244" y="118" width="62" height="44" rx="5"/>
+    <rect x="12" y="206" width="66" height="52" rx="5"/><rect x="98" y="196" width="52" height="46" rx="5"/>
+    <rect x="176" y="200" width="80" height="40" rx="5"/><rect x="268" y="206" width="44" height="58" rx="5"/>
+    <rect x="20" y="364" width="58" height="48" rx="5"/><rect x="100" y="374" width="72" height="42" rx="5"/>
+    <rect x="196" y="368" width="50" height="56" rx="5"/><rect x="262" y="380" width="52" height="44" rx="5"/>
+  </g>
+  <path fill="var(--m-park)" d="M162 74 h84 a10 10 0 0 1 10 10 v34 a10 10 0 0 1-10 10 h-84 a10 10 0 0 1-10-10 v-34 a10 10 0 0 1 10-10 z"/>
+  <path fill="var(--m-water)" d="M-6 288 C58 272 96 318 158 308 S268 280 326 292 L326 330 C268 324 236 356 158 346 S58 312 -6 328 Z"/>
+  <g fill="var(--m-zone)" fill-opacity=".11" stroke="var(--m-zone)" stroke-opacity=".45" stroke-width="1.4" stroke-dasharray="5 5">
+    <circle cx="64" cy="96" r="40"/><circle cx="136" cy="284" r="40"/><circle cx="150" cy="316" r="40"/>
+    <circle cx="232" cy="316" r="40"/><circle cx="166" cy="154" r="40"/><circle cx="252" cy="154" r="40"/>
+    <circle cx="72" cy="392" r="40"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M8 96 H108 L166 154 H316"/>
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M64 6 V212 L136 284 V456"/>
+    <path stroke="var(--m-s)" stroke-width="7" d="M-6 392 H72 L150 316 H232 L316 244"/>
+    <path stroke="var(--m-tram)" stroke-width="3.5" d="M252 8 V126 L306 180"/>
+  </g>
+  <g fill="var(--m-land)" stroke="var(--m-station)" stroke-width="2.4">
+    <circle cx="64" cy="96" r="4.6"/><circle cx="108" cy="96" r="4.6"/><circle cx="166" cy="154" r="4.6"/>
+    <circle cx="252" cy="154" r="4.6"/><circle cx="64" cy="212" r="4.6"/><circle cx="136" cy="284" r="4.6"/>
+    <circle cx="150" cy="316" r="4.6"/><circle cx="232" cy="316" r="4.6"/><circle cx="72" cy="392" r="4.6"/>
+    <circle cx="136" cy="404" r="4.6"/><circle cx="252" cy="8" r="4.6"/>
+  </g>
+</svg>
+    <svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" class="overlay-svg" style="position:absolute;inset:0;width:100%;height:100%"><g>
+    <circle cx="150" cy="252" r="14" fill="var(--m-u)" fill-opacity=".18"/>
+    <circle class="ring-pulse" cx="150" cy="252" r="14" fill="none" stroke="var(--m-u)" stroke-width="2"/>
+    <g class="sweep"><path d="M150 252 L124 206 A52 52 0 0 1 176 206 Z" fill="var(--m-u)" fill-opacity=".22"/></g>
+    <circle cx="150" cy="252" r="8" fill="var(--m-u)" stroke="#fff" stroke-width="2.4"/>
+  </g><g class="drop" opacity="1">
+      <path d="M96 170 l-7 -11 a13 13 0 1 1 14 0 z" fill="#009E73" stroke="#0A0D14" stroke-width="1.5"/>
+      <circle cx="96" cy="149" r="11" fill="#009E73" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>
+      <text x="96" y="154" font-size="13" text-anchor="middle">🦉</text>
+    </g><g class="drop d2" opacity=".55">
+      <path d="M236 362 l-7 -11 a13 13 0 1 1 14 0 z" fill="#E69F00" stroke="#0A0D14" stroke-width="1.5"/>
+      <circle cx="236" cy="341" r="11" fill="#E69F00" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>
+      <text x="236" y="346" font-size="13" text-anchor="middle">🐝</text>
+    </g><g class="drop d3" opacity=".33">
+      <path d="M46 392 l-7 -11 a13 13 0 1 1 14 0 z" fill="#56B4E9" stroke="#0A0D14" stroke-width="1.5"/>
+      <circle cx="46" cy="371" r="11" fill="#56B4E9" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>
+      <text x="46" y="376" font-size="13" text-anchor="middle">🦈</text>
+    </g><circle cx="150" cy="316" r="42" fill="#FFE01F" fill-opacity=".16" stroke="#FFE01F" stroke-width="2.5"/><text x="150" y="372" font-size="9" text-anchor="middle" fill="#FFE01F" font-family="Azeret Mono, monospace">YOUR ZONE</text></svg>
+    <div class="floaters">
+      <div class="fab">◎</div><div class="fab">⟳</div><div class="fab">▲</div><div class="fab">◐</div>
+    </div>
+  </div>
+          <div class="peek">
+            <div class="s-row spread"><span class="tiny dim">Seekers</span><span class="tiny dim">Nearest first</span></div>
+            <div class="seeker-row">
+              <span class="badge sm" style="background:var(--t-jade)">🦉</span>
+              <span class="grow"><b style="font-size:13px">Eule</b><span class="src">8 s ago · ±20 m</span></span>
+              <span class="num" style="font-size:16px">1.42 km</span>
+            </div>
+            <div class="seeker-row">
+              <span class="badge sm" style="background:var(--t-amber)">🐝</span>
+              <span class="grow"><b style="font-size:13px">Bienen</b><span class="src">Seen 3 min ago</span></span>
+              <span class="num dim" style="font-size:16px">3.1 km</span>
+            </div>
+            <div class="seeker-row stale-row">
+              <span class="badge sm" style="background:var(--t-sky)">🦈</span>
+              <span class="grow"><b style="font-size:13px">Haie</b><span class="src">Offline 12 min</span></span>
+              <span class="num dim" style="font-size:16px">4.8 km</span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar"><div><span>▦</span>Lobby</div><div class="on"><span>◈</span>Map</div><div><span>☰</span>Rules</div><div><span>◔</span>Log</div></div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>Staleness is opacity plus words.</b> Bienen at 55% and "last seen 3 min", Haie at 33% and "offline 12 min" — a fading pin is never left to imply it alone.</li>
+        <li class="r"><b>Every seeker team, nearest first, with a distance.</b> A hider watching three teams converge cares about the order and the gaps, not about a single headline number that hides the other two.</li>
+        <li class="p"><b>The row carries its own freshness.</b> A distance computed from a twelve-minute-old fix is still worth showing — as long as it says so and fades while it says it.</li>
+        <li class="g">The committed zone is drawn solid against the dashed candidate area, because those two things are not the same kind of fact.</li>
+      </ul>
+    </figure>
+
+  </div>
+</section>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Visibility</span>
+    <h2>Only position is ever hidden</h2>
+    <p>Everyone always sees who is in the game, which team they are on and whether they are online. The matrix below covers one thing and one thing only: whose dot appears on whose map. It is a server-side filter that keeps the game fun, not a security boundary — and nobody spends a day defending it against a player with dev tools open.</p>
+  </div>
+
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead><tr><th>Viewer ↓ / position of →</th><th>Own team</th><th>Other seeker teams</th><th>Hider teams</th><th>Presence &amp; team</th></tr></thead>
+      <tbody>
+        <tr><td class="row-h">🦉 Seeker team</td><td class="yes">Visible</td><td class="no">Hidden</td><td class="no">Hidden</td><td class="yes">Visible</td></tr>
+        <tr><td class="row-h">🦊 Hider team</td><td class="yes">Visible</td><td class="yes">Visible</td><td class="yes">Visible</td><td class="yes">Visible</td></tr>
+        <tr><td class="row-h">👁 Spectator (M14)</td><td class="self">Configurable fog</td><td class="self">Configurable fog</td><td class="self">Configurable fog</td><td class="yes">Visible</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="matrix-key">
+    <span>Hider positions are recorded server-side for answer suggestions and replay — and never served to a seeker during play.</span>
+  </div>
+  <div class="note" style="margin-top:26px"><b>Roles belong to the round.</b> When the series swaps sides, this table does not change and no token is reissued: role is resolved by joining player → team → round, so a swap takes effect the moment the round does.</div>
+</section>
+
+<section class="band">
+  <div class="band-head">
+    <span class="kicker">Toolkit</span>
+    <h2>The measurements people currently leave the app for</h2>
+    <p>Distance along a path, a radius around a point, shared pins, a suspected search zone. Both roles get the same geometry, so a hider and a seeker measuring the same line read the same number.</p>
+  </div>
+
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">2C</span><h3>Measure &amp; mark</h3><span class="who">both roles</span></div>
+      <div class="device"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>16:11</span><span>◍ GPS · 69%</span></div>
+        <div class="appbar"><div><div class="sub">Toolkit</div><div class="title">Measure</div></div>
+          <span class="pill">4 points</span></div>
+        <div class="scr-body" style="padding-bottom:0">
+          <div class="map"><svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="320" height="460" fill="var(--m-land)"/>
+  <g fill="var(--m-block)">
+    <rect x="10" y="24" width="62" height="44" rx="5"/><rect x="82" y="18" width="48" height="52" rx="5"/>
+    <rect x="146" y="30" width="74" height="38" rx="5"/><rect x="234" y="24" width="58" height="60" rx="5"/>
+    <rect x="16" y="118" width="54" height="66" rx="5"/><rect x="86" y="122" width="70" height="40" rx="5"/>
+    <rect x="180" y="112" width="46" height="52" rx="5"/><rect x="244" y="118" width="62" height="44" rx="5"/>
+    <rect x="12" y="206" width="66" height="52" rx="5"/><rect x="98" y="196" width="52" height="46" rx="5"/>
+    <rect x="176" y="200" width="80" height="40" rx="5"/><rect x="268" y="206" width="44" height="58" rx="5"/>
+    <rect x="20" y="364" width="58" height="48" rx="5"/><rect x="100" y="374" width="72" height="42" rx="5"/>
+    <rect x="196" y="368" width="50" height="56" rx="5"/><rect x="262" y="380" width="52" height="44" rx="5"/>
+  </g>
+  <path fill="var(--m-park)" d="M162 74 h84 a10 10 0 0 1 10 10 v34 a10 10 0 0 1-10 10 h-84 a10 10 0 0 1-10-10 v-34 a10 10 0 0 1 10-10 z"/>
+  <path fill="var(--m-water)" d="M-6 288 C58 272 96 318 158 308 S268 280 326 292 L326 330 C268 324 236 356 158 346 S58 312 -6 328 Z"/>
+  <g fill="var(--m-zone)" fill-opacity=".11" stroke="var(--m-zone)" stroke-opacity=".45" stroke-width="1.4" stroke-dasharray="5 5">
+    <circle cx="64" cy="96" r="40"/><circle cx="136" cy="284" r="40"/><circle cx="150" cy="316" r="40"/>
+    <circle cx="232" cy="316" r="40"/><circle cx="166" cy="154" r="40"/><circle cx="252" cy="154" r="40"/>
+    <circle cx="72" cy="392" r="40"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M8 96 H108 L166 154 H316"/>
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M64 6 V212 L136 284 V456"/>
+    <path stroke="var(--m-s)" stroke-width="7" d="M-6 392 H72 L150 316 H232 L316 244"/>
+    <path stroke="var(--m-tram)" stroke-width="3.5" d="M252 8 V126 L306 180"/>
+  </g>
+  <g fill="var(--m-land)" stroke="var(--m-station)" stroke-width="2.4">
+    <circle cx="64" cy="96" r="4.6"/><circle cx="108" cy="96" r="4.6"/><circle cx="166" cy="154" r="4.6"/>
+    <circle cx="252" cy="154" r="4.6"/><circle cx="64" cy="212" r="4.6"/><circle cx="136" cy="284" r="4.6"/>
+    <circle cx="150" cy="316" r="4.6"/><circle cx="232" cy="316" r="4.6"/><circle cx="72" cy="392" r="4.6"/>
+    <circle cx="136" cy="404" r="4.6"/><circle cx="252" cy="8" r="4.6"/>
+  </g>
+</svg>
+    <svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" class="overlay-svg" style="position:absolute;inset:0;width:100%;height:100%"><polyline class="dash" points="60,150 130,214 176,286 250,330" fill="none" stroke="#FFE01F" stroke-width="3" stroke-linecap="round"/>
+    <g fill="#0A0D14" stroke="#FFE01F" stroke-width="2.5">
+      <circle cx="60" cy="150" r="6"/><circle cx="130" cy="214" r="6"/><circle cx="176" cy="286" r="6"/><circle cx="250" cy="330" r="6"/>
+    </g>
+    <g font-family="Azeret Mono, monospace" font-size="9" fill="#FFE01F">
+      <rect x="82" y="172" width="42" height="15" rx="4" fill="#0A0D14" fill-opacity=".85"/><text x="87" y="183">480 m</text>
+      <rect x="140" y="242" width="42" height="15" rx="4" fill="#0A0D14" fill-opacity=".85"/><text x="145" y="253">620 m</text>
+      <rect x="200" y="300" width="42" height="15" rx="4" fill="#0A0D14" fill-opacity=".85"/><text x="205" y="311">300 m</text>
+    </g><g>
+    <circle cx="150" cy="252" r="14" fill="var(--m-u)" fill-opacity=".18"/>
+    <circle class="ring-pulse" cx="150" cy="252" r="14" fill="none" stroke="var(--m-u)" stroke-width="2"/>
+    <g class="sweep"><path d="M150 252 L124 206 A52 52 0 0 1 176 206 Z" fill="var(--m-u)" fill-opacity=".22"/></g>
+    <circle cx="150" cy="252" r="8" fill="var(--m-u)" stroke="#fff" stroke-width="2.4"/>
+  </g></svg>
+    <div class="floaters"><div class="fab on">📏</div><div class="fab">◎</div><div class="fab">⟳</div></div>
+  </div>
+          <div class="peek">
+            <div class="tool-row">
+              <div class="tool on"><span>📏</span>Measure</div><div class="tool"><span>◎</span>Radius</div>
+              <div class="tool"><span>📍</span>Pin</div><div class="tool"><span>▨</span>Zone</div>
+            </div>
+            <div class="readout">
+              <div class="leg"><span class="dim">Leg 1 · Kottbusser Tor → Görlitzer</span><span>480 m</span></div>
+              <div class="leg"><span class="dim">Leg 2 · Görlitzer → Schlesisches</span><span>620 m</span></div>
+              <div class="leg"><span class="dim">Leg 3 · Schlesisches → Treptower</span><span>300 m</span></div>
+            </div>
+            <div class="s-row spread">
+              <div><div class="tiny dim">Total path</div><div class="total">1.40 km</div></div>
+              <button class="btn-xl ghost" style="width:auto;padding:0 16px;min-height:48px;font-size:14px">Copy</button>
+            </div>
+            <div class="tiny dim num" style="letter-spacing:.04em">52.49861, 13.42750 · ±18 m</div>
+          </div>
+        </div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>Segment and total, always both.</b> A single number hides where the walk actually got long.</li>
+        <li><b>Every length takes its metres from its own latitude.</b> One coordinate system end to end — WGS84 lng/lat — so a Deutschlandticket-scale game measures more accurately than a single projection could manage.</li>
+        <li class="p"><b>Zone</b> marks where this seeker team intends to search next. Team-shared coordination now; in M13 the same marker becomes a one-tap constraint reset.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">2D</span><h3>Sun mode</h3><span class="who">same screen, 3 pm glare</span></div>
+      <div class="device sun"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>15:02</span><span>◍ GPS · 88%</span></div>
+        <div class="appbar"><div><div class="sub">Round 1 · seeking</div><div class="title">Kreuzberg</div></div>
+          <span class="pill hot num">41:22</span></div>
+        <div class="scr-body" style="padding-bottom:0">
+          <div class="map"><svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect width="320" height="460" fill="var(--m-land)"/>
+  <g fill="var(--m-block)">
+    <rect x="10" y="24" width="62" height="44" rx="5"/><rect x="82" y="18" width="48" height="52" rx="5"/>
+    <rect x="146" y="30" width="74" height="38" rx="5"/><rect x="234" y="24" width="58" height="60" rx="5"/>
+    <rect x="16" y="118" width="54" height="66" rx="5"/><rect x="86" y="122" width="70" height="40" rx="5"/>
+    <rect x="180" y="112" width="46" height="52" rx="5"/><rect x="244" y="118" width="62" height="44" rx="5"/>
+    <rect x="12" y="206" width="66" height="52" rx="5"/><rect x="98" y="196" width="52" height="46" rx="5"/>
+    <rect x="176" y="200" width="80" height="40" rx="5"/><rect x="268" y="206" width="44" height="58" rx="5"/>
+    <rect x="20" y="364" width="58" height="48" rx="5"/><rect x="100" y="374" width="72" height="42" rx="5"/>
+    <rect x="196" y="368" width="50" height="56" rx="5"/><rect x="262" y="380" width="52" height="44" rx="5"/>
+  </g>
+  <path fill="var(--m-park)" d="M162 74 h84 a10 10 0 0 1 10 10 v34 a10 10 0 0 1-10 10 h-84 a10 10 0 0 1-10-10 v-34 a10 10 0 0 1 10-10 z"/>
+  <path fill="var(--m-water)" d="M-6 288 C58 272 96 318 158 308 S268 280 326 292 L326 330 C268 324 236 356 158 346 S58 312 -6 328 Z"/>
+  <g fill="var(--m-zone)" fill-opacity=".11" stroke="var(--m-zone)" stroke-opacity=".45" stroke-width="1.4" stroke-dasharray="5 5">
+    <circle cx="64" cy="96" r="40"/><circle cx="136" cy="284" r="40"/><circle cx="150" cy="316" r="40"/>
+    <circle cx="232" cy="316" r="40"/><circle cx="166" cy="154" r="40"/><circle cx="252" cy="154" r="40"/>
+    <circle cx="72" cy="392" r="40"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M8 96 H108 L166 154 H316"/>
+    <path stroke="var(--m-u)" stroke-width="6.5" d="M64 6 V212 L136 284 V456"/>
+    <path stroke="var(--m-s)" stroke-width="7" d="M-6 392 H72 L150 316 H232 L316 244"/>
+    <path stroke="var(--m-tram)" stroke-width="3.5" d="M252 8 V126 L306 180"/>
+  </g>
+  <g fill="var(--m-land)" stroke="var(--m-station)" stroke-width="2.4">
+    <circle cx="64" cy="96" r="4.6"/><circle cx="108" cy="96" r="4.6"/><circle cx="166" cy="154" r="4.6"/>
+    <circle cx="252" cy="154" r="4.6"/><circle cx="64" cy="212" r="4.6"/><circle cx="136" cy="284" r="4.6"/>
+    <circle cx="150" cy="316" r="4.6"/><circle cx="232" cy="316" r="4.6"/><circle cx="72" cy="392" r="4.6"/>
+    <circle cx="136" cy="404" r="4.6"/><circle cx="252" cy="8" r="4.6"/>
+  </g>
+</svg>
+    <svg viewBox="0 0 320 460" preserveAspectRatio="xMidYMid slice" class="overlay-svg" style="position:absolute;inset:0;width:100%;height:100%"><g>
+    <circle cx="150" cy="252" r="14" fill="var(--m-u)" fill-opacity=".18"/>
+    <circle class="ring-pulse" cx="150" cy="252" r="14" fill="none" stroke="var(--m-u)" stroke-width="2"/>
+    <g class="sweep"><path d="M150 252 L124 206 A52 52 0 0 1 176 206 Z" fill="var(--m-u)" fill-opacity=".22"/></g>
+    <circle cx="150" cy="252" r="8" fill="var(--m-u)" stroke="#fff" stroke-width="2.4"/>
+  </g><g class="drop d2" opacity="1">
+      <path d="M96 216 l-7 -11 a13 13 0 1 1 14 0 z" fill="#009E73" stroke="#0A0D14" stroke-width="1.5"/>
+      <circle cx="96" cy="195" r="11" fill="#009E73" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>
+      <text x="96" y="200" font-size="13" text-anchor="middle">🦉</text>
+    </g></svg>
+    <div class="mapchips">
+      <span class="mapchip"><span class="badge" style="background:var(--t-jade)">🦉</span>Eule · your team</span>
+      <span class="mapchip"><span class="badge" style="background:var(--t-amber)">🐝</span>Bienen · <em>hidden</em></span>
+      <span class="mapchip"><span class="badge" style="background:var(--t-sky)">🦈</span>Haie · <em>hidden</em></span>
+    </div>
+    <div class="floaters">
+      <div class="fab">◎</div><div class="fab">⟳</div><div class="fab on">▲</div><div class="fab">⌥</div>
+    </div>
+  </div>
+          <div class="peek">
+            <div class="s-row spread"><span class="tiny dim">Contrast boost</span><span class="pill live">On · auto</span></div>
+            <div class="hider-strip">
+              <div><div class="s-row" style="gap:7px"><div class="badge sm" style="background:var(--t-vermillion)">🦊</div><b style="font-size:13px">Fuchsbau</b></div>
+                <span class="tiny dim">4 asked</span></div>
+              <div><div class="s-row" style="gap:7px"><div class="badge sm" style="background:var(--t-cobalt)">🐙</div><b style="font-size:13px">Krake</b></div>
+                <span class="tiny dim">2 asked</span></div>
+            </div>
+            <button class="btn-xl">Ask a question</button>
+          </div>
+        </div>
+        <div class="tabbar"><div><span>▦</span>Lobby</div><div class="on"><span>◈</span>Map</div><div><span>☰</span>Rules</div><div><span>◔</span>Log</div></div>
+      </div></div>
+      <ul class="anno">
+        <li class="y"><b>Not an inversion — a re-mix.</b> Line weights grow, transit colours darken to hold contrast on white, and the hiding area moves from translucent yellow to a solid amber edge.</li>
+        <li class="g">Chosen automatically from ambient light where the platform reports it, and switchable by hand where it does not.</li>
+        <li><b>Yellow stops being the loud colour in daylight.</b> The primary action keeps its weight through size and the hard shadow instead.</li>
+      </ul>
+    </figure>
+
+  </div>
+
+  <div class="specs">
+    <div><dt>Map controls</dt><dd>48&nbsp;px round targets, right edge, 9&nbsp;px apart. Recenter, rotate-to-north, 3D tilt, layers.</dd></div>
+    <div><dt>Motion</dt><dd>Markers drop in staggered by 120&nbsp;ms; own position keeps a 3.2&nbsp;s accuracy pulse and a slow heading sweep. Nothing else moves on its own.</dd></div>
+    <div><dt>Staleness</dt><dd>Live → 55% opacity at 3 min → 33% and greyed past 10 min, each with the words next to it.</dd></div>
+    <div><dt>Honesty</dt><dd>No GPS, no battery API, no signal: the screen says which, and every tool still works from a tapped point.</dd></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div>
+    <div class="kicker" style="margin-bottom:16px">Map palette</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#3E88E8"></i><b>U-Bahn</b><span>#3E88E8</span></div>
+      <div class="sw"><i style="background:#22C179"></i><b>S-Bahn</b><span>#22C179</span></div>
+      <div class="sw"><i style="background:#E8B93E"></i><b>Tram</b><span>#E8B93E</span></div>
+      <div class="sw"><i style="background:#153450"></i><b>Water</b><span>#153450</span></div>
+      <div class="sw"><i style="background:#123020"></i><b>Park</b><span>#123020</span></div>
+      <div class="sw"><i style="background:#FFE01F"></i><b>Hiding area</b><span>#FFE01F</span></div>
+    </div>
+  </div>
+  <p>Deck 02 of 04 · Device screens show the app's field-dark theme and its sun-glare variant; the page around them follows your system theme. A companion to <b>Jet Lag: The Game — Hide + Seek</b>, which it credits and does not replace.</p>
+</footer>
+
+</div>

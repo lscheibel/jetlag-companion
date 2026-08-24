@@ -1,38 +1,67 @@
-import { useQuery } from "@rocicorp/zero/react";
-import { queries, type TeamRole } from "@zero-lag/schema";
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useZero } from "@rocicorp/zero/react";
+import type { TeamRole } from "@zero-lag/schema";
+import { mutators } from "@zero-lag/schema";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { HoldButton } from "@zero-lag/ui/components/hold-button";
+import { Notice } from "@zero-lag/ui/components/notice";
+import {
+	Screen,
+	ScreenActions,
+	ScreenBody,
+} from "@zero-lag/ui/components/screen";
+import { listContainer } from "@zero-lag/ui/lib/motion";
+import { cn } from "@zero-lag/ui/lib/utils";
+import { motion } from "motion/react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { GameTabs } from "../game/game-tabs";
 import { useGameShell } from "../game/shell";
 import {
 	LobbyProvider,
 	useLobbyActions,
 	useLobbyRejection,
 } from "../lobby/actions";
+import { BlockerCards } from "../lobby/blockers";
+import { hasSeenBriefing } from "../lobby/briefing-seen";
 import { HostBanner } from "../lobby/host-banner";
+import { InviteSheet } from "../lobby/invite-sheet";
+import { LobbyHeader } from "../lobby/lobby-header";
+import { LobbyMenu } from "../lobby/lobby-menu";
+import type { Blocker, LobbyPerson, LobbyTeamView } from "../lobby/model";
+import {
+	canStart,
+	readyCount,
+	startBlockers,
+	startRemarks,
+} from "../lobby/model";
 import { OutcomeList } from "../lobby/outcome-list";
-import type { LobbyPlayer } from "../lobby/player-row";
-import { RolePanel } from "../lobby/role-panel";
-import { RosterPanel } from "../lobby/roster-panel";
+import { PersonRow } from "../lobby/person-row";
+import { PickTeamSheet } from "../lobby/pick-team-sheet";
+import { PlayerSheet } from "../lobby/player-sheet";
 import { RoundControls } from "../lobby/round-controls";
-import { RulesCard } from "../lobby/rules-card";
-import { ShareCard } from "../lobby/share-card";
-import type { LobbyTeam } from "../lobby/team-card";
-import { useIsHost } from "../lobby/use-is-host";
+import { TeamDrawer } from "../lobby/team-drawer";
+import { TeamRow } from "../lobby/team-row";
+import { useLobby } from "../lobby/use-lobby";
 import { rejectionMessage } from "../lobby/use-rejections";
 import { clearSession } from "../session";
+import { editorHomePath } from "../setup/area/tool-nav";
 
 /**
- * The lobby. m1-spec §11.
+ * The lobby: everybody in the game, under the team they are on.
  *
- * Field-hostile from the first screen, per the build plan's eighth principle:
- * 44px targets, a join code that survives glare, and nothing carried by colour
- * alone. It is used standing on a platform, not sitting down.
+ * **One screen, not two.** The host is a player like everybody else who
+ * additionally has a game to set up, and giving them a separate board meant
+ * asking one group of friends to read two different pictures of the same room.
+ * So there is one list — the people on no team at the top, where they are the
+ * thing in the way, then the teams grouped by the side they play. A tap on a
+ * person opens their sheet: that is where a name is changed, and where a host
+ * moves or removes. The board itself stays a picture of the room.
  *
  * It deliberately does **not** track position. Identity, online-ness and
- * battery are all it subscribes to; the location watch and the position log
- * both belong to a round that has started, and a lobby that quietly drains 8%
- * of everyone's battery while the group argues about team names is a bad first
- * impression and an avoidable one. m1-spec §9.
+ * battery are all it subscribes to; the location watch belongs to a round that
+ * has started, and a lobby that quietly drains 8% of everyone's battery while
+ * the group argues about team names is a bad first impression. m1-spec §9.
  */
 export default function LobbyRoute() {
 	return (
@@ -42,51 +71,61 @@ export default function LobbyRoute() {
 	);
 }
 
+/** What is open over the board. One at a time, and none of them is a route. */
+type Overlay =
+	| { kind: "none" }
+	| { kind: "invite" }
+	| { kind: "menu" }
+	| { kind: "team"; team: LobbyTeamView | null }
+	| { kind: "player"; person: LobbyPerson }
+	| { kind: "move"; person: LobbyPerson };
+
 function Lobby() {
 	const navigate = useNavigate();
 	const { session } = useGameShell();
-	const [players] = useQuery(queries.players());
-	const [teams] = useQuery(queries.teams());
-	const [rounds] = useQuery(queries.rounds());
-	const amHost = useIsHost(session.playerId);
-	const { leaveGame } = useLobbyActions();
+	const zero = useZero();
+	const lobby = useLobby();
+	const { claimHost, joinTeam, leaveGame, leaveTeam, releaseHost, setReady } =
+		useLobbyActions();
 	const { rejection, dismiss } = useLobbyRejection();
+	const [overlay, setOverlay] = useState<Overlay>({ kind: "none" });
 	const [leaving, setLeaving] = useState(false);
 
+	const blockers = startBlockers(lobby.teams, lobby.people);
+	const remarks = startRemarks(lobby.teams, lobby.offline);
+	const host = lobby.people.find((person) => person.isHost) ?? null;
+	const roundPending = lobby.round?.status === "pending";
+	const seenBriefing = hasSeenBriefing(session.gameId, session.playerId);
+	const { ready, total } = readyCount(lobby.people);
+	const iAmReady = lobby.me?.readyAt != null;
+	const everybodyIn = total > 0 && canStart(lobby.teams, lobby.people);
+
 	/**
-	 * The live round is the highest-ordinal one that has not ended — the same
-	 * rule `useMyRole` uses, and `pending` is not ended. There is always exactly
-	 * one, because round 1 is created with the game. m1-spec §3.
+	 * The one number a host might still want to move while everybody is
+	 * arriving. The wizard set it and the briefing states it — but "nothing is
+	 * locked in" has to be true somewhere after setup, and this is where the
+	 * host is standing when it matters.
 	 */
-	const round = [...rounds].reverse().find((value) => value.status !== "ended");
+	const [minutes, setMinutes] = useState<string | null>(null);
+	const minutesValue =
+		minutes ??
+		String(Math.round((lobby.round?.hidingDurationMs ?? 0) / 60_000));
 
-	const roleByTeamId = useMemo(() => {
-		const map = new Map<string, TeamRole>();
-		for (const role of round?.roles ?? []) map.set(role.teamId, role.role);
-		return map;
-	}, [round]);
-
-	const active = players.filter((player) => player.leftAt === null);
-	const removed = players.filter((player) => player.removedByPlayerId !== null);
-
-	const lobbyTeams: LobbyTeam[] = teams.map((team) => ({
-		id: team.id,
-		name: team.name,
-		color: team.color,
-		emoji: team.emoji,
-		members: team.members.flatMap((member) =>
-			member.player && member.player.leftAt === null
-				? [toLobbyPlayer(member.player)]
-				: [],
-		),
-	}));
-
-	const assigned = new Set(
-		lobbyTeams.flatMap((team) => team.members.map((member) => member.id)),
-	);
-	const unassigned = active
-		.filter((player) => !assigned.has(player.id))
-		.map(toLobbyPlayer);
+	/** The whistle: the hiding countdown starts the moment this lands. */
+	function start() {
+		if (!lobby.round) return;
+		const chosen = Number(minutesValue);
+		zero.mutate(
+			mutators.round.startHiding({
+				eventId: crypto.randomUUID(),
+				roundId: lobby.round.id,
+				hidingDurationMs:
+					Number.isFinite(chosen) && chosen > 0
+						? Math.round(chosen * 60_000)
+						: undefined,
+			}),
+		);
+	}
 
 	/**
 	 * The session is not cleared until the others have been told. Underground
@@ -101,95 +140,381 @@ function Lobby() {
 		});
 	}
 
-	return (
-		<main className="mx-auto max-w-2xl space-y-4 p-4">
-			<ShareCard code={session.code} />
-			<HostBanner />
-			<RulesCard amHost={amHost} />
+	/**
+	 * Each block is a tap to the thing that fixes it. Both of the ones left are
+	 * about teams, so both land in the drawer — a game with no teams needs one
+	 * made, and a board with one side needs a side set.
+	 */
+	function fix(blocker: Blocker) {
+		if (blocker.kind === "no-teams") {
+			setOverlay({ kind: "team", team: null });
+			return;
+		}
+		const team = lobby.teams.find((value) => value.role === null);
+		setOverlay({ kind: "team", team: team ?? lobby.teams[0] ?? null });
+	}
 
-			{rejection && (
-				<div
-					className="flex items-center gap-3 rounded border border-amber-500 p-3 text-sm"
-					data-testid="rejection-notice"
+	/** Putting somebody on a team — themselves, or because a host said so. */
+	function put(person: LobbyPerson, team: LobbyTeamView) {
+		if (person.teamId) leaveTeam(person.teamId);
+		joinTeam(team.id, person.id === session.playerId ? undefined : person.id);
+		setOverlay({ kind: "none" });
+	}
+
+	function move(team: LobbyTeamView) {
+		if (overlay.kind !== "move") return;
+		put(overlay.person, team);
+	}
+
+	const personRow = (value: LobbyPerson, loose = false) => (
+		<PersonRow
+			isMe={value.id === session.playerId}
+			key={value.id}
+			loose={loose}
+			onOpen={() => setOverlay({ kind: "player", person: value })}
+			person={value}
+		/>
+	);
+
+	const selectedPerson =
+		overlay.kind === "player" || overlay.kind === "move"
+			? (lobby.people.find((person) => person.id === overlay.person.id) ??
+				lobby.removed.find((person) => person.id === overlay.person.id) ??
+				overlay.person)
+			: null;
+	const selectedRemoved =
+		selectedPerson !== null &&
+		lobby.removed.some((person) => person.id === selectedPerson.id);
+
+	const sides: readonly { role: TeamRole | null; label: string }[] = [
+		{ role: "hider", label: "Hiders" },
+		{ role: "seeker", label: "Seekers" },
+		{ role: null, label: "No side yet" },
+	];
+
+	return (
+		<Screen data-testid="lobby">
+			<LobbyHeader
+				onInvite={() => setOverlay({ kind: "invite" })}
+				onMenu={() => setOverlay({ kind: "menu" })}
+				players={lobby.people.length}
+				teams={lobby.teams.length}
+				title={lobby.gameName}
+			/>
+
+			<ScreenBody className="gap-2">
+				<Notice
+					onDismiss={dismiss}
+					open={rejection !== null}
+					testId="rejection-notice"
+					title={rejection ? rejectionMessage(rejection) : ""}
+					tone="warn"
+				/>
+				<HostBanner />
+
+				{!roundPending && (
+					<>
+						<RoundControls amHost={lobby.amHost} />
+						<OutcomeList token={session.token} />
+					</>
+				)}
+
+				<motion.div
+					animate="shown"
+					className="flex flex-col gap-2"
+					initial="hidden"
+					variants={listContainer}
 				>
-					<span>{rejectionMessage(rejection)}</span>
-					<button
-						className="ml-auto min-h-11 rounded border px-3"
-						data-testid="dismiss-rejection"
-						onClick={dismiss}
-						type="button"
+					{/* On no team at all: at the top, because that is the thing in the
+					    way of starting rather than a footnote under the teams. */}
+					{lobby.unassigned.length > 0 && (
+						<section className="flex flex-col gap-1" data-testid="unassigned">
+							<SectionHead
+								label="Not on a team"
+								tally={String(lobby.unassigned.length)}
+								warn
+							/>
+							{lobby.unassigned.map((value) => personRow(value, true))}
+						</section>
+					)}
+
+					<SectionHead
+						action={
+							lobby.amHost && roundPending ? (
+								<button
+									aria-label="New team"
+									className={cn(
+										"grid size-7 place-items-center rounded-control border border-hairline-strong",
+										"font-semibold text-ink text-sm",
+										"transition-transform duration-[--dur-press] ease-[--ease-pop] hover:-translate-y-0.5 active:scale-90",
+									)}
+									data-testid="create-team"
+									onClick={() => setOverlay({ kind: "team", team: null })}
+									type="button"
+								>
+									+
+								</button>
+							) : null
+						}
+						label="Teams"
+						tally={`${lobby.teams.length}`}
+					/>
+
+					{sides.map(({ role, label }) => {
+						const group = lobby.teams.filter((team) => team.role === role);
+						if (group.length === 0) return null;
+						return (
+							<section
+								className="flex flex-col gap-1.5"
+								data-testid={`side-${label.toLowerCase().replace(/\s+/g, "-")}`}
+								key={label}
+							>
+								<SectionHead
+									label={label}
+									tally={`${group.length} team${group.length === 1 ? "" : "s"}`}
+									thin
+								/>
+								{group.map((team) => (
+									<TeamRow
+										key={team.id}
+										mine={team.id === lobby.myTeam?.id}
+										onOpen={() => setOverlay({ kind: "team", team })}
+										team={team}
+									>
+										{team.members.map((value) => personRow(value))}
+									</TeamRow>
+								))}
+							</section>
+						);
+					})}
+
+					{lobby.removed.length > 0 && (
+						<section className="flex flex-col gap-1" data-testid="removed">
+							<SectionHead label="Removed" tally="" />
+							{lobby.removed.map((value) => (
+								<PersonRow
+									isMe={false}
+									key={value.id}
+									onOpen={() => setOverlay({ kind: "player", person: value })}
+									person={value}
+									removed
+								/>
+							))}
+						</section>
+					)}
+				</motion.div>
+
+				<div className="flex-1" />
+
+				{remarks.map((remark) => (
+					<p
+						className="px-1 text-ink-dim text-xs leading-snug"
+						data-testid="lobby-remark"
+						key={remark}
 					>
-						OK
-					</button>
-				</div>
+						{remark}
+					</p>
+				))}
+			</ScreenBody>
+
+			{roundPending && (
+				<ScreenActions className="pb-3" note={waitingNote(lobby, host)}>
+					{blockers.length > 0 && (
+						<BlockerCards
+							actionable={lobby.amHost}
+							blockers={blockers}
+							onFix={fix}
+						/>
+					)}
+
+					{/*
+					 * Ready is said here, on the board, rather than on a screen of its
+					 * own: everybody's tick is already visible beside their name, so a
+					 * second screen listing the same ticks was a second place to look at
+					 * the same fact. Saying it without having seen the area is still not
+					 * a thing worth allowing, so the button reads the briefing first.
+					 */}
+					{seenBriefing ? (
+						<ActionButton
+							beacon={!iAmReady}
+							data-testid={iAmReady ? "unready" : "mark-ready"}
+							disabled={!lobby.myTeam}
+							hint={`${ready}/${total}`}
+							onClick={() => setReady(!iAmReady)}
+							tone={iAmReady ? "secondary" : "primary"}
+						>
+							{iAmReady ? "Actually, not yet" : "I'm ready"}
+						</ActionButton>
+					) : (
+						<ActionButton
+							beacon
+							data-testid="read-briefing"
+							disabled={!lobby.myTeam}
+							onClick={() => void navigate(`/g/${session.code}/briefing`)}
+						>
+							Read the briefing
+						</ActionButton>
+					)}
+
+					{/*
+					 * The whistle, and only the host has it. Held rather than tapped —
+					 * the fill is the confirmation, and letting go early is a friendlier
+					 * undo than a dialog asking whether you meant it.
+					 */}
+					{lobby.amHost && (
+						<HoldButton
+							disabled={!everybodyIn}
+							onConfirm={start}
+							testId="start-hiding"
+							tone="live"
+						>
+							{everybodyIn
+								? "Hold to start the game"
+								: `Waiting on ${total - ready} of ${total}`}
+						</HoldButton>
+					)}
+				</ScreenActions>
 			)}
 
-			<RosterPanel
-				amHost={amHost}
-				myPlayerId={session.playerId}
-				removed={removed.map(toLobbyPlayer)}
-				roleByTeamId={roleByTeamId}
-				teams={lobbyTeams}
-				unassigned={unassigned}
+			<GameTabs code={session.code} />
+
+			<LobbyMenu
+				amHost={lobby.amHost}
+				hidingMinutes={roundPending ? minutesValue : null}
+				leaving={leaving}
+				onBriefing={() => void navigate(`/g/${session.code}/briefing`)}
+				onClose={() => setOverlay({ kind: "none" })}
+				onGameArea={() => void navigate(editorHomePath(session.code, "lobby"))}
+				onHidingMinutes={setMinutes}
+				onHostToggle={() => {
+					if (lobby.amHost) releaseHost();
+					else claimHost();
+					setOverlay({ kind: "none" });
+				}}
+				onLeave={leave}
+				open={overlay.kind === "menu"}
 			/>
 
-			<RolePanel
-				amHost={amHost}
-				roleByTeamId={roleByTeamId}
-				roundId={round?.id ?? null}
-				teams={lobbyTeams}
+			<InviteSheet
+				code={session.code}
+				onClose={() => setOverlay({ kind: "none" })}
+				open={overlay.kind === "invite"}
 			/>
-			<RoundControls amHost={amHost} />
-			<OutcomeList token={session.token} />
 
-			<footer className="flex items-center gap-3 pt-2 text-sm">
-				<Link
-					className="min-h-11 rounded border px-3 py-2"
-					data-testid="open-map"
-					to={`/g/${session.code}/map`}
-				>
-					Map
-				</Link>
-				{/* Building the board is a host act, and the builder is reachable
-				    only from here — the map is the playing surface. m4-spec §9. */}
-				{amHost && (
-					<Link
-						className="min-h-11 rounded border px-3 py-2"
-						data-testid="open-builder"
-						to={`/g/${session.code}/build`}
-					>
-						Game area
-					</Link>
-				)}
-				<Link
-					className="rounded border px-3 py-2"
-					data-testid="open-debug"
-					to={`/g/${session.code}/debug`}
-				>
-					Debug harness
-				</Link>
-				<button
-					className="ml-auto min-h-11 rounded border px-3"
-					data-testid="leave-game"
-					disabled={leaving}
-					onClick={leave}
-					type="button"
-				>
-					{leaving ? "Leaving…" : "Leave game"}
-				</button>
-			</footer>
-		</main>
+			<TeamDrawer
+				amHost={lobby.amHost}
+				mine={
+					overlay.kind === "team" &&
+					overlay.team !== null &&
+					overlay.team.id === lobby.myTeam?.id
+				}
+				onClose={() => setOverlay({ kind: "none" })}
+				onJoin={() => {
+					if (overlay.kind === "team" && overlay.team && lobby.me) {
+						put(lobby.me, overlay.team);
+					}
+				}}
+				open={overlay.kind === "team"}
+				roundId={lobby.round?.id ?? null}
+				team={overlay.kind === "team" ? overlay.team : null}
+				teams={lobby.teams}
+			/>
+
+			<PlayerSheet
+				amHost={lobby.amHost}
+				isMe={selectedPerson !== null && selectedPerson.id === session.playerId}
+				onClose={() => setOverlay({ kind: "none" })}
+				onMove={() => {
+					if (selectedPerson) {
+						setOverlay({ kind: "move", person: selectedPerson });
+					}
+				}}
+				open={overlay.kind === "player"}
+				person={overlay.kind === "player" ? selectedPerson : null}
+				removed={selectedRemoved}
+			/>
+
+			<PickTeamSheet
+				currentTeamId={overlay.kind === "move" ? overlay.person.teamId : null}
+				onClose={() =>
+					setOverlay(
+						overlay.kind === "move"
+							? { kind: "player", person: overlay.person }
+							: { kind: "none" },
+					)
+				}
+				onPick={move}
+				open={overlay.kind === "move"}
+				subtitle="Everyone sees it straight away"
+				teams={lobby.teams}
+				title={
+					overlay.kind === "move"
+						? overlay.person.id === session.playerId
+							? "Which team?"
+							: `Put ${overlay.person.displayName} on`
+						: ""
+				}
+			/>
+		</Screen>
 	);
 }
 
-function toLobbyPlayer(player: {
-	id: string;
-	displayName: string;
-	isHost: boolean;
-}): LobbyPlayer {
-	return {
-		id: player.id,
-		displayName: player.displayName,
-		isHost: player.isHost,
-	};
+/** Names who is missing, and leaves you out of it: yours is the button. */
+function waitingNote(
+	lobby: ReturnType<typeof useLobby>,
+	host: LobbyPerson | null,
+): string {
+	const others = lobby.people.filter(
+		(person) => person.readyAt === null && person.id !== lobby.me?.id,
+	);
+	if (others.length === 0) {
+		return host
+			? `${host.displayName} starts it once everybody is ready.`
+			: "Nobody is running this game yet.";
+	}
+	const names = others.map((person) => person.displayName);
+	const last = names.pop();
+	return names.length === 0
+		? `Still to say yes: ${last}.`
+		: `Still to say yes: ${names.join(", ")} and ${last}.`;
+}
+
+interface SectionHeadProps {
+	label: string;
+	tally: string;
+	warn?: boolean;
+	/** A sub-heading inside a section that already has one. */
+	thin?: boolean;
+	action?: ReactNode;
+}
+
+function SectionHead({
+	label,
+	tally,
+	warn = false,
+	thin = false,
+	action = null,
+}: SectionHeadProps) {
+	return (
+		<div className={cn("flex items-center gap-2.5", thin ? "pt-1" : "pt-1.5")}>
+			{warn && (
+				<span
+					aria-hidden
+					className="zl-breathe size-1.5 shrink-0 rounded-full bg-stale"
+				/>
+			)}
+			<span
+				className={cn(
+					"eyebrow",
+					warn && "text-stale",
+					!thin && !warn && "text-ink",
+				)}
+			>
+				{label}
+			</span>
+			<span className="h-px flex-1 bg-hairline" />
+			{tally && <span className="eyebrow">{tally}</span>}
+			{action}
+		</div>
+	);
 }

@@ -63,9 +63,16 @@ export function HoldButton({
 				"font-display font-extrabold text-lg tracking-tight",
 				"transition-transform duration-[--dur-press] ease-[--ease-pop] active:translate-y-1",
 				"disabled:pointer-events-none disabled:opacity-45",
+				// Lifted on its own darker edge, like every other action: over a dark
+				// ground a black shadow is no shadow at all.
 				tone === "live"
-					? "bg-live text-white shadow-[0_5px_0_rgb(0_0_0/0.3)]"
-					: "bg-action text-action-ink shadow-[0_5px_0_var(--action-press)]",
+					? "bg-live text-white shadow-[0_5px_0_#11784B] active:shadow-[0_1px_0_#11784B]"
+					: "bg-action text-action-ink shadow-[0_5px_0_var(--action-press)] active:shadow-[0_1px_0_var(--action-press)]",
+				"disabled:shadow-none",
+				// Findable in peripheral vision, and only while it is waiting to be
+				// held: a sweep across a button that is filling would read as part of
+				// the fill.
+				!holding && !disabled && "zl-sheen",
 				className,
 			)}
 			data-holding={holding || undefined}

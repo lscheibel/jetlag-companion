@@ -21,6 +21,13 @@ export type PresenceEntry = {
 	online: boolean;
 	/** How old the fix was when the server sent it. m2-spec §5. */
 	fixAgeMs: number | null;
+	/**
+	 * How long since this player was last online, when the server sent the
+	 * frame. Zero while they are online. The client counts up from it the same
+	 * way it does for `fixAgeMs`. Missing on a frame from before this field
+	 * existed, which the lobby treats as zero.
+	 */
+	lastSeenAgeMs?: number;
 };
 
 export type EphemeralState = {

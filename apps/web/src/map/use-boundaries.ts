@@ -18,7 +18,7 @@ import type { Session } from "../session";
 export function useBoundaries(
 	session: Session,
 	bbox: readonly [number, number, number, number] | null,
-	adminLevel: 9 | 10 | null,
+	adminLevel: 4 | 9 | 10 | null,
 ): readonly CatalogBoundaryRow[] {
 	const [rows, setRows] = useState<readonly CatalogBoundaryRow[]>([]);
 	const exact = useRef({ bbox, adminLevel });

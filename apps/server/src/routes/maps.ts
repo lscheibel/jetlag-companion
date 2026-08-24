@@ -1,5 +1,5 @@
-import { buildMap, type MapDraft } from "@zero-lag/catalog";
-import { SCALE_PRESETS } from "@zero-lag/schema";
+import { buildMap, type MapDraft, MODE_IDS } from "@zero-lag/catalog";
+import { AREA_PIECE_SOURCES, SCALE_PRESETS } from "@zero-lag/schema";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -19,14 +19,37 @@ import { mapEventPayload, writeMapConfig } from "../map";
  */
 
 const position = z.tuple([z.number(), z.number()]);
+const ringSchema = z.array(position).min(3);
+const multiPolygonSchema = z
+	.array(z.array(z.array(position).min(4)).min(1))
+	.min(1);
 
-const draftBody = z.object({
+const pieceBody = z.object({
+	id: z.string().min(1).max(64),
+	op: z.enum(["add", "subtract"]),
+	source: z.enum(AREA_PIECE_SOURCES),
 	name: z.string().min(1).max(80),
-	scalePreset: z.enum(SCALE_PRESETS),
-	/** The ring the host drew, open or closed. */
-	ring: z.array(position).min(3),
-	hidingRadiusMeters: z.number().positive().max(50_000).optional(),
+	geometry: multiPolygonSchema,
 });
+
+const draftBody = z
+	.object({
+		name: z.string().min(1).max(80),
+		scalePreset: z.enum(SCALE_PRESETS),
+		/** The ring the host drew, open or closed. The M4 builder still sends this. */
+		ring: ringSchema.optional(),
+		/** The setup editor's ordered list of add/cut pieces. */
+		pieces: z.array(pieceBody).min(1).optional(),
+		hidingRadiusMeters: z.number().positive().max(50_000).optional(),
+		/**
+		 * Which modes count as transit. Omitted means all of them, which is not the
+		 * same as listing every mode the feed happens to have today. m4-spec §5.
+		 */
+		modeIds: z.array(z.enum(MODE_IDS)).min(1).optional(),
+	})
+	.refine((data) => Boolean(data.ring) !== Boolean(data.pieces), {
+		message: "exactly one of ring or pieces",
+	});
 
 export const maps = new Hono();
 
@@ -147,6 +170,8 @@ gameMaps.post("/:gameId/map", async (c) => {
 			scalePreset: template.scalePreset,
 			selection: template.selection,
 			hidingRadiusMeters: template.hidingRadiusMeters,
+			// A template carries no mode filter: it is a shape, and which modes
+			// count is the receiving game's decision. m4-spec §7.
 		};
 	} else if (fromDraft.success) {
 		draft = toDraft(fromDraft.data);
@@ -215,11 +240,33 @@ gameMaps.post("/:gameId/map", async (c) => {
 });
 
 function toDraft(input: z.infer<typeof draftBody>): MapDraft {
-	return {
+	const shared = {
 		name: input.name,
 		scalePreset: input.scalePreset,
-		selection: { kind: "drawn", polygon: [[input.ring]] },
 		hidingRadiusMeters: input.hidingRadiusMeters,
+		modeIds: input.modeIds,
+	};
+	if (input.pieces) {
+		return {
+			...shared,
+			selection: {
+				kind: "composed",
+				pieces: input.pieces.map((piece) => ({
+					id: piece.id,
+					op: piece.op,
+					source: piece.source,
+					name: piece.name,
+					geometry: piece.geometry,
+				})),
+			},
+		};
+	}
+	if (!input.ring) {
+		throw new Error("draft missing ring");
+	}
+	return {
+		...shared,
+		selection: { kind: "drawn", polygon: [[input.ring]] },
 	};
 }
 

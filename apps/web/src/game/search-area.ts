@@ -1,9 +1,9 @@
 import {
-	type MultiPolygon,
-	type Region,
 	isEmptyRegion,
+	type MultiPolygon,
 	multiPolygonBBox,
 	multiPolygonToRegion,
+	type Region,
 	regionHash,
 	regionToMultiPolygon,
 	subtractRegions,

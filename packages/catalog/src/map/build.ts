@@ -5,10 +5,15 @@ import type {
 	StoredMultiPolygon,
 } from "@zero-lag/schema";
 import { materialiseStops } from "../stops/materialise";
+import type { ModeId } from "../stops/modes";
 import { SCALE_SETTINGS } from "../stops/scale";
-import type { MaterialisedStop, StopCatalog } from "../stops/types";
-import { buildValidHidingArea } from "./area";
+import type {
+	CatalogStop,
+	MaterialisedStop,
+	StopCatalog,
+} from "../stops/types";
 import { mapContentHash } from "./content-hash";
+import { areaFromSelection } from "./pieces";
 
 /**
  * The single place a drawn ring becomes a board. m4-spec §3, §5, §7.
@@ -25,6 +30,15 @@ export interface MapDraft {
 	readonly selection: Selection;
 	/** Defaults to the preset's radius when the host has not overridden it. */
 	readonly hidingRadiusMeters?: number;
+	/**
+	 * Which modes count as transit, or undefined for all of them.
+	 *
+	 * A stop survives if it is served by any selected mode. Undefined rather
+	 * than the full list, because "everything" and "these eight" are different
+	 * statements: the first keeps a mode the feed grows later, the second
+	 * silently excludes it.
+	 */
+	readonly modeIds?: readonly ModeId[];
 }
 
 export interface BuiltMap {
@@ -32,6 +46,7 @@ export interface BuiltMap {
 	readonly scalePreset: ScalePreset;
 	readonly selection: Selection;
 	readonly hidingRadiusMeters: number;
+	readonly modeIds: readonly ModeId[] | null;
 	readonly validHidingArea: StoredMultiPolygon;
 	readonly catalogVersion: string;
 	readonly contentHash: string;
@@ -43,12 +58,13 @@ export function buildMap(draft: MapDraft, catalog: StopCatalog): BuiltMap {
 	const hidingRadiusMeters =
 		draft.hidingRadiusMeters ?? settings.hidingRadiusMeters;
 
-	// The host's own vertices are what `selection` keeps; the repaired ring is
+	// The host's own vertices are what `selection` keeps; the repaired fold is
 	// what the game is played on. They differ whenever a drawn ring crosses
-	// itself, which is the case the pair exists for.
-	const area = buildValidHidingArea(draft.selection.polygon[0]?.[0] ?? []);
+	// itself, or when composed pieces union and cut each other.
+	const area = areaFromSelection(draft.selection);
 	const validHidingArea = regionToMultiPolygon(area);
 
+	const modeIds = draft.modeIds ? [...draft.modeIds].sort() : null;
 	const map = {
 		name: draft.name,
 		scalePreset: draft.scalePreset,
@@ -56,13 +72,27 @@ export function buildMap(draft: MapDraft, catalog: StopCatalog): BuiltMap {
 		hidingRadiusMeters,
 		validHidingArea,
 		catalogVersion: catalog.version,
+		modeIds,
 	};
 
 	return {
 		...map,
 		contentHash: mapContentHash(map),
-		stops: materialiseStops(catalog.stops, area, settings.marginMeters),
+		stops: materialiseStops(
+			inSelectedModes(catalog.stops, modeIds),
+			area,
+			settings.marginMeters,
+		),
 	};
+}
+
+function inSelectedModes(
+	stops: readonly CatalogStop[],
+	modeIds: readonly ModeId[] | null,
+): readonly CatalogStop[] {
+	if (!modeIds) return stops;
+	const wanted = new Set<string>(modeIds);
+	return stops.filter((stop) => stop.modeIds.some((id) => wanted.has(id)));
 }
 
 /** A drawn ring, as `selection` stores it. */

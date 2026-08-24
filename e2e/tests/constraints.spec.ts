@@ -9,6 +9,8 @@ import {
 	openMap,
 	openPhone,
 	type Phone,
+	setSide,
+	startHiding,
 	waitForSync,
 } from "./harness";
 
@@ -21,23 +23,6 @@ import {
 test.afterAll(async () => {
 	await closeDb();
 });
-
-async function setSide(
-	phone: Phone,
-	team: string,
-	side: "hider" | "seeker",
-): Promise<void> {
-	await phone.page.getByTestId(`${side}-${team}`).click();
-	await expect(phone.page.getByTestId(`role-${team}`)).toHaveText(side);
-}
-
-async function startHiding(host: Phone, minutes: string): Promise<void> {
-	await host.page.getByTestId("hiding-duration").fill(minutes);
-	await host.page.getByTestId("start-hiding").click();
-	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
-		"hiding",
-	);
-}
 
 async function commitZone(hider: Phone, code: string): Promise<void> {
 	await openMap(hider, code);
@@ -93,7 +78,7 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await setSide(ana, "Hiders", "hider");
 	await setSide(ana, "Seekers", "seeker");
 
-	await startHiding(ana, "30");
+	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
 	await startSeeking(ana, code);
 
@@ -151,7 +136,7 @@ test("two hider teams switch folds from the selector", async ({ browser }) => {
 	await setSide(ana, "Foxes", "hider");
 	await setSide(ana, "Seekers", "seeker");
 
-	await startHiding(ana, "30");
+	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
 	await commitZone(cara, code);
 	await startSeeking(ana, code);
@@ -201,7 +186,7 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await setSide(ana, "Hiders", "hider");
 	await setSide(ana, "Seekers", "seeker");
 
-	await startHiding(ana, "30");
+	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
 	await startSeeking(ana, code);
 

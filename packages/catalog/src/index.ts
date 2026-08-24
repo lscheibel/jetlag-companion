@@ -11,6 +11,14 @@ export {
 	stopCatalogVersion,
 } from "./map/content-hash";
 export {
+	areaFromSelection,
+	composedSelection,
+	foldPieces,
+	foldPiecesToMultiPolygon,
+	nameFromPieces,
+	piecesFromSelection,
+} from "./map/pieces";
+export {
 	boundaryLabel,
 	GERMAN_ADMIN_LEVEL_LABELS,
 	MAX_ADMIN_LEVEL,
@@ -25,9 +33,13 @@ export {
 } from "./osm/boundary";
 export { BERLIN_FIXTURE_BOUNDARIES } from "./osm/fixture";
 export {
+	BOUNDARY_SEARCH_LIMIT,
+	type BoundarySearch,
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
+	boundariesMatching,
 	boundaryContaining,
+	CATALOG_ADMIN_LEVELS,
 	type CatalogAdminLevel,
 	type CatalogBoundary,
 	catalogBoundaryFromParsed,

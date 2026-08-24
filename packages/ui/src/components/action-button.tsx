@@ -42,11 +42,17 @@ const TONES: Record<ActionButtonTone, string> = {
 	primary:
 		"bg-action text-action-ink shadow-[0_5px_0_var(--action-press)] hover:shadow-[0_7px_0_var(--action-press)] active:shadow-[0_1px_0_var(--action-press)]",
 	secondary:
-		"bg-transparent text-ink border-2 border-hairline-strong shadow-[0_5px_0_var(--surface-raised)] hover:shadow-[0_7px_0_var(--surface-raised)] active:shadow-[0_1px_0_var(--surface-raised)]",
+		"bg-surface text-ink border-2 border-hairline-strong shadow-[0_5px_0_var(--hairline-strong)] hover:shadow-[0_7px_0_var(--hairline-strong)] active:shadow-[0_1px_0_var(--hairline-strong)]",
+	/*
+	 * Every tone is lifted on its own darker edge rather than on translucent
+	 * black: over a dark ground a black shadow is invisible, and a flat red
+	 * button next to a raised yellow one reads as disabled rather than as
+	 * dangerous.
+	 */
 	danger:
-		"bg-danger text-white shadow-[0_5px_0_rgb(0_0_0/0.35)] hover:shadow-[0_7px_0_rgb(0_0_0/0.35)] active:shadow-[0_1px_0_rgb(0_0_0/0.35)]",
+		"bg-danger text-white shadow-[0_5px_0_#A62A15] hover:shadow-[0_7px_0_#A62A15] active:shadow-[0_1px_0_#A62A15]",
 	curse:
-		"bg-curse text-white shadow-[0_5px_0_rgb(0_0_0/0.35)] hover:shadow-[0_7px_0_rgb(0_0_0/0.35)] active:shadow-[0_1px_0_rgb(0_0_0/0.35)]",
+		"bg-curse text-white shadow-[0_5px_0_#8E2C68] hover:shadow-[0_7px_0_#8E2C68] active:shadow-[0_1px_0_#8E2C68]",
 	quiet: "bg-surface-raised text-ink",
 };
 
@@ -69,7 +75,7 @@ export function ActionButton({
 	return (
 		<button
 			className={cn(
-				"relative flex items-center justify-center gap-2 overflow-hidden",
+				"relative flex flex-col items-center justify-center overflow-hidden",
 				"font-display font-extrabold tracking-tight",
 				"transition-[transform,box-shadow] duration-[--dur-press] ease-[--ease-pop]",
 				"hover:-translate-y-0.5 active:translate-y-1",
@@ -77,6 +83,7 @@ export function ActionButton({
 				inline ? "w-auto" : "w-full",
 				TONES[tone],
 				SIZES[size],
+				hint ? "gap-0.5 py-3" : "gap-2",
 				beacon && "zl-sheen",
 				className,
 			)}

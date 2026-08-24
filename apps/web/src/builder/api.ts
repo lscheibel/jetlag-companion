@@ -1,5 +1,10 @@
 import type { LngLat } from "@zero-lag/geo";
-import type { ScalePreset, StoredMultiPolygon } from "@zero-lag/schema";
+import type {
+	AreaPiece,
+	ScalePreset,
+	Selection,
+	StoredMultiPolygon,
+} from "@zero-lag/schema";
 import { serverUrl } from "../dev-origin";
 import type { Session } from "../session";
 
@@ -34,10 +39,7 @@ export interface TemplateRow {
 	readonly code: string;
 	readonly name: string;
 	readonly scalePreset: ScalePreset;
-	readonly selection: {
-		readonly kind: "drawn";
-		readonly polygon: StoredMultiPolygon;
-	};
+	readonly selection: Selection;
 	readonly hidingRadiusMeters: number;
 	readonly validHidingArea: StoredMultiPolygon;
 	readonly catalogVersion: string;
@@ -57,12 +59,24 @@ export interface AppliedMap {
 	readonly catalogVersionChanged: boolean;
 }
 
-export interface MapDraftBody {
+export interface RingDraftBody {
 	readonly name: string;
 	readonly scalePreset: ScalePreset;
 	readonly ring: readonly LngLat[];
 	readonly hidingRadiusMeters: number;
+	/** Omitted means every mode counts. m4-spec §5. */
+	readonly modeIds?: readonly string[];
 }
+
+export interface PiecesDraftBody {
+	readonly name: string;
+	readonly scalePreset: ScalePreset;
+	readonly pieces: readonly AreaPiece[];
+	readonly hidingRadiusMeters?: number;
+	readonly modeIds?: readonly string[];
+}
+
+export type MapDraftBody = RingDraftBody | PiecesDraftBody;
 
 async function call<T>(
 	path: string,
@@ -94,7 +108,7 @@ export function fetchCatalogStops(
 export interface CatalogBoundaryRow {
 	readonly id: string;
 	readonly name: string;
-	readonly adminLevel: 9 | 10;
+	readonly adminLevel: 4 | 9 | 10;
 	readonly label: string;
 	readonly polygons: StoredMultiPolygon;
 }
@@ -108,10 +122,27 @@ export interface CatalogBoundariesView {
 export function fetchCatalogBoundaries(
 	session: Session,
 	bbox: readonly [number, number, number, number],
-	adminLevel: 9 | 10,
+	adminLevel: 4 | 9 | 10,
 ): Promise<CatalogBoundariesView> {
 	return call<CatalogBoundariesView>(
 		`/catalog/boundaries?bbox=${bbox.join(",")}&adminLevel=${adminLevel}`,
+		session,
+	);
+}
+
+export function fetchBoundarySearch(
+	session: Session,
+	levels: readonly (4 | 9 | 10)[],
+	query: string,
+	bbox?: readonly [number, number, number, number] | null,
+): Promise<CatalogBoundariesView> {
+	const params = new URLSearchParams({
+		levels: levels.join(","),
+		q: query,
+	});
+	if (bbox) params.set("bbox", bbox.join(","));
+	return call<CatalogBoundariesView>(
+		`/catalog/boundaries?${params.toString()}`,
 		session,
 	);
 }

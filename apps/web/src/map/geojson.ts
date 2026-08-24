@@ -29,6 +29,36 @@ export function multiPolygonFeature(multi: MultiPolygon | null): FeatureData {
 	};
 }
 
+/**
+ * Every ring as its own LineString — including holes. A line layer on a
+ * Polygon only paints the outer edge, which is how a cut used to vanish.
+ */
+export function multiPolygonOutlines(multi: MultiPolygon | null): FeatureData {
+	if (!multi || multi.length === 0) return EMPTY_FEATURES;
+	const features: {
+		type: "Feature";
+		properties: Record<string, never>;
+		geometry: { type: "LineString"; coordinates: number[][] };
+	}[] = [];
+	for (const polygon of multi) {
+		for (const ring of polygon) {
+			if (ring.length < 2) continue;
+			const coords: number[][] = ring.map(([lng, lat]) => [lng, lat]);
+			const first = coords[0];
+			const last = coords[coords.length - 1];
+			if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
+				coords.push(first);
+			}
+			features.push({
+				type: "Feature",
+				properties: {},
+				geometry: { type: "LineString", coordinates: coords },
+			});
+		}
+	}
+	return { type: "FeatureCollection", features };
+}
+
 export function lineFeature(points: readonly LngLat[]): FeatureData {
 	if (points.length < 2) return EMPTY_FEATURES;
 	return {

@@ -12,8 +12,9 @@ import { cn } from "../lib/utils";
  * one component where Motion is doing something CSS cannot — animating the
  * exit, so a dismissed sheet leaves rather than vanishing.
  *
- * Sheets are a step like any other, so a sheet with a `title` gets the same
- * back affordance a screen would.
+ * The grabber and the scrim are the dismiss: tapping outside leaves. An X
+ * in the header is opt-in, because beside two action buttons it reads as a
+ * third one.
  */
 
 interface SheetProps {
@@ -27,6 +28,11 @@ interface SheetProps {
 	className?: string;
 	/** Test id for the panel itself; the scrim gets `${testId}-scrim`. */
 	testId?: string;
+	/**
+	 * An X in the header. Off by default: the grabber says it is a sheet and
+	 * tapping the scrim dismisses it.
+	 */
+	closable?: boolean;
 }
 
 export function Sheet({
@@ -38,6 +44,7 @@ export function Sheet({
 	children,
 	className,
 	testId = "sheet",
+	closable = false,
 }: SheetProps) {
 	const reduced = useReducedMotion();
 
@@ -89,6 +96,7 @@ export function Sheet({
 									{eyebrow && <div className="eyebrow truncate">{eyebrow}</div>}
 									<h2 className="truncate text-lg">{title}</h2>
 								</div>
+								{closable && (
 								<button
 									aria-label="Close"
 									className="-mr-1 flex size-tap shrink-0 items-center justify-center rounded-control text-ink-dim transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90"
@@ -110,6 +118,7 @@ export function Sheet({
 										<path d="M6 6l12 12M18 6L6 18" />
 									</svg>
 								</button>
+								)}
 							</div>
 						)}
 						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">

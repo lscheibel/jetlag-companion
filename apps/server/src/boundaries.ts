@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	BERLIN_FIXTURE_BOUNDARIES,
+	BOUNDARY_SEARCH_LIMIT,
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
+	boundariesMatching,
 	type CatalogAdminLevel,
 	type CatalogBoundary,
 } from "@zero-lag/catalog";
@@ -15,9 +17,9 @@ import { FIXTURE_SENTINEL } from "./catalog";
  * the same way the stop catalog is. Not in Zero: the extract is static and
  * the play map only needs a bbox + level read.
  *
- * Full Germany at every admin level is too large to scan unfiltered. This
- * loader keeps levels 9 and 10 (Bezirk / Ortsteil in Berlin), and the e2e
- * suite uses the fixture when STOP_CATALOG_PATH=fixture.
+ * Full Germany at every admin level is too large to send unfiltered. This
+ * loader keeps levels 4, 9 and 10 (Land / Bezirk / Ortsteil) for the whole
+ * extract, and the e2e suite uses the fixture when STOP_CATALOG_PATH=fixture.
  */
 
 const JSON_RELATIVE = "assets/catalog/boundaries.catalog.json";
@@ -77,14 +79,13 @@ export function loadBoundaries(): readonly CatalogBoundary[] {
 		}
 	}
 
-	const seqPaths =
-		override?.endsWith(".geojsonseq")
-			? [override]
-			: [SEQ_RELATIVE, join("..", "..", SEQ_RELATIVE)];
+	const seqPaths = override?.endsWith(".geojsonseq")
+		? [override]
+		: [SEQ_RELATIVE, join("..", "..", SEQ_RELATIVE)];
 	for (const path of seqPaths) {
 		const rows = tryReadSeq(path);
 		if (rows && rows.length > 0) {
-			console.log(`boundaries: ${rows.length} admin 9/10 from ${path}`);
+			console.log(`boundaries: ${rows.length} admin 4/9/10 from ${path}`);
 			loaded = rows;
 			return loaded;
 		}
@@ -107,4 +108,29 @@ export function boundariesInView(
 	adminLevel: CatalogAdminLevel,
 ): CatalogBoundary[] {
 	return boundariesInBBox(loadBoundaries(), bbox, adminLevel);
+}
+
+export function boundariesNamed(
+	adminLevels: CatalogAdminLevel | readonly CatalogAdminLevel[],
+	query: string,
+	bbox?: BBox | null,
+): { matches: CatalogBoundary[]; total: number } {
+	return boundariesMatching(
+		loadBoundaries(),
+		adminLevels,
+		query,
+		BOUNDARY_SEARCH_LIMIT,
+		bbox,
+	);
+}
+
+export function boundaryCountAtLevels(
+	adminLevels: readonly CatalogAdminLevel[],
+): number {
+	const wanted = new Set(adminLevels);
+	let count = 0;
+	for (const row of loadBoundaries()) {
+		if (wanted.has(row.adminLevel)) count += 1;
+	}
+	return count;
 }
