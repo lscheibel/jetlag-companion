@@ -25,28 +25,27 @@ export function RoundBar({ clockOffsetMs = 0 }: RoundBarProps) {
 			round.hidingDurationMs - elapsed(round.hidingStartedAt, roundPauses, now),
 		);
 		readout =
-			remaining === 0 ? "Hiding time is up" : `${formatClock(remaining)} left`;
+			remaining === 0 ? "Hiding time is up" : `${formatHms(remaining)} left`;
 	} else if (round.status === "seeking" && round.seekingStartedAt !== null) {
-		readout = formatClock(elapsed(round.seekingStartedAt, roundPauses, now));
+		readout = formatHms(elapsed(round.seekingStartedAt, roundPauses, now));
 	} else if (round.status === "ended") {
 		readout = "Round ended";
 	}
 
 	return (
-		<div
-			className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded bg-surface/90 px-3 font-semibold shadow"
-			data-testid="round-bar"
-		>
-			<span className="capitalize" data-testid="round-phase">
+		<div className="flex shrink-0 items-center gap-1.5" data-testid="round-bar">
+			<span className="sr-only" data-testid="round-phase">
 				{round.status}
 			</span>
-			<span aria-hidden="true">·</span>
-			<span className="tabular-nums" data-testid="round-clock">
+			<span
+				className="shrink-0 rounded-[14px] bg-action px-2.5 py-1 text-right font-bold font-mono text-[0.6rem] text-action-ink uppercase tracking-[0.06em]"
+				data-testid="round-clock"
+			>
 				{readout}
 			</span>
 			{openPause && (
 				<span
-					className="rounded bg-amber-100 px-2 py-1 text-amber-950 text-xs"
+					className="rounded-[14px] bg-stale/20 px-2 py-1 text-stale text-xs"
 					data-testid="round-paused"
 				>
 					Paused: {openPause.reason}
@@ -54,6 +53,17 @@ export function RoundBar({ clockOffsetMs = 0 }: RoundBarProps) {
 			)}
 		</div>
 	);
+}
+
+/** Always hours, minutes and seconds. The hiding countdown is `hh:mm:ss left`. */
+export function formatHms(milliseconds: number): string {
+	const seconds = Math.max(0, Math.floor(milliseconds / 1_000));
+	const hours = Math.floor(seconds / 3_600);
+	const minutes = Math.floor((seconds % 3_600) / 60);
+	const remainder = seconds % 60;
+	return `${hours.toString().padStart(2, "0")}:${minutes
+		.toString()
+		.padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
 }
 
 export function formatClock(milliseconds: number): string {

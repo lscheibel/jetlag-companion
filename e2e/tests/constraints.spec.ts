@@ -158,10 +158,12 @@ test("two hider teams switch folds from the selector", async ({ browser }) => {
 	const cut = await areaHash(ana);
 	expect(cut).not.toBe(seed);
 
+	await ana.page.getByTestId("hider-selector").click();
 	await ana.page.getByTestId(`hider-selector-${foxesId}`).click();
 	await expect(ana.page.getByTestId("constraint-count")).toHaveText("0");
 	await expect(ana.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 
+	await ana.page.getByTestId("hider-selector").click();
 	await ana.page.getByTestId(`hider-selector-${hidersId}`).click();
 	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1");
 	await expect(ana.page.getByTestId("surviving-area-hash")).toHaveText(cut);

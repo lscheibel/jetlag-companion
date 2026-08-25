@@ -1,11 +1,5 @@
-import {
-	type BBox,
-	type MultiPolygon,
-	multiPolygonToRegion,
-	regionToMultiPolygon,
-	subtractRegions,
-} from "@zero-lag/geo";
-import { useEffect, useMemo, useState } from "react";
+import type { MultiPolygon } from "@zero-lag/geo";
+import { useMemo } from "react";
 import type { CatalogStopRow } from "../../builder/api";
 import {
 	EMPTY_FEATURES,
@@ -13,36 +7,8 @@ import {
 	multiPolygonFeature,
 	multiPolygonOutlines,
 } from "../../map/geojson";
-import { useMapInstance } from "../../map/map-canvas";
 import { useGeoJsonLayer } from "../../map/use-geojson-layer";
-
-/**
- * Viewport minus the fold. The playable hole stays the map; everything else
- * on screen is the dim. A globe-sized complement is a MapLibre antimeridian
- * trap, so the outer ring is the current view, not WORLD.
- */
-function outsideViewport(
-	area: MultiPolygon | null,
-	view: BBox | null,
-): MultiPolygon | null {
-	if (!area || area.length === 0 || !view) return null;
-	const [west, south, east, north] = view;
-	const frame = {
-		polygons: [
-			[
-				[
-					[west, south],
-					[east, south],
-					[east, north],
-					[west, north],
-					[west, south],
-				],
-			],
-		],
-	};
-	const outside = subtractRegions(frame, multiPolygonToRegion(area));
-	return outside.polygons.length === 0 ? null : regionToMultiPolygon(outside);
-}
+import { outsideViewport, usePaddedView } from "../../map/viewport-outside";
 
 const MASK_FILL = [
 	{
@@ -91,36 +57,7 @@ interface FoldLayerProps {
 }
 
 export function FoldLayer({ area }: FoldLayerProps) {
-	const map = useMapInstance();
-	const [view, setView] = useState<BBox | null>(null);
-
-	useEffect(() => {
-		if (!map) return;
-		let frame = 0;
-		const emit = () => {
-			if (frame) return;
-			frame = requestAnimationFrame(() => {
-				frame = 0;
-				const bounds = map.getBounds();
-				const west = bounds.getWest();
-				const south = bounds.getSouth();
-				const east = bounds.getEast();
-				const north = bounds.getNorth();
-				const padLng = (east - west) * 0.08;
-				const padLat = (north - south) * 0.08;
-				setView([west - padLng, south - padLat, east + padLng, north + padLat]);
-			});
-		};
-		emit();
-		map.on("move", emit);
-		map.on("resize", emit);
-		return () => {
-			cancelAnimationFrame(frame);
-			map.off("move", emit);
-			map.off("resize", emit);
-		};
-	}, [map]);
-
+	const view = usePaddedView();
 	const mask = useMemo(
 		() => multiPolygonFeature(outsideViewport(area, view)),
 		[area, view],
@@ -137,29 +74,63 @@ const STOP_DOTS = [
 		type: "circle" as const,
 		paint: {
 			"circle-radius": 3.5,
-			"circle-color": "#3e88e8",
+			"circle-color": [
+				"case",
+				["==", ["get", "inPlay"], 1],
+				"#08111c",
+				"#8b919c",
+			] as unknown as string,
 			"circle-stroke-color": "#ffffff",
-			"circle-stroke-width": 1,
+			"circle-stroke-width": [
+				"case",
+				["==", ["get", "inPlay"], 1],
+				2.5,
+				1.5,
+			] as unknown as number,
+			"circle-opacity": [
+				"case",
+				["==", ["get", "inPlay"], 1],
+				1,
+				0.33,
+			] as unknown as number,
+			"circle-stroke-opacity": [
+				"case",
+				["==", ["get", "inPlay"], 1],
+				1,
+				0.33,
+			] as unknown as number,
 		},
 	},
 ];
 
 interface FoldStopsLayerProps {
 	readonly stops: readonly CatalogStopRow[];
+	/** Null while every mode in the area counts. */
+	readonly inPlayModeIds?: readonly string[] | null;
 }
 
-export function FoldStopsLayer({ stops }: FoldStopsLayerProps) {
+export function FoldStopsLayer({
+	stops,
+	inPlayModeIds = null,
+}: FoldStopsLayerProps) {
+	const modeKey = inPlayModeIds?.slice().sort().join(",") ?? "";
 	const data = useMemo<FeatureData>(() => {
 		if (stops.length === 0) return EMPTY_FEATURES;
+		const wanted = modeKey ? new Set(modeKey.split(",")) : null;
 		return {
 			type: "FeatureCollection",
 			features: stops.map((stop) => ({
 				type: "Feature",
-				properties: {},
+				properties: {
+					inPlay:
+						!wanted || stop.modeIds.some((modeId) => wanted.has(modeId))
+							? 1
+							: 0,
+				},
 				geometry: { type: "Point", coordinates: [stop.lng, stop.lat] },
 			})),
 		};
-	}, [stops]);
+	}, [stops, modeKey]);
 	useGeoJsonLayer("setup-fold-stops", data, STOP_DOTS);
 	return null;
 }

@@ -8,17 +8,20 @@ import {
 } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
+import { Screen } from "@zero-lag/ui/components/screen";
+import { Surface } from "@zero-lag/ui/components/surface";
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 import { FoundSheet } from "../game/found-sheet";
 import { GameTabs } from "../game/game-tabs";
-import { HiderSelector } from "../game/hider-selector";
+import { HiderTeamSheet } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
 import { RoundBar } from "../game/round-bar";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
 import { useSearchArea } from "../game/use-search-area";
 import { ZoneNotice } from "../game/zone-notice";
+import { LobbyProvider } from "../lobby/actions";
+import { LobbyChrome } from "../lobby/lobby-chrome";
 import { BuilderStopsLayer } from "../map/builder-stops-layer";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
@@ -29,6 +32,7 @@ import type { RadiusDraft, RingDraft } from "../map/draw-gestures";
 import { DrawLayer } from "../map/draw-layer";
 import { EliminatedLayer } from "../map/eliminated-layer";
 import { GameAreaLayer } from "../map/game-area-layer";
+import { MapBar } from "../map/map-bar";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapControls } from "../map/map-controls";
 import {
@@ -36,7 +40,14 @@ import {
 	MapPointerHandler,
 	type PointerMode,
 } from "../map/map-interactions";
+import {
+	CutsCard,
+	GpsHelpSheet,
+	MeasureCard,
+	PinPromptCard,
+} from "../map/map-overlay";
 import type { GestureCause } from "../map/map-pointer";
+import { MapHud } from "../map/map-rail";
 import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
@@ -52,6 +63,7 @@ import {
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { StopSheet } from "../map/stop-sheet";
 import {
+	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
 	type MapTool,
 	nearestStopPx,
@@ -64,12 +76,17 @@ import { boundaryAtPoint, useBoundaries } from "../map/use-boundaries";
 import { useCompassHeading } from "../map/use-compass-heading";
 import { useNow } from "../map/use-now";
 import { useWakeLock } from "../map/use-wake-lock";
+import { stepZoneMeters } from "../setup/game-size";
 
 /** Berlin, for a map that has nothing else to go on. */
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
 
 function pointerMode(tool: MapTool): PointerMode {
-	if (tool.kind === "editingPin" || tool.kind === "listingConstraints") {
+	if (
+		tool.kind === "editingPin" ||
+		tool.kind === "listingConstraints" ||
+		tool.kind === "searching"
+	) {
 		return { kind: "off" };
 	}
 	if (tool.kind === "none") {
@@ -109,6 +126,14 @@ function pointerMode(tool: MapTool): PointerMode {
  * waiting for a refactor. m2-spec §7.
  */
 export default function MapRoute() {
+	return (
+		<LobbyProvider>
+			<MapScreen />
+		</LobbyProvider>
+	);
+}
+
+function MapScreen() {
 	const { session, ephemeral, tracking } = useGameShell();
 	const role = useMyRole(session.playerId);
 	const zero = useZero();
@@ -149,6 +174,9 @@ export default function MapRoute() {
 	const [pickedHiderTeamId, setPickedHiderTeamId] = useState<string | null>(
 		null,
 	);
+	const [hiderSheetOpen, setHiderSheetOpen] = useState(false);
+	const [cut, setCut] = useState(false);
+	const [gpsHelpOpen, setGpsHelpOpen] = useState(false);
 
 	const headingDeg = useCompassHeading();
 	const blindness = useBlindness(session.gameId);
@@ -249,11 +277,20 @@ export default function MapRoute() {
 	);
 	const canEditConstraints =
 		role.role === "seeker" && role.teamId !== null && role.roundId !== null;
+	const defaultRadiusMeters = games[0]?.mapConfig?.hidingRadiusMeters ?? 800;
 
-	const pickingLevel =
-		tool.kind === "pickingBoundaryConstraint" ? tool.adminLevel : null;
+	const pickingLevels =
+		tool.kind === "pickingBoundaryConstraint" ? BOUNDARY_CONSTRAINT_LEVELS : [];
 	const areaBBox = area ? multiPolygonBBox(area) : null;
-	const boundaries = useBoundaries(session, areaBBox, pickingLevel);
+	const boundaries = useBoundaries(session, areaBBox, pickingLevels);
+	const visibleBoundaries =
+		tool.kind === "pickingBoundaryConstraint"
+			? boundaries.filter(
+					(row) =>
+						(row.adminLevel === 9 || row.adminLevel === 10) &&
+						tool.levels.includes(row.adminLevel),
+				)
+			: boundaries;
 	const selectedBoundary =
 		tool.kind === "pickingBoundaryConstraint" && tool.selectedId
 			? (boundaries.find((row) => row.id === tool.selectedId) ?? null)
@@ -287,7 +324,11 @@ export default function MapRoute() {
 		project: (lngLat: LngLat) => { x: number; y: number },
 		screen: { x: number; y: number },
 	) => {
-		if (tool.kind === "editingPin" || tool.kind === "listingConstraints") {
+		if (
+			tool.kind === "editingPin" ||
+			tool.kind === "listingConstraints" ||
+			tool.kind === "searching"
+		) {
 			return;
 		}
 		if (tool.kind === "none") {
@@ -302,7 +343,7 @@ export default function MapRoute() {
 			return;
 		}
 		if (tool.kind === "pickingBoundaryConstraint") {
-			const hit = boundaryAtPoint(boundaries, point);
+			const hit = boundaryAtPoint(visibleBoundaries, point);
 			if (!hit) return;
 			setTool({ ...tool, selectedId: hit.id });
 			const box = multiPolygonBBox(hit.polygons);
@@ -456,12 +497,17 @@ export default function MapRoute() {
 		cancelTool();
 	};
 
-	const commitConstraint = (mode: "include" | "exclude", name: string) => {
+	const commitConstraint = (name: string) => {
 		if (!role.teamId || !role.roundId || !hiderTeamId) return;
 		const ordinal =
 			scopedConstraints.reduce((max, row) => Math.max(max, row.ordinal), -1) +
 			1;
-		const label = name.trim() || null;
+		const mode = cut ? "exclude" : "include";
+		const label =
+			name.trim() ||
+			(tool.kind === "pickingBoundaryConstraint"
+				? (selectedBoundary?.name ?? null)
+				: null);
 		if (tool.kind === "drawingRadiusConstraint" && tool.center) {
 			void zero.mutate(
 				mutators.constraint.createManual({
@@ -561,111 +607,24 @@ export default function MapRoute() {
 	};
 
 	return (
-		<main
-			className={`absolute inset-0 overflow-hidden ${tool.kind === "none" ? "" : "[&_.maplibregl-marker]:pointer-events-none"}`}
+		<Screen
+			className={
+				tool.kind === "none"
+					? undefined
+					: "[&_.maplibregl-marker]:pointer-events-none"
+			}
+			data-testid="play-map"
 		>
-			<MapCanvas
-				initialBounds={initialBounds}
-				initialCenter={
-					ownFix && ownFix.source !== "unavailable"
-						? [ownFix.lng, ownFix.lat]
-						: FALLBACK_CENTER
-				}
-				key={attempt}
-				onStatusChange={setStatus}
-			>
-				<GameAreaLayer area={area} />
-				<BuildingsLayer />
-				<EliminatedLayer
-					eliminated={searchArea.eliminated}
-					surviving={searchArea.surviving}
-				/>
-				<BuilderStopsLayer id="play-stops" stops={searchableStops} />
-				<SearchZoneLayer zone={zone} />
-				<PinLayer
-					disabled={tool.kind !== "none"}
-					onSelect={(pinId) => {
-						setSelectedStopId(null);
-						setTool({ kind: "editingPin", pinId });
-					}}
-					pins={pins}
-				/>
-				<MeasureLayer measure={measure} />
-				{tool.kind === "drawingRadiusConstraint" && (
-					<ConstraintDraftLayer
-						center={tool.center}
-						radiusMeters={tool.radiusMeters}
-					/>
-				)}
-				{tool.kind === "pickingBoundaryConstraint" && (
-					<ConstraintDraftLayer polygons={selectedBoundary?.polygons ?? null} />
-				)}
-				{tool.kind === "drawingPolygonConstraint" && (
-					<DrawLayer ring={tool.ring} />
-				)}
-				{tool.kind === "placingZone" && (
-					<CircleDraftLayer
-						center={tool.center}
-						kind="zone"
-						radiusMeters={tool.radiusMeters}
-					/>
-				)}
-				<CameraController
-					camera={camera}
-					fix={ownFix}
-					headingDeg={headingDeg}
-					onUserGesture={() => setCamera(FREE)}
-				/>
-				<MapPointerHandler
-					mode={pointerMode(tool)}
-					onRadiusChange={handleRadiusDraft}
-					onRingChange={handleRingDraft}
-					onTap={handleTap}
-				/>
-				<MapFlyTo target={flyTarget} />
-				<NorthReset />
-				<OwnPosition fix={ownFix} headingDeg={headingDeg} />
-				{others.map((player) => (
-					<PlayerMarker
-						key={player.playerId}
-						onSelect={(playerId) => {
-							if (tool.kind === "none") {
-								setSelectedId(playerId);
-								setSelectedStopId(null);
-							}
-						}}
-						player={player}
-					/>
-				))}
-			</MapCanvas>
-
-			{status === "unavailable" && (
-				<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
+			<LobbyChrome
+				controls={false}
+				status={<RoundBar clockOffsetMs={ephemeral.clockOffsetMs} />}
+			/>
+			<span className="sr-only" data-testid="my-role">
+				{role.role ?? "no role"}
+			</span>
+			{!loaded && (
+				<span data-testid="game-not-loaded">Game not loaded yet.</span>
 			)}
-
-			<header className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-surface/90 p-3 pr-24 text-sm">
-				<Link
-					className="min-h-11 rounded border px-3 py-2"
-					data-testid="back-to-lobby"
-					to={`/g/${session.code}`}
-				>
-					Lobby
-				</Link>
-				<span className="sr-only" data-testid="my-role">
-					{role.role ?? "no role"}
-				</span>
-				<RoundBar clockOffsetMs={ephemeral.clockOffsetMs} />
-				<HiderSelector
-					hiders={hiderTeams}
-					onSelect={setPickedHiderTeamId}
-					selectedId={hiderTeamId}
-				/>
-				{!loaded && (
-					<span className="ml-auto" data-testid="game-not-loaded">
-						Game not loaded yet.
-					</span>
-				)}
-			</header>
 			<span className="sr-only" data-testid="surviving-area-hash">
 				{searchArea.hash ?? ""}
 			</span>
@@ -679,141 +638,275 @@ export default function MapRoute() {
 				{searchZones.length}
 			</span>
 
-			{/*
-			 * Own position as numbers, always. The picture is the part that needs a
-			 * network; a hider who wants to know whether they have drifted is served
-			 * by a coordinate when they cannot be served by a map. m2-spec §11.
-			 */}
-			<div className="absolute top-16 right-3 z-10 rounded bg-surface/90 px-2 py-1 text-xs shadow">
-				<OwnPositionReadout fix={ownFix} />
-				{ownFix && ownFix.source !== "unavailable" && (
-					<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
+			<div className="relative min-h-0 flex-1 overflow-hidden bg-map-land">
+				<MapCanvas
+					initialBounds={initialBounds}
+					initialCenter={
+						ownFix && ownFix.source !== "unavailable"
+							? [ownFix.lng, ownFix.lat]
+							: FALLBACK_CENTER
+					}
+					key={attempt}
+					onStatusChange={setStatus}
+				>
+					<GameAreaLayer area={area} />
+					<BuildingsLayer />
+					<EliminatedLayer
+						hole={
+							searchArea.surviving
+								? regionToMultiPolygon(searchArea.surviving)
+								: area
+						}
+					/>
+					<BuilderStopsLayer id="play-stops" stops={searchableStops} />
+					<SearchZoneLayer zone={zone} />
+					<PinLayer
+						disabled={tool.kind !== "none"}
+						onSelect={(pinId) => {
+							setSelectedStopId(null);
+							setTool({ kind: "editingPin", pinId });
+						}}
+						pins={pins}
+					/>
+					<MeasureLayer measure={measure} />
+					{tool.kind === "drawingRadiusConstraint" && (
+						<ConstraintDraftLayer
+							center={tool.center}
+							radiusMeters={tool.radiusMeters}
+						/>
+					)}
+					{tool.kind === "pickingBoundaryConstraint" && (
+						<ConstraintDraftLayer
+							polygons={selectedBoundary?.polygons ?? null}
+						/>
+					)}
+					{tool.kind === "drawingPolygonConstraint" && (
+						<DrawLayer ring={tool.ring} />
+					)}
+					{tool.kind === "placingZone" && (
+						<CircleDraftLayer
+							center={tool.center}
+							kind="zone"
+							radiusMeters={tool.radiusMeters}
+						/>
+					)}
+					<CameraController
+						camera={camera}
+						fix={ownFix}
+						headingDeg={headingDeg}
+						onUserGesture={() => setCamera(FREE)}
+					/>
+					<MapPointerHandler
+						mode={pointerMode(tool)}
+						onRadiusChange={handleRadiusDraft}
+						onRingChange={handleRingDraft}
+						onTap={handleTap}
+					/>
+					<MapFlyTo target={flyTarget} />
+					<NorthReset />
+					<OwnPosition fix={ownFix} headingDeg={headingDeg} />
+					{others.map((player) => (
+						<PlayerMarker
+							key={player.playerId}
+							onSelect={(playerId) => {
+								if (tool.kind === "none") {
+									setSelectedId(playerId);
+									setSelectedStopId(null);
+								}
+							}}
+							player={player}
+						/>
+					))}
+					<MapHud
+						blindness={blindnessControl}
+						bounds={areaBBox}
+						camera={camera}
+						canEditConstraints={canEditConstraints}
+						defaultRadiusMeters={defaultRadiusMeters}
+						hasFix={Boolean(ownFix && ownFix.source !== "unavailable")}
+						onCancel={cancelTool}
+						onCycleCamera={() => {
+							if (!ownFix || ownFix.source === "unavailable") {
+								setGpsHelpOpen(true);
+								return;
+							}
+							setCamera((current) => nextCamera(current, hasCompass));
+						}}
+						onToolChange={changeTool}
+						tool={tool}
+					/>
+				</MapCanvas>
+
+				{status === "unavailable" && (
+					<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
 				)}
-			</div>
-			<div className="absolute inset-x-3 top-32 z-20 mx-auto max-w-xl">
-				<ZoneNotice fix={ownFix} role={role} />
+
+				<Surface
+					className="absolute top-3 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
+					raised
+				>
+					<OwnPositionReadout fix={ownFix} />
+					{ownFix && ownFix.source !== "unavailable" && (
+						<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
+					)}
+				</Surface>
+				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
+					<ZoneNotice fix={ownFix} role={role} />
+				</div>
+				<AbsentPlayers players={others} />
+				<MapControls blindness={blindnessControl} />
+				<div className="pointer-events-none absolute inset-3 z-20 flex items-end justify-between gap-3">
+					<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col justify-end">
+						{tool.kind === "measure" && (
+							<MeasureCard
+								onCancel={cancelTool}
+								onSeedMeasure={() => {
+									if (
+										tool.measure.kind === "path" &&
+										ownFix &&
+										ownFix.source !== "unavailable"
+									) {
+										setTool({
+											kind: "measure",
+											measure: {
+												kind: "path",
+												points: [[ownFix.lng, ownFix.lat]],
+											},
+										});
+									}
+								}}
+								onUndoMeasure={() => {
+									if (tool.measure.kind !== "path") return;
+									setTool({
+										kind: "measure",
+										measure: {
+											kind: "path",
+											points: tool.measure.points.slice(0, -1),
+										},
+									});
+								}}
+								tool={tool}
+							/>
+						)}
+						{tool.kind === "placingPin" && !draftPoint && <PinPromptCard />}
+						{tool.kind === "listingConstraints" && (
+							<CutsCard
+								constraints={constraintItems}
+								onRemove={removeConstraint}
+								onRename={renameConstraint}
+								onToggle={toggleConstraint}
+							/>
+						)}
+						{canEditConstraints && (
+							<MapBar
+								canEditConstraints={canEditConstraints}
+								cut={cut}
+								hiders={hiderTeams}
+								onCancel={cancelTool}
+								onCommitConstraint={commitConstraint}
+								onCutChange={setCut}
+								onOpenHiderSheet={() => setHiderSheetOpen(true)}
+								onRadiusStep={(direction) => {
+									if (tool.kind !== "drawingRadiusConstraint") return;
+									setTool({
+										...tool,
+										radiusMeters: stepZoneMeters(tool.radiusMeters, direction),
+									});
+								}}
+								onSelectBoundary={(id) => {
+									if (tool.kind !== "pickingBoundaryConstraint") return;
+									setTool({ ...tool, selectedId: id });
+								}}
+								onUndoPolygonVertex={() => {
+									if (tool.kind !== "drawingPolygonConstraint") return;
+									setTool({
+										kind: "drawingPolygonConstraint",
+										ring: tool.ring.slice(0, -1),
+									});
+								}}
+								selectedHiderId={hiderTeamId}
+								tool={tool}
+							/>
+						)}
+					</div>
+					<div className="pointer-events-auto max-w-sm">
+						{tool.kind === "none" && <HidingSheet role={role} />}
+						{tool.kind === "none" && (
+							<FoundSheet role={role} token={session.token} />
+						)}
+					</div>
+				</div>
 			</div>
 
-			<AbsentPlayers players={others} />
-
-			<MapControls
-				blindness={blindnessControl}
-				camera={camera}
-				onCycleCamera={() =>
-					setCamera((current) => nextCamera(current, hasCompass))
+			<MapToolSheet
+				boundaries={visibleBoundaries}
+				canPlaceZone={
+					role.role === "seeker" &&
+					role.teamId !== null &&
+					role.roundId !== null
 				}
-				trackingNotice="Tracking pauses when the screen locks."
+				draftPoint={draftPoint}
+				editingPin={editingPin}
+				stops={searchableStops}
+				onCancel={cancelTool}
+				onClearZone={clearZone}
+				onDeletePin={() => {
+					if (editingPin) {
+						void zero.mutate(
+							mutators.pin.delete({
+								...event(),
+								pinId: editingPin.id,
+							}),
+						);
+					}
+					cancelTool();
+				}}
+				onSavePin={savePin}
+				onSaveZone={saveZone}
+				onSelectBoundary={(id) => {
+					if (tool.kind !== "pickingBoundaryConstraint") return;
+					if (id === null) {
+						setTool({ ...tool, selectedId: null });
+						return;
+					}
+					const row = boundaries.find((item) => item.id === id);
+					setTool({ ...tool, selectedId: id });
+					if (!row) return;
+					const box = multiPolygonBBox(row.polygons);
+					if (box) setFlyTarget({ kind: "bounds", bounds: box });
+				}}
+				onSearchResult={handleSearchResult}
+				onSearchStopZone={handleSearchStopZone}
+				onToolChange={changeTool}
+				origin={origin}
+				teamColor={myTeam?.color ?? "#0072B2"}
+				tool={tool}
+			/>
+			<GpsHelpSheet
+				issue={tracking.locationIssue}
+				onClose={() => setGpsHelpOpen(false)}
+				open={gpsHelpOpen}
 			/>
 
-			<div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 mx-auto w-full max-w-xl space-y-2 p-3">
-				<div className="ml-auto max-w-sm">
-					{tool.kind === "none" && <HidingSheet role={role} />}
-					{tool.kind === "none" && (
-						<FoundSheet role={role} token={session.token} />
-					)}
-				</div>
-				<MapToolSheet
-					boundaries={boundaries}
-					canEditConstraints={canEditConstraints}
-					canPlaceZone={
-						role.role === "seeker" &&
-						role.teamId !== null &&
-						role.roundId !== null
-					}
-					constraints={constraintItems}
-					draftPoint={draftPoint}
-					editingPin={editingPin}
-					stops={searchableStops}
-					onCancel={cancelTool}
-					onClearZone={clearZone}
-					onCommitConstraint={commitConstraint}
-					onDeletePin={() => {
-						if (editingPin) {
-							void zero.mutate(
-								mutators.pin.delete({
-									...event(),
-									pinId: editingPin.id,
-								}),
-							);
-						}
-						cancelTool();
-					}}
-					onRemoveConstraint={removeConstraint}
-					onRenameConstraint={renameConstraint}
-					onSavePin={savePin}
-					onSaveZone={saveZone}
-					onSelectBoundary={(id) => {
-						if (tool.kind !== "pickingBoundaryConstraint") return;
-						if (id === null) {
-							setTool({ ...tool, selectedId: null });
-							return;
-						}
-						const row = boundaries.find((item) => item.id === id);
-						setTool({ ...tool, selectedId: id });
-						if (!row) return;
-						const box = multiPolygonBBox(row.polygons);
-						if (box) setFlyTarget({ kind: "bounds", bounds: box });
-					}}
-					onSearchResult={handleSearchResult}
-					onSearchStopZone={handleSearchStopZone}
-					onSeedMeasure={() => {
-						if (
-							tool.kind === "measure" &&
-							tool.measure.kind === "path" &&
-							ownFix &&
-							ownFix.source !== "unavailable"
-						) {
-							setTool({
-								kind: "measure",
-								measure: {
-									kind: "path",
-									points: [[ownFix.lng, ownFix.lat]],
-								},
-							});
-						}
-					}}
-					onToggleConstraint={toggleConstraint}
-					onToolChange={changeTool}
-					onUndoMeasure={() => {
-						if (tool.kind !== "measure" || tool.measure.kind !== "path") return;
-						setTool({
-							kind: "measure",
-							measure: {
-								kind: "path",
-								points: tool.measure.points.slice(0, -1),
-							},
-						});
-					}}
-					onUndoPolygonVertex={() => {
-						if (tool.kind !== "drawingPolygonConstraint") return;
-						setTool({
-							kind: "drawingPolygonConstraint",
-							ring: tool.ring.slice(0, -1),
-						});
-					}}
-					origin={origin}
-					teamColor={myTeam?.color ?? "#0072B2"}
-					tool={tool}
-				/>
-			</div>
+			<HiderTeamSheet
+				hiders={hiderTeams}
+				onClose={() => setHiderSheetOpen(false)}
+				onSelect={setPickedHiderTeamId}
+				open={hiderSheetOpen}
+				selectedId={hiderTeamId}
+			/>
 
-			{selectedStop && (
-				<StopSheet
-					onClose={() => setSelectedStopId(null)}
-					stop={selectedStop}
-				/>
-			)}
+			<StopSheet
+				onClose={() => setSelectedStopId(null)}
+				open={selectedStop !== null}
+				stop={selectedStop}
+			/>
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
 			)}
 
-			{/*
-			 * Below the map's own sheets rather than above them: a sheet is an
-			 * answer in progress and covering it with navigation would be worse
-			 * than covering navigation with it. m3-spec §9.
-			 */}
-			<GameTabs className="fixed inset-x-0 bottom-0 z-20" code={session.code} />
-		</main>
+			<GameTabs code={session.code} />
+		</Screen>
 	);
 }
 
@@ -827,20 +920,20 @@ export default function MapRoute() {
  */
 function OfflineSurface({ onRetry }: { onRetry: () => void }) {
 	return (
-		<div
-			className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-3 bg-surface-raised/60 p-6 text-center text-sm"
+		<Surface
+			className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm"
 			data-testid="map-unavailable"
 		>
 			<p>Map unavailable offline. Your own position is still shown.</p>
 			<button
-				className="min-h-11 rounded border bg-surface px-4"
+				className="min-h-11 rounded-control border border-hairline bg-surface px-4"
 				data-testid="retry-map"
 				onClick={onRetry}
 				type="button"
 			>
 				Try again
 			</button>
-		</div>
+		</Surface>
 	);
 }
 
@@ -857,11 +950,12 @@ function AbsentPlayers({ players }: { players: readonly MapPlayer[] }) {
 	if (absent.length === 0) return null;
 
 	return (
-		<p
-			className="absolute top-16 left-3 z-10 rounded bg-surface/90 px-2 py-1 text-xs shadow"
+		<Surface
+			className="absolute top-16 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
 			data-testid="absent-players"
+			raised
 		>
 			No position: {absent.map((player) => player.displayName).join(", ")}
-		</p>
+		</Surface>
 	);
 }

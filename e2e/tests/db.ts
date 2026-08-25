@@ -99,6 +99,20 @@ export async function gameIdForCode(code: string): Promise<string> {
 	return id;
 }
 
+/** Set the pending round's clock. Used when a test needs a duration the UI no longer types. */
+export async function setPendingHidingDuration(
+	code: string,
+	minutes: string,
+): Promise<void> {
+	const gameId = await gameIdForCode(code);
+	const hidingDurationMs = Math.round(Number(minutes) * 60_000);
+	await db().query(
+		`UPDATE round SET "hidingDurationMs" = $1
+		 WHERE "gameId" = $2 AND status = 'pending'`,
+		[hidingDurationMs, gameId],
+	);
+}
+
 /**
  * The whole of "one player, one team", read from the table rather than the
  * screen. m1-spec §5: joining is a move, and the UNIQUE index is what makes it

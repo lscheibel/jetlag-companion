@@ -228,4 +228,43 @@ describe("bindMapPointers", () => {
 		map.emit("touchend", eventAt(CENTER[0], CENTER[1], map));
 		expect(taps).toEqual([]);
 	});
+
+	it("does not treat a pan as a tap when move events are swallowed", () => {
+		const map = createFakeMap();
+		const radii: RadiusDraft[] = [];
+		bindMapPointers(map, {
+			getMode: () => ({
+				kind: "radius",
+				center: null,
+				radiusMeters: 500,
+			}),
+			onTap() {},
+			onRadiusChange(draft) {
+				radii.push(draft);
+			},
+			onRingChange() {},
+		});
+
+		map.emit("touchstart", eventAt(CENTER[0], CENTER[1], map));
+		map.emit("touchend", eventAt(13.45, 52.54, map));
+		expect(radii).toEqual([]);
+	});
+
+	it("cancels a maybe-tap when the map starts dragging", () => {
+		const map = createFakeMap();
+		const rings: RingDraft[] = [];
+		bindMapPointers(map, {
+			getMode: () => ({ kind: "ring", closed: false, points: [] }),
+			onTap() {},
+			onRadiusChange() {},
+			onRingChange(draft) {
+				rings.push(draft);
+			},
+		});
+
+		map.emit("touchstart", eventAt(CENTER[0], CENTER[1], map));
+		map.emit("dragstart", eventAt(CENTER[0], CENTER[1], map));
+		map.emit("touchend", eventAt(CENTER[0], CENTER[1], map));
+		expect(rings).toEqual([]);
+	});
 });

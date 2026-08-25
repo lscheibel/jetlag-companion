@@ -1,4 +1,5 @@
 import { groupLinesByMode, type ModeId } from "@zero-lag/catalog";
+import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import type { SearchableStop } from "./toolkit";
 
 const MODE_LABELS: Record<ModeId, string> = {
@@ -13,7 +14,8 @@ const MODE_LABELS: Record<ModeId, string> = {
 };
 
 interface StopSheetProps {
-	readonly stop: SearchableStop;
+	readonly stop: SearchableStop | null;
+	readonly open: boolean;
 	readonly onClose: () => void;
 }
 
@@ -21,31 +23,24 @@ interface StopSheetProps {
  * Tap a station. Lines live here, not as map labels — a hub with ICE numbers
  * and buses is a long card, not a pile of text on the board.
  */
-export function StopSheet({ stop, onClose }: StopSheetProps) {
-	const groups = groupLinesByMode(stop.lines);
+export function StopSheet({ stop, open, onClose }: StopSheetProps) {
+	const shown = useHeldValue(open, stop);
+	const groups = shown ? groupLinesByMode(shown.lines) : [];
 
 	return (
-		<section
-			className="absolute inset-x-0 bottom-0 z-30 max-h-[70%] space-y-2 overflow-y-auto rounded-t-xl border-t bg-surface p-4 shadow-lg"
-			data-testid="stop-sheet"
+		<Sheet
+			eyebrow={
+				shown
+					? shown.insideArea
+						? "Inside the game area"
+						: "Outside the game area"
+					: undefined
+			}
+			onClose={onClose}
+			open={open}
+			testId="stop-sheet"
+			title={shown?.name}
 		>
-			<header className="flex items-start gap-3">
-				<div className="min-w-0">
-					<h2 className="font-semibold text-lg">{stop.name}</h2>
-					<p className="text-ink-dim text-sm">
-						{stop.insideArea ? "Inside the game area" : "Outside the game area"}
-					</p>
-				</div>
-				<button
-					className="ml-auto min-h-11 shrink-0 rounded border px-3"
-					data-testid="close-stop-sheet"
-					onClick={onClose}
-					type="button"
-				>
-					Close
-				</button>
-			</header>
-
 			{groups.length === 0 ? (
 				<p className="text-ink-dim text-sm">
 					No named lines in the catalog for this stop.
@@ -54,14 +49,12 @@ export function StopSheet({ stop, onClose }: StopSheetProps) {
 				<dl className="space-y-3">
 					{groups.map((group) => (
 						<div key={group.modeId} data-testid={`stop-lines-${group.modeId}`}>
-							<dt className="font-medium text-ink-dim text-xs uppercase tracking-wide">
-								{MODE_LABELS[group.modeId]}
-							</dt>
+							<dt className="eyebrow">{MODE_LABELS[group.modeId]}</dt>
 							<dd className="text-sm">{group.names.join(" · ")}</dd>
 						</div>
 					))}
 				</dl>
 			)}
-		</section>
+		</Sheet>
 	);
 }

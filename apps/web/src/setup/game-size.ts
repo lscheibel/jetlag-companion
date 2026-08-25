@@ -132,8 +132,8 @@ export function formatGround(squareKm: number): string {
 	return `${Math.round(squareKm).toLocaleString("en")} km²`;
 }
 
-/** Steps a host can actually mean: quarter hours, and hundreds of metres. */
-export const HIDING_DURATION_STEP_MS = 15 * MINUTE;
+/** Steps a host can actually mean: five minutes, and hundreds of metres. */
+export const HIDING_DURATION_STEP_MS = 5 * MINUTE;
 export const HIDING_DURATION_MIN_MS = 15 * MINUTE;
 export const HIDING_DURATION_MAX_MS = 240 * MINUTE;
 export const HIDING_ZONE_STEP_M = 100;
@@ -142,4 +142,36 @@ export const HIDING_ZONE_MAX_M = 5_000;
 
 export function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Land on the next (or previous) step on the grid, rather than adding the
+ * step on top of an off-grid value. A 547 m drag then + becomes 600 m, not 647.
+ */
+export function stepGrid(
+	current: number,
+	direction: 1 | -1,
+	step: number,
+	min: number,
+	max: number,
+): number {
+	const units = current / step;
+	const snapped = Math.round(units);
+	const onGrid = Math.abs(units - snapped) < 1e-6;
+	const nextUnits = onGrid
+		? snapped + direction
+		: direction === 1
+			? Math.ceil(units)
+			: Math.floor(units);
+	return clamp(nextUnits * step, min, max);
+}
+
+export function stepZoneMeters(current: number, direction: 1 | -1): number {
+	return stepGrid(
+		current,
+		direction,
+		HIDING_ZONE_STEP_M,
+		HIDING_ZONE_MIN_M,
+		HIDING_ZONE_MAX_M,
+	);
 }

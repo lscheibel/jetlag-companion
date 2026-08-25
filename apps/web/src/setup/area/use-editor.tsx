@@ -3,16 +3,14 @@ import {
 	foldPieces,
 	nameFromPieces,
 	piecesFromSelection,
-	SCALE_SETTINGS,
 	suggestScalePreset,
 } from "@zero-lag/catalog";
 import {
-	type BBox,
 	isEmptyRegion,
+	type LngLat,
 	type MultiPolygon,
 	multiPolygonBBox,
 	multiPolygonToRegion,
-	offsetLngLat,
 	type Region,
 	regionArea,
 	regionContains,
@@ -40,6 +38,13 @@ import { useGameShell } from "../../game/shell";
 import { useSetup } from "../wizard";
 import { useCatalogStops } from "./use-catalog-stops";
 
+export type EditorCamera = {
+	readonly center: LngLat;
+	readonly zoom: number;
+	readonly bearing: number;
+	readonly pitch: number;
+};
+
 export interface AreaEditor {
 	readonly pieces: readonly AreaPiece[];
 	readonly cut: boolean;
@@ -50,6 +55,8 @@ export interface AreaEditor {
 	readonly empty: boolean;
 	readonly stopsInside: number;
 	readonly insideStops: readonly CatalogStopRow[];
+	/** Null while every mode in the area counts. */
+	readonly inPlayModeIds: readonly string[] | null;
 	readonly catalogStops: readonly CatalogStopRow[];
 	readonly ready: boolean;
 	readonly busy: boolean;
@@ -70,6 +77,8 @@ export interface AreaEditor {
 	) => { squareMeters: number };
 	/** True while the pieces differ from the last applied board. */
 	readonly dirty: boolean;
+	readonly camera: EditorCamera | null;
+	setCamera: (camera: EditorCamera) => void;
 	/** Apply if needed, then leave the editor. Pass a path to go somewhere else. */
 	applyArea: (next?: string) => void;
 }
@@ -96,6 +105,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 	const [problem, setProblem] = useState<string | null>(null);
 	const [pendingHash, setPendingHash] = useState<string | null>(null);
 	const [afterApply, setAfterApply] = useState<string | null>(null);
+	const [camera, setCamera] = useState<EditorCamera | null>(null);
 
 	useEffect(() => {
 		if (pieces || !config) return;
@@ -116,14 +126,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 	const empty = isEmptyRegion(fold);
 	const ready = pieces !== null;
 
-	const requestBounds = useMemo<BBox | null>(() => {
-		const bbox = multiPolygonBBox(foldMulti);
-		if (!bbox) return null;
-		const margin = SCALE_SETTINGS.city.marginMeters;
-		const sw = offsetLngLat([bbox[0], bbox[1]], -margin, -margin);
-		const ne = offsetLngLat([bbox[2], bbox[3]], margin, margin);
-		return [sw[0], sw[1], ne[0], ne[1]];
-	}, [foldMulti]);
+	const requestBounds = useMemo(() => multiPolygonBBox(foldMulti), [foldMulti]);
 
 	const catalog = useCatalogStops(session, requestBounds);
 	const insideStops = useMemo(
@@ -134,6 +137,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 		[catalog.stops, fold],
 	);
 	const stopsInside = insideStops.length;
+	const inPlayModeIds = setup.selectedModes ?? config?.modeIds ?? null;
 
 	useEffect(() => {
 		if (!pendingHash || !config) return;
@@ -169,6 +173,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 			empty,
 			stopsInside,
 			insideStops,
+			inPlayModeIds,
 			catalogStops: catalog.stops,
 			ready,
 			busy,
@@ -218,6 +223,8 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 				}),
 			dirty:
 				appliedSignature !== null && pieceSignature(list) !== appliedSignature,
+			camera,
+			setCamera,
 			wouldBecome,
 			applyArea: (next = `/g/${session.code}/setup/area`) => {
 				if (!pieces || empty || busy) return;
@@ -239,7 +246,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 							name,
 							scalePreset,
 							pieces,
-							modeIds: setup.selectedModes ?? undefined,
+							modeIds: setup.selectedModes ?? config?.modeIds ?? undefined,
 						});
 						setPendingHash(result.contentHash);
 					} catch (cause) {
@@ -265,14 +272,17 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 		empty,
 		stopsInside,
 		insideStops,
+		inPlayModeIds,
 		catalog.stops,
 		busy,
 		problem,
 		session,
 		setup.selectedModes,
+		config?.modeIds,
 		appliedSignature,
 		navigate,
 		wouldBecome,
+		camera,
 	]);
 
 	return (

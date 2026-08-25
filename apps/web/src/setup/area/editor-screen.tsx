@@ -24,6 +24,8 @@ interface EditorScreenProps {
 		onClick: () => void;
 		testId?: string;
 	};
+	/** Put the gray action above the primary (file picker: pick, then add). */
+	secondaryFirst?: boolean;
 }
 
 /**
@@ -41,9 +43,19 @@ export function EditorScreen({
 	note,
 	bodyClassName,
 	secondary,
+	secondaryFirst = false,
 }: EditorScreenProps) {
 	const editor = useAreaEditor();
 	const nav = useAreaToolNav();
+	const secondaryButton = secondary ? (
+		<ActionButton
+			data-testid={secondary.testId}
+			onClick={secondary.onClick}
+			tone="secondary"
+		>
+			{secondary.label}
+		</ActionButton>
+	) : null;
 
 	return (
 		<Screen>
@@ -54,6 +66,7 @@ export function EditorScreen({
 			/>
 			<ScreenBody className={bodyClassName}>{children}</ScreenBody>
 			<ScreenActions note={note}>
+				{secondaryFirst && secondaryButton}
 				<ActionButton
 					beacon
 					data-testid={actionTestId}
@@ -63,16 +76,7 @@ export function EditorScreen({
 				>
 					{actionLabel}
 				</ActionButton>
-				{secondary && (
-					<ActionButton
-						data-testid={secondary.testId}
-						onClick={secondary.onClick}
-						size="compact"
-						tone="secondary"
-					>
-						{secondary.label}
-					</ActionButton>
-				)}
+				{!secondaryFirst && secondaryButton}
 			</ScreenActions>
 		</Screen>
 	);

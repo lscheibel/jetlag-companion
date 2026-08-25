@@ -57,9 +57,13 @@ export default function SetupArea() {
 							bounds={previewBounds}
 							className="pointer-events-none absolute inset-0"
 							fitPadding={24}
+							rememberView={false}
 						>
 							<FoldLayer area={editor.foldMulti} />
-							<FoldStopsLayer stops={editor.insideStops} />
+							<FoldStopsLayer
+								inPlayModeIds={editor.inPlayModeIds}
+								stops={editor.insideStops}
+							/>
 						</EditorMap>
 					</button>
 					<div className="flex shrink-0 items-end justify-between gap-3 px-0.5">

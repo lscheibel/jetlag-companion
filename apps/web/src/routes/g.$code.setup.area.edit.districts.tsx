@@ -157,6 +157,12 @@ export default function SetupAreaDistricts() {
 					);
 				})}
 			</div>
+			{search.truncated && search.rows.length > 0 && (
+				<p className="eyebrow shrink-0 px-1 text-ink-dim">
+					Showing {search.rows.length} of {search.total.toLocaleString("en")}.
+					Zoom the map or keep typing.
+				</p>
+			)}
 			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
 				{search.ready && search.rows.length === 0 && (
 					<p className="px-1 text-ink-dim text-sm leading-snug">
@@ -167,12 +173,6 @@ export default function SetupAreaDistricts() {
 								: viewBbox
 									? "Nothing in this view. Pan the map or type a name."
 									: `Type a name, or zoom the map. ${search.total.toLocaleString("en")} in the catalog.`}
-					</p>
-				)}
-				{search.truncated && search.rows.length > 0 && (
-					<p className="eyebrow px-1 text-ink-dim">
-						Showing {search.rows.length} of {search.total.toLocaleString("en")}.
-						Zoom the map or keep typing.
 					</p>
 				)}
 				{search.rows.map((row) => {

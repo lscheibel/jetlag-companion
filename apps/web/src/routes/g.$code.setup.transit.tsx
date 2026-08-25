@@ -1,10 +1,13 @@
+import { useZero } from "@rocicorp/zero/react";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { fadeOnly, listContainer, listItem } from "@zero-lag/ui/lib/motion";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { motion, useReducedMotion } from "motion/react";
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { useGameShell } from "../game/shell";
 import { modeLabel, modeTallyText } from "../setup/modes";
+import { persistSetup } from "../setup/persist";
 import { type ModeTally, useSetup } from "../setup/wizard";
 import { WizardStep } from "../setup/wizard-step";
 
@@ -19,17 +22,49 @@ import { WizardStep } from "../setup/wizard-step";
  */
 export default function SetupTransit() {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const zero = useZero();
 	const { session } = useGameShell();
-	const { modes, selectedModes, stopsInPlay, toggleMode } = useSetup();
+	const setup = useSetup();
+	const { modes, selectedModes, stopsInPlay, toggleMode } = setup;
+	const fromLobby =
+		new URLSearchParams(location.search).get("from") === "lobby";
+	const lobby = `/g/${session.code}`;
+	const [busy, setBusy] = useState(false);
+	const [problem, setProblem] = useState<string | null>(null);
 
 	const on = (mode: ModeTally) =>
 		selectedModes === null || selectedModes.includes(mode.modeId);
 
+	function continueSetup() {
+		if (!fromLobby) {
+			void navigate(`/g/${session.code}/setup/size`);
+			return;
+		}
+		setBusy(true);
+		setProblem(null);
+		void persistSetup(session, setup, zero)
+			.then(() => navigate(lobby))
+			.catch(() => {
+				setProblem("Could not save. Check your signal and try again.");
+				setBusy(false);
+			});
+	}
+
 	return (
 		<WizardStep
+			busy={busy}
+			continueLabel={fromLobby ? (busy ? "Saving…" : "Done") : "Continue"}
 			continueTestId="setup-transit-continue"
-			onBack={() => void navigate(`/g/${session.code}/setup/area`)}
-			onContinue={() => void navigate(`/g/${session.code}/setup/size`)}
+			eyebrow={fromLobby ? "This game" : undefined}
+			note={
+				problem ? <span className="text-danger">{problem}</span> : undefined
+			}
+			onBack={() =>
+				void navigate(fromLobby ? lobby : `/g/${session.code}/setup/area`)
+			}
+			onContinue={continueSetup}
+			showRail={!fromLobby}
 			step={2}
 			title="What counts as transit?"
 		>

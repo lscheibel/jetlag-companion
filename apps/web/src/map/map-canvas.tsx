@@ -44,6 +44,14 @@ export const ATTRIBUTION = "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
  */
 export type MapStatus = "loading" | "ready" | "unavailable";
 
+/** A camera to restore instead of fitting bounds. */
+export type MapCamera = {
+	readonly center: LngLat;
+	readonly zoom: number;
+	readonly bearing: number;
+	readonly pitch: number;
+};
+
 const MapContext = createContext<MapLibreMap | null>(null);
 
 export function useMapInstance(): MapLibreMap | null {
@@ -55,6 +63,8 @@ interface MapCanvasProps {
 	readonly initialCenter: LngLat;
 	/** Derived from the valid hiding area, never stored. m2-spec §2. */
 	readonly initialBounds: BBox | null;
+	/** When set, the map opens here and does not fit `initialBounds`. */
+	readonly initialCamera?: MapCamera | null;
 	/** Mini-maps need a few pixels; 48px on a 6.5rem strip fits the world. */
 	readonly fitPadding?: number;
 	readonly onStatusChange: (status: MapStatus) => void;
@@ -64,6 +74,7 @@ interface MapCanvasProps {
 export function MapCanvas({
 	initialCenter,
 	initialBounds,
+	initialCamera = null,
 	fitPadding = 48,
 	onStatusChange,
 	children,
@@ -78,7 +89,12 @@ export function MapCanvas({
 	 * later would yank the view out from under a thumb that has already started
 	 * panning.
 	 */
-	const opening = useRef({ initialCenter, initialBounds, fitPadding });
+	const opening = useRef({
+		initialCenter,
+		initialBounds,
+		initialCamera,
+		fitPadding,
+	});
 	const report = useRef(onStatusChange);
 	report.current = onStatusChange;
 
@@ -86,21 +102,23 @@ export function MapCanvas({
 		const node = container.current;
 		if (!node) return;
 
+		const camera = opening.current.initialCamera;
 		const created = new MapLibreMap({
 			container: node,
 			style: MAP_STYLE_URL,
-			center: [
-				opening.current.initialCenter[0],
-				opening.current.initialCenter[1],
-			],
-			zoom: 11,
+			center: camera
+				? [camera.center[0], camera.center[1]]
+				: [opening.current.initialCenter[0], opening.current.initialCenter[1]],
+			zoom: camera?.zoom ?? 11,
+			bearing: camera?.bearing ?? 0,
+			pitch: camera?.pitch ?? 0,
 			attributionControl: false,
 			pitchWithRotate: true,
 			dragRotate: true,
 		});
 
 		const bounds = opening.current.initialBounds;
-		if (bounds) {
+		if (!camera && bounds) {
 			created.fitBounds(
 				[
 					[bounds[0], bounds[1]],

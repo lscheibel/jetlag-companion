@@ -44,6 +44,19 @@ export default function SetupAreaDraw() {
 				eyebrow="Setting the area"
 				onBack={nav.back}
 				title={editor.cut ? "Draw what to take out" : "Trace the edge"}
+				trailing={
+					<ActionButton
+						className="min-h-9 gap-0 overflow-visible px-2.5 py-0 text-sm"
+						data-testid="area-draw-undo"
+						disabled={ring.length === 0}
+						inline
+						onClick={() => setRing((current) => current.slice(0, -1))}
+						size="compact"
+						tone="secondary"
+					>
+						Undo
+					</ActionButton>
+				}
 			/>
 			<EditorMap bounds={bounds} className="min-h-0 flex-1">
 				<FoldLayer area={editor.foldMulti} />
@@ -54,30 +67,17 @@ export default function SetupAreaDraw() {
 					onRingChange={(draft) => setRing(draft.points)}
 				/>
 			</EditorMap>
-			<div className="flex items-center gap-2 px-4 pt-2">
-				<p className="min-w-0 flex-1 text-ink-dim text-xs leading-snug">
+			<div className="px-4 pt-2">
+				<p className="text-ink-dim text-xs leading-snug">
 					Tap corners. Tap an edge to insert one.
 					<span className="sr-only" data-testid="draw-vertex-count">
 						{ring.length}
 					</span>
 				</p>
-				<button
-					className="rounded-control border border-hairline px-3 py-2 text-sm"
-					data-testid="area-draw-undo"
-					disabled={ring.length === 0}
-					onClick={() => setRing((current) => current.slice(0, -1))}
-					type="button"
-				>
-					Undo
-				</button>
 			</div>
 			<ScreenActions
 				note={
-					geometry ? (
-						<WouldBecome geometry={geometry} op={op} />
-					) : (
-						"Three corners make a shape."
-					)
+					geometry ? <WouldBecome geometry={geometry} op={op} /> : undefined
 				}
 			>
 				<ActionButton

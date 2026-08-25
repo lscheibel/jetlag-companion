@@ -38,7 +38,11 @@ export type LocalNotification = {
 	readonly silent?: boolean;
 };
 
-export type PermissionOutcome = "granted" | "denied" | "default";
+export type LocationIssue =
+	| "denied"
+	| "no_fix"
+	| "unsupported"
+	| "insecure_context";
 
 export interface PlatformAdapter {
 	readonly location: {
@@ -48,6 +52,8 @@ export interface PlatformAdapter {
 			cb: (fix: PositionSnapshot) => void,
 			opts?: LocationOpts,
 		): Unsubscribe;
+		/** Why the last read failed, or null after a usable fix. */
+		issue(): LocationIssue | null;
 	};
 	/**
 	 * Which way the phone is facing. m2-spec §8.

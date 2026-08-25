@@ -21,9 +21,9 @@ interface GameAreaLayerProps {
 }
 
 /**
- * The valid hiding area, as a dashed outline. The fill that means "out of play"
- * lives on `EliminatedLayer` — this outline is the original fence, even after
- * constraints have cut the surviving blob smaller.
+ * The original fence, as a dashed outline. The fill that means "out of play"
+ * lives on `EliminatedLayer` — this outline stays even after constraints have
+ * cut the surviving blob smaller.
  */
 export function GameAreaLayer({ area }: GameAreaLayerProps) {
 	const data = useMemo(() => multiPolygonFeature(area), [area]);

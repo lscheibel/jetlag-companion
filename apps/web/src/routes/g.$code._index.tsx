@@ -100,29 +100,13 @@ function Lobby() {
 	const iAmReady = lobby.me?.readyAt != null;
 	const everybodyIn = total > 0 && canStart(lobby.teams, lobby.people);
 
-	/**
-	 * The one number a host might still want to move while everybody is
-	 * arriving. The wizard set it and the briefing states it — but "nothing is
-	 * locked in" has to be true somewhere after setup, and this is where the
-	 * host is standing when it matters.
-	 */
-	const [minutes, setMinutes] = useState<string | null>(null);
-	const minutesValue =
-		minutes ??
-		String(Math.round((lobby.round?.hidingDurationMs ?? 0) / 60_000));
-
 	/** The whistle: the hiding countdown starts the moment this lands. */
 	function start() {
 		if (!lobby.round) return;
-		const chosen = Number(minutesValue);
 		zero.mutate(
 			mutators.round.startHiding({
 				eventId: crypto.randomUUID(),
 				roundId: lobby.round.id,
-				hidingDurationMs:
-					Number.isFinite(chosen) && chosen > 0
-						? Math.round(chosen * 60_000)
-						: undefined,
 			}),
 		);
 	}
@@ -380,18 +364,22 @@ function Lobby() {
 
 			<LobbyMenu
 				amHost={lobby.amHost}
-				hidingMinutes={roundPending ? minutesValue : null}
 				leaving={leaving}
 				onBriefing={() => void navigate(`/g/${session.code}/briefing`)}
 				onClose={() => setOverlay({ kind: "none" })}
 				onGameArea={() => void navigate(editorHomePath(session.code, "lobby"))}
-				onHidingMinutes={setMinutes}
+				onHidingZone={() =>
+					void navigate(`/g/${session.code}/setup/size?from=lobby`)
+				}
 				onHostToggle={() => {
 					if (lobby.amHost) releaseHost();
 					else claimHost();
 					setOverlay({ kind: "none" });
 				}}
 				onLeave={leave}
+				onTransit={() =>
+					void navigate(`/g/${session.code}/setup/transit?from=lobby`)
+				}
 				open={overlay.kind === "menu"}
 			/>
 

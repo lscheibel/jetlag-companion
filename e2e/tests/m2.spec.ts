@@ -359,6 +359,9 @@ test("6. follow, drag to free, recenter", async ({ browser }) => {
 	const code = await createGame(ana);
 	await waitForSync(ana);
 	await openMap(ana, code);
+	await expect(ana.page.getByTestId("own-marker")).toBeVisible({
+		timeout: 30_000,
+	});
 
 	const control = ana.page.getByTestId("cycle-camera");
 	await expect(control).toHaveAttribute("data-camera-mode", "free");

@@ -73,10 +73,22 @@ export type MapTool =
 	  }
 	| {
 			readonly kind: "pickingBoundaryConstraint";
-			readonly adminLevel: 9 | 10;
+			readonly levels: readonly (9 | 10)[];
 			readonly selectedId: string | null;
 	  }
-	| { readonly kind: "listingConstraints" };
+	| { readonly kind: "listingConstraints" }
+	| { readonly kind: "searching" };
+
+export const BOUNDARY_CONSTRAINT_LEVELS = [9, 10] as const;
+
+export function toggleBoundaryLevel(
+	levels: readonly (9 | 10)[],
+	level: 9 | 10,
+): readonly (9 | 10)[] {
+	return levels.includes(level)
+		? levels.filter((item) => item !== level)
+		: [...levels, level];
+}
 
 export type BoundaryListItem = {
 	readonly id: string;

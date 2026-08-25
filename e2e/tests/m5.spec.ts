@@ -90,13 +90,14 @@ async function resumeRound(host: Phone): Promise<void> {
 }
 
 function countdownSeconds(text: string): number {
-	const match = /^(\d+):(\d{2}) left$/.exec(text);
-	const minutes = match?.[1];
-	const seconds = match?.[2];
-	if (minutes === undefined || seconds === undefined) {
+	const match = /^(\d+):(\d{2}):(\d{2}) left$/.exec(text);
+	const hours = match?.[1];
+	const minutes = match?.[2];
+	const seconds = match?.[3];
+	if (hours === undefined || minutes === undefined || seconds === undefined) {
 		throw new Error(`expected a hiding countdown, got ${JSON.stringify(text)}`);
 	}
-	return Number(minutes) * 60 + Number(seconds);
+	return Number(hours) * 3_600 + Number(minutes) * 60 + Number(seconds);
 }
 
 async function commitZone(hider: Phone, code: string): Promise<void> {

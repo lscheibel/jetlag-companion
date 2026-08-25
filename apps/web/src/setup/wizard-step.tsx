@@ -35,6 +35,8 @@ interface WizardStepProps {
 	/** A line above the action: what happens, or what is in the way. */
 	note?: ReactNode;
 	bodyClassName?: string;
+	/** Hide the create-game rail when this screen is opened from the lobby. */
+	showRail?: boolean;
 	children: ReactNode;
 }
 
@@ -50,14 +52,17 @@ export function WizardStep({
 	continueDisabled = false,
 	note,
 	bodyClassName,
+	showRail = true,
 	children,
 }: WizardStepProps) {
 	return (
 		<Screen>
 			<ScreenHeader eyebrow={eyebrow} onBack={onBack} title={title} />
-			<div className="px-4 pb-2.5">
-				<Stepper count={SETUP_STEPS} current={step} label="Create game" />
-			</div>
+			{showRail && (
+				<div className="px-4 pb-2.5">
+					<Stepper count={SETUP_STEPS} current={step} label="Create game" />
+				</div>
+			)}
 			<ScreenBody className={bodyClassName}>{children}</ScreenBody>
 			<ScreenActions note={note}>
 				<ActionButton

@@ -8,8 +8,8 @@ import { useEffect } from "react";
  * Browser geolocation stops when the screen locks, and no amount of care here
  * changes that — the build plan says a Capacitor build is the answer and puts it
  * at M15. Holding the screen awake while the map is open during a running round
- * keeps a phone in a pocket-free hand reporting; the other honest thing is
- * saying so on screen, which `MapControls` does.
+ * keeps a phone in a pocket-free hand reporting. The screen-lock gap is still
+ * real; a Capacitor build is what closes it.
  *
  * `wakeLock` has been defined since M0 and used by nothing. This is the first
  * caller.

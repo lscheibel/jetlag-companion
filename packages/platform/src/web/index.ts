@@ -3,6 +3,7 @@ import {
 	AVAILABLE,
 	type Capability,
 	type LocalNotification,
+	type LocationIssue,
 	type LocationOpts,
 	type PermissionOutcome,
 	type PlatformAdapter,
@@ -29,6 +30,24 @@ type NavigatorWithExtras = Navigator & {
 };
 
 type UnavailableReason = Extract<Capability, { available: false }>["reason"];
+
+let lastIssue: LocationIssue | null = null;
+
+function recordIssue(issue: LocationIssue | null) {
+	lastIssue = issue;
+}
+
+function issueFromError(error: GeolocationPositionError): LocationIssue {
+	return error.code === error.PERMISSION_DENIED ? "denied" : "no_fix";
+}
+
+function issueFromCapability(
+	cap: Extract<Capability, { available: false }>,
+): LocationIssue {
+	if (cap.reason === "denied") return "denied";
+	if (cap.reason === "insecure_context") return "insecure_context";
+	return "unsupported";
+}
 
 function unsupported(reason: UnavailableReason): Capability {
 	return { available: false, reason };
@@ -65,32 +84,52 @@ const location: PlatformAdapter["location"] = {
 		return AVAILABLE;
 	},
 
+	issue() {
+		return lastIssue;
+	},
+
 	/**
 	 * Always resolves. A denial or a timeout is an answer — `source:
 	 * 'unavailable'` — not an exception, because every caller of this has to
 	 * carry on regardless and the record should say plainly that there was no fix.
 	 */
 	getCurrent(opts) {
-		if (!location.capability().available) {
+		const cap = location.capability();
+		if (!cap.available) {
+			recordIssue(issueFromCapability(cap));
 			return Promise.resolve(unavailableFix());
 		}
 		return new Promise<PositionSnapshot>((resolve) => {
 			navigator.geolocation.getCurrentPosition(
-				(position) => resolve(toSnapshot(position)),
-				() => resolve(unavailableFix()),
+				(position) => {
+					recordIssue(null);
+					resolve(toSnapshot(position));
+				},
+				(error) => {
+					recordIssue(issueFromError(error));
+					resolve(unavailableFix());
+				},
 				positionOptions(opts),
 			);
 		});
 	},
 
 	watch(cb, opts): Unsubscribe {
-		if (!location.capability().available) {
+		const cap = location.capability();
+		if (!cap.available) {
+			recordIssue(issueFromCapability(cap));
 			cb(unavailableFix());
 			return () => {};
 		}
 		const id = navigator.geolocation.watchPosition(
-			(position) => cb(toSnapshot(position)),
-			() => cb(unavailableFix()),
+			(position) => {
+				recordIssue(null);
+				cb(toSnapshot(position));
+			},
+			(error) => {
+				recordIssue(issueFromError(error));
+				cb(unavailableFix());
+			},
 			positionOptions(opts),
 		);
 		return () => navigator.geolocation.clearWatch(id);

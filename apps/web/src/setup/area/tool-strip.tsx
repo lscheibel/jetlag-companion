@@ -1,4 +1,5 @@
 import { cn } from "@zero-lag/ui/lib/utils";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { editorToolPath } from "./tool-nav";
 import { useAreaEditor } from "./use-editor";
@@ -22,57 +23,116 @@ export function ToolStrip({ current = null }: ToolStripProps) {
 
 	return (
 		<div className="flex flex-col gap-1.5" data-testid="area-tool-strip">
-			<div className="grid grid-cols-2 gap-1 rounded-[15px] border border-hairline bg-surface p-1">
-				<button
-					className={cn(
-						"min-h-11 rounded-[11px] font-mono text-[0.65rem] uppercase tracking-[0.08em]",
-						editor.cut ? "text-ink-dim" : "bg-live/20 font-bold text-live",
-					)}
-					data-testid="area-tool-add"
-					onClick={() => editor.setCut(false)}
-					type="button"
-				>
-					+ Add
-				</button>
-				<button
-					className={cn(
-						"min-h-11 rounded-[11px] font-mono text-[0.65rem] uppercase tracking-[0.08em]",
-						editor.cut || current === "cut"
-							? "bg-danger/20 font-bold text-danger"
-							: "text-ink-dim",
-					)}
-					data-testid="area-tool-cut"
-					onClick={() => editor.setCut(true)}
-					type="button"
-				>
-					⊖ Take out
-				</button>
-			</div>
+			<ToolModePair
+				left={{
+					label: "+ Add",
+					on: !editor.cut,
+					onClick: () => editor.setCut(false),
+					testId: "area-tool-add",
+					tone: "add",
+				}}
+				right={{
+					label: "⊖ Take out",
+					on: editor.cut || current === "cut",
+					onClick: () => editor.setCut(true),
+					testId: "area-tool-cut",
+					tone: "cut",
+				}}
+			/>
 			<div className="flex gap-1.5">
-				{TOOLS.map((tool) => {
-					const on = current === tool.id;
-					return (
-						<button
-							className={cn(
-								"flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[15px] border px-1 py-2",
-								"font-mono text-[0.55rem] uppercase tracking-[0.05em]",
-								on
-									? "border-action bg-action font-bold text-action-ink"
-									: "border-hairline bg-surface text-ink-dim",
-							)}
-							data-testid={`area-tool-${tool.id}`}
-							key={tool.id}
-							onClick={() =>
-								void navigate(editorToolPath(editor.code, tool.id))
-							}
-							type="button"
-						>
-							<span className="text-lg leading-none">{tool.glyph}</span>
-							{tool.label}
-						</button>
-					);
-				})}
+				{TOOLS.map((tool) => (
+					<ToolButton
+						glyph={tool.glyph}
+						key={tool.id}
+						label={tool.label}
+						on={current === tool.id}
+						onClick={() => void navigate(editorToolPath(editor.code, tool.id))}
+						testId={`area-tool-${tool.id}`}
+					/>
+				))}
 			</div>
 		</div>
+	);
+}
+
+interface ToolButtonProps {
+	readonly glyph: ReactNode;
+	readonly label: string;
+	readonly on: boolean;
+	readonly onClick: () => void;
+	readonly testId: string;
+}
+
+/** One cell in the editor (and play map) tool strip. */
+export function ToolButton({
+	glyph,
+	label,
+	on,
+	onClick,
+	testId,
+}: ToolButtonProps) {
+	return (
+		<button
+			aria-pressed={on}
+			className={cn(
+				"flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[15px] border px-1 py-2",
+				"font-mono text-[0.55rem] uppercase tracking-[0.05em]",
+				on
+					? "border-action bg-action font-bold text-action-ink"
+					: "border-hairline bg-surface text-ink-dim",
+			)}
+			data-testid={testId}
+			onClick={onClick}
+			type="button"
+		>
+			<span className="text-lg leading-none">{glyph}</span>
+			{label}
+		</button>
+	);
+}
+
+interface ToolMode {
+	readonly label: string;
+	readonly on: boolean;
+	readonly onClick: () => void;
+	readonly testId: string;
+	readonly tone: "add" | "cut" | "plain";
+}
+
+/** The two-up switch the editor uses for add vs take-out. */
+export function ToolModePair({
+	left,
+	right,
+}: {
+	readonly left: ToolMode;
+	readonly right: ToolMode;
+}) {
+	return (
+		<div className="grid grid-cols-2 gap-1 rounded-[15px] border border-hairline bg-surface p-1">
+			<ModeButton mode={left} />
+			<ModeButton mode={right} />
+		</div>
+	);
+}
+
+function ModeButton({ mode }: { readonly mode: ToolMode }) {
+	return (
+		<button
+			aria-pressed={mode.on}
+			className={cn(
+				"min-h-11 rounded-[11px] font-mono text-[0.65rem] uppercase tracking-[0.08em]",
+				mode.on && mode.tone === "add" && "bg-live/20 font-bold text-live",
+				mode.on && mode.tone === "cut" && "bg-danger/20 font-bold text-danger",
+				mode.on &&
+					mode.tone === "plain" &&
+					"bg-action/20 font-bold text-action",
+				!mode.on && "text-ink-dim",
+			)}
+			data-testid={mode.testId}
+			onClick={mode.onClick}
+			type="button"
+		>
+			{mode.label}
+		</button>
 	);
 }

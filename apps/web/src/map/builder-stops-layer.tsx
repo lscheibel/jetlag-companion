@@ -5,15 +5,32 @@ import type { SearchableStop } from "./toolkit";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
 const PAINT = {
-	"circle-radius": 4,
+	"circle-radius": 3.5,
 	"circle-color": [
 		"case",
 		["get", "insideArea"],
-		"#1d4ed8",
-		"#9ca3af",
+		"#08111c",
+		"#8b919c",
 	] as unknown as string,
 	"circle-stroke-color": "#ffffff",
-	"circle-stroke-width": 1,
+	"circle-stroke-width": [
+		"case",
+		["get", "insideArea"],
+		2.5,
+		1.5,
+	] as unknown as number,
+	"circle-opacity": [
+		"case",
+		["get", "insideArea"],
+		1,
+		0.33,
+	] as unknown as number,
+	"circle-stroke-opacity": [
+		"case",
+		["get", "insideArea"],
+		1,
+		0.33,
+	] as unknown as number,
 };
 
 interface StopsLayerProps {

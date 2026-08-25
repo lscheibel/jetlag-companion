@@ -1,5 +1,6 @@
 import type { BBox, LngLat } from "@zero-lag/geo";
-import { useEffect, useRef } from "react";
+import { cn } from "@zero-lag/ui/lib/utils";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { RadiusDraft, RingDraft } from "./draw-gestures";
 import { useMapInstance } from "./map-canvas";
 import {
@@ -115,14 +116,51 @@ export function MapPointerHandler({
 	return null;
 }
 
+/** The floating control the area editor puts on the map: one glyph, same chrome. */
+export function MapHudButton({
+	ariaLabel,
+	testId,
+	onClick,
+	disabled = false,
+	pressed = false,
+	cameraMode,
+	children,
+}: {
+	readonly ariaLabel: string;
+	readonly testId: string;
+	readonly onClick: () => void;
+	readonly disabled?: boolean;
+	readonly pressed?: boolean;
+	readonly cameraMode?: string;
+	readonly children: ReactNode;
+}) {
+	return (
+		<button
+			aria-label={ariaLabel}
+			aria-pressed={pressed}
+			className={cn(
+				"grid size-11 place-items-center rounded-[14px] border bg-surface/90 text-ink shadow-sm backdrop-blur disabled:opacity-45",
+				pressed
+					? "border-action bg-action font-bold text-action-ink"
+					: "border-hairline",
+			)}
+			data-camera-mode={cameraMode}
+			data-testid={testId}
+			disabled={disabled}
+			onClick={onClick}
+			type="button"
+		>
+			{children}
+		</button>
+	);
+}
+
 export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
 	const map = useMapInstance();
 
 	return (
-		<button
-			aria-label="Show the whole area"
-			className="grid size-11 place-items-center rounded-[14px] border border-hairline bg-surface/90 text-ink shadow-sm backdrop-blur"
-			data-testid="area-fit-selection"
+		<MapHudButton
+			ariaLabel="Show the whole area"
 			disabled={!bounds || !map}
 			onClick={() => {
 				if (!map || !bounds) return;
@@ -134,7 +172,7 @@ export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
 					{ padding: 48, duration: 500 },
 				);
 			}}
-			type="button"
+			testId="area-fit-selection"
 		>
 			<svg
 				aria-hidden="true"
@@ -153,7 +191,7 @@ export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
 				<path d="M8 21H5a2 2 0 0 1-2-2v-3" />
 				<path d="M16 21h3a2 2 0 0 0 2-2v-3" />
 			</svg>
-		</button>
+		</MapHudButton>
 	);
 }
 

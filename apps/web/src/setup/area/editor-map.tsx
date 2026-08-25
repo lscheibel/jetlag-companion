@@ -1,13 +1,23 @@
 import type { BBox, LngLat } from "@zero-lag/geo";
 import { cn } from "@zero-lag/ui/lib/utils";
-import { type ReactNode, useState } from "react";
-import { MapCanvas, type MapStatus } from "../../map/map-canvas";
+import { type ReactNode, useEffect, useState } from "react";
+import {
+	MapCanvas,
+	type MapStatus,
+	useMapInstance,
+} from "../../map/map-canvas";
 import { BERLIN_CENTER } from "./labels";
+import { useAreaEditor } from "./use-editor";
 
 interface EditorMapProps {
 	readonly bounds: BBox | null;
 	readonly center?: LngLat;
 	readonly fitPadding?: number;
+	/**
+	 * Keep the camera when this map remounts (switching tools). The wizard
+	 * preview passes false so a tiny map does not overwrite the editor view.
+	 */
+	readonly rememberView?: boolean;
 	readonly className?: string;
 	readonly children: ReactNode;
 }
@@ -16,23 +26,30 @@ export function EditorMap({
 	bounds,
 	center = BERLIN_CENTER,
 	fitPadding,
+	rememberView = true,
 	className,
 	children,
 }: EditorMapProps) {
+	const editor = useAreaEditor();
 	const [status, setStatus] = useState<MapStatus>("loading");
+	const camera = rememberView ? editor.camera : null;
 
 	return (
 		<div
 			className={cn("relative min-h-0 overflow-hidden bg-map-land", className)}
 		>
-			<MapCanvas
-				fitPadding={fitPadding}
-				initialBounds={bounds}
-				initialCenter={center}
-				onStatusChange={setStatus}
-			>
-				{children}
-			</MapCanvas>
+			{editor.ready && (
+				<MapCanvas
+					fitPadding={fitPadding}
+					initialBounds={bounds}
+					initialCamera={camera}
+					initialCenter={center}
+					onStatusChange={setStatus}
+				>
+					{children}
+					{rememberView && <ViewMemory />}
+				</MapCanvas>
+			)}
 			{status === "ready" && (
 				<span className="sr-only" data-testid="area-editor-map-ready" />
 			)}
@@ -43,4 +60,30 @@ export function EditorMap({
 			)}
 		</div>
 	);
+}
+
+/** Writes the camera after pan/zoom so the next tool screen can restore it. */
+function ViewMemory() {
+	const map = useMapInstance();
+	const { setCamera } = useAreaEditor();
+
+	useEffect(() => {
+		if (!map) return;
+		const save = () => {
+			const { lng, lat } = map.getCenter();
+			setCamera({
+				center: [lng, lat],
+				zoom: map.getZoom(),
+				bearing: map.getBearing(),
+				pitch: map.getPitch(),
+			});
+		};
+		save();
+		map.on("moveend", save);
+		return () => {
+			map.off("moveend", save);
+		};
+	}, [map, setCamera]);
+
+	return null;
 }

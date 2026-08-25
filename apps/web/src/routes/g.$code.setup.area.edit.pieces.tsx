@@ -13,10 +13,13 @@ export default function SetupAreaPieces() {
 		<EditorScreen
 			actionLabel="Done"
 			actionTestId="area-pieces-done"
-			note="Added and taken away in order."
 			onAction={nav.afterCommit}
 			title="The pieces"
 		>
+			<p className="text-ink-dim text-sm leading-snug">
+				The first row is the ground. Each row after it is added or taken out on
+				top of the ones above, in order.
+			</p>
 			{editor.pieces.map((piece, index) => (
 				<PieceRow
 					key={piece.id}

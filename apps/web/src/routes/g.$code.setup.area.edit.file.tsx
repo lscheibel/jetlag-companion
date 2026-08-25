@@ -65,8 +65,8 @@ export default function SetupAreaFile() {
 			actionLabel={
 				draft
 					? editor.cut
-						? `Take out ${draft.name}`
-						: `Add ${draft.name}`
+						? "Take out game area"
+						: "Add game area"
 					: "Pick a file"
 			}
 			actionTestId={draft ? "area-file-add" : "area-file-pick"}
@@ -88,6 +88,7 @@ export default function SetupAreaFile() {
 						}
 					: undefined
 			}
+			secondaryFirst={Boolean(draft)}
 			title={editor.cut ? "Take out from a file" : "A saved map"}
 		>
 			<EditorMap

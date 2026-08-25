@@ -251,12 +251,11 @@ export default function BuildRoute() {
 					suggestedPreset={builder.suggestedPreset}
 				/>
 			</div>
-			{selectedStop && (
-				<StopSheet
-					onClose={() => setSelectedStopId(null)}
-					stop={selectedStop}
-				/>
-			)}
+			<StopSheet
+				onClose={() => setSelectedStopId(null)}
+				open={selectedStop !== null}
+				stop={selectedStop}
+			/>
 		</main>
 	);
 }

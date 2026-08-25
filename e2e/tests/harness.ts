@@ -1,5 +1,6 @@
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { setPendingHidingDuration } from "./db";
 
 /** One browser context is one phone. m0-spec §12. */
 export type Phone = {
@@ -504,11 +505,15 @@ export async function toggleHost(phone: Phone): Promise<void> {
 export async function readyUp(phone: Phone, code: string): Promise<void> {
 	await phone.page.goto(`/g/${code}`);
 	const briefing = phone.page.getByTestId("read-briefing");
+	const ready = phone.page.getByTestId("mark-ready");
+	// The lobby paints after Zero hydrates. Checking visibility once would
+	// race the load and wait for a button that only exists after the briefing.
+	await expect(briefing.or(ready)).toBeVisible();
 	if (await briefing.isVisible()) {
 		await briefing.click();
 		await phone.page.getByTestId("mark-ready").click();
 	} else {
-		await phone.page.getByTestId("mark-ready").click();
+		await ready.click();
 	}
 	await expect(phone.page.getByTestId(`ready-state-${phone.name}`)).toHaveText(
 		"ready",
@@ -527,11 +532,13 @@ export async function startHiding(
 	const host = phones[0];
 	if (!host) throw new Error("startHiding needs at least the host");
 	for (const phone of phones) await readyUp(phone, code);
-	await host.page.goto(`/g/${code}`);
 	if (minutes) {
-		await host.page.getByTestId("lobby-menu").click();
-		await host.page.getByTestId("hiding-duration").fill(minutes);
-		await host.page.getByTestId("lobby-menu-sheet-scrim").click();
+		await setPendingHidingDuration(code, minutes);
+		// A raw SQL write is not in the client replica until it hydrates again.
+		await host.page.goto(`/g/${code}`);
+		await waitForSync(host);
+	} else {
+		await host.page.goto(`/g/${code}`);
 	}
 	// A hold, not a tap: the fill is the confirmation.
 	await host.page.getByTestId("start-hiding").click({ delay: 1_000 });

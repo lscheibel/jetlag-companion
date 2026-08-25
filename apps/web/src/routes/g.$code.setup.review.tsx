@@ -1,12 +1,12 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { mutators, queries } from "@zero-lag/schema";
+import { queries } from "@zero-lag/schema";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { type ReactNode, useState } from "react";
 import { useNavigate } from "react-router";
-import { applyMap, type MapDraftBody } from "../builder/api";
 import { useGameShell } from "../game/shell";
 import { formatDuration, formatGround, formatZone } from "../setup/game-size";
 import { modeLabel } from "../setup/modes";
+import { persistSetup } from "../setup/persist";
 import { useSetup } from "../setup/wizard";
 import { WizardStep } from "../setup/wizard-step";
 
@@ -37,7 +37,7 @@ export default function SetupReview() {
 		setProblem(null);
 		void (async () => {
 			try {
-				await writeSetup();
+				await persistSetup(session, setup, zero);
 				await navigate(`/g/${session.code}`);
 			} catch (cause) {
 				setProblem(
@@ -48,36 +48,6 @@ export default function SetupReview() {
 				setBusy(false);
 			}
 		})();
-	}
-
-	async function writeSetup() {
-		const { area, roundId, currentHidingDurationMs } = setup;
-		if (!area) throw new Error("no_board");
-
-		if (boardChanged()) {
-			await applyMap(session, mapDraftFromSetup(setup));
-		}
-
-		if (roundId && currentHidingDurationMs !== setup.hidingDurationMs) {
-			await zero.mutate(
-				mutators.round.setHidingDuration({
-					eventId: crypto.randomUUID(),
-					roundId,
-					hidingDurationMs: setup.hidingDurationMs,
-				}),
-			).server;
-		}
-	}
-
-	/** Same modes, same scale, same zone — then there is nothing to apply. */
-	function boardChanged(): boolean {
-		const area = setup.area;
-		if (!area) return false;
-		return (
-			!sameModes(area.modeIds, setup.selectedModes) ||
-			area.scalePreset !== setup.band.scalePreset ||
-			area.hidingRadiusMeters !== setup.hidingRadiusMeters
-		);
 	}
 
 	// Nothing in this flow means anything until the board has synced: the
@@ -140,41 +110,6 @@ function transitSummary(setup: ReturnType<typeof useSetup>): string {
 	const selected = setup.selectedModes;
 	if (!selected) return "Everything that runs here";
 	return selected.map((modeId) => modeLabel(modeId).name).join(", ");
-}
-
-/**
- * Re-apply the board the wizard already has, never flattening a composed area
- * back to its first ring.
- */
-function mapDraftFromSetup(setup: ReturnType<typeof useSetup>): MapDraftBody {
-	const area = setup.area;
-	if (!area) throw new Error("no_board");
-	const shared = {
-		name: area.name,
-		scalePreset: setup.band.scalePreset,
-		hidingRadiusMeters: setup.hidingRadiusMeters,
-		modeIds: setup.selectedModes ?? undefined,
-	};
-	if (area.selection.kind === "composed") {
-		return { ...shared, pieces: area.selection.pieces };
-	}
-	const ring = area.selection.polygon[0]?.[0];
-	if (!ring || ring.length < 3) throw new Error("empty_area");
-	return {
-		...shared,
-		ring: ring.map(([lng, lat]) => [lng, lat] as [number, number]),
-	};
-}
-
-function sameModes(
-	a: readonly string[] | null,
-	b: readonly string[] | null,
-): boolean {
-	if (a === null || b === null) return a === b;
-	if (a.length !== b.length) return false;
-	const left = [...a].sort();
-	const right = [...b].sort();
-	return left.every((value, index) => value === right[index]);
 }
 
 interface RowProps {

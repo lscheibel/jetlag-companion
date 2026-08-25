@@ -1,6 +1,7 @@
 import { useQuery } from "@rocicorp/zero/react";
 import { multiPolygonToRegion, regionContains } from "@zero-lag/geo";
 import { queries } from "@zero-lag/schema";
+import { Surface } from "@zero-lag/ui/components/surface";
 import type { MyRole } from "./use-role";
 
 interface ZoneNoticeProps {
@@ -42,11 +43,12 @@ export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
 	}
 
 	return (
-		<p
-			className="rounded bg-amber-100 px-3 py-2 font-medium text-amber-950 text-sm shadow"
+		<Surface
+			className="px-3 py-2 font-medium text-sm"
 			data-testid="zone-leave-notice"
+			raised
 		>
 			Looks like you left your hiding zone.
-		</p>
+		</Surface>
 	);
 }

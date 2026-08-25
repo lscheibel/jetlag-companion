@@ -53,12 +53,13 @@ catalog.get("/stops", async (c) => {
 
 	const bbox = parsed.data as BBox;
 	const found = stopsInView(bbox);
+	const unlimited = c.req.query("limit") === "all";
 
 	return c.json({
 		version: catalogVersion(),
 		total: found.length,
-		truncated: found.length > MAX_STOPS,
-		stops: found.slice(0, MAX_STOPS),
+		truncated: !unlimited && found.length > MAX_STOPS,
+		stops: unlimited ? found : found.slice(0, MAX_STOPS),
 	});
 });
 

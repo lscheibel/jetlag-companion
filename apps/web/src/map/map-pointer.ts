@@ -317,8 +317,24 @@ export function bindMapPointers(
 		}
 	};
 
-	const up = () => finish(true);
+	const up = (event: MapPointerEvent) => {
+		if (capture?.kind === "maybe-tap" && event.point) {
+			const dist = Math.hypot(
+				event.point.x - capture.start.x,
+				event.point.y - capture.start.y,
+			);
+			if (dist > TAP_SLOP_PX) capture.moved = true;
+		}
+		finish(true);
+	};
 	const cancel = () => finish(false);
+	/**
+	 * MapLibre often swallows the move events that would have marked a pan, so
+	 * pointer-up still looks like a tap. `dragstart` is the map saying it panned.
+	 */
+	const dragStart = () => {
+		if (capture?.kind === "maybe-tap") capture = null;
+	};
 
 	map.on("mousedown", down);
 	map.on("touchstart", down);
@@ -327,6 +343,7 @@ export function bindMapPointers(
 	map.on("mouseup", up);
 	map.on("touchend", up);
 	map.on("touchcancel", cancel);
+	map.on("dragstart", dragStart);
 
 	return () => {
 		map.off("mousedown", down);
@@ -336,6 +353,7 @@ export function bindMapPointers(
 		map.off("mouseup", up);
 		map.off("touchend", up);
 		map.off("touchcancel", cancel);
+		map.off("dragstart", dragStart);
 		if (capture?.panHeld) map.dragPan.enable();
 		capture = null;
 	};

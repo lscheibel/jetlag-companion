@@ -10,9 +10,12 @@ import {
 	createContext,
 	type ReactNode,
 	useContext,
+	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
+import { useLocation } from "react-router";
 import {
 	clamp,
 	type GameSize,
@@ -108,12 +111,15 @@ export function useSetup(): SetupState {
 }
 
 export function SetupProvider({ children }: { children: ReactNode }) {
+	const fromLobby =
+		new URLSearchParams(useLocation().search).get("from") === "lobby";
 	const [draft, setDraft] = useState<SetupDraft>({
 		modeIds: null,
 		size: null,
 		hidingDurationMs: null,
 		hidingRadiusMeters: null,
 	});
+	const seeded = useRef(false);
 	const [games] = useQuery(queries.game());
 	const [stops] = useQuery(queries.mapStops());
 	const [rounds] = useQuery(queries.rounds());
@@ -180,6 +186,17 @@ export function SetupProvider({ children }: { children: ReactNode }) {
 	/** The round the lobby is about to start; there is always exactly one. */
 	const round = [...rounds].reverse().find((value) => value.status !== "ended");
 	const roundId = round?.id ?? null;
+
+	useEffect(() => {
+		if (!fromLobby || seeded.current || !area || !round) return;
+		seeded.current = true;
+		setDraft({
+			modeIds: (area.modeIds as ModeId[] | null) ?? null,
+			size: null,
+			hidingDurationMs: round.hidingDurationMs,
+			hidingRadiusMeters: area.hidingRadiusMeters,
+		});
+	}, [fromLobby, area, round]);
 
 	const value = useMemo<SetupState>(
 		() => ({

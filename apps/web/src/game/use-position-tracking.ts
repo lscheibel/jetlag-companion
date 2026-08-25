@@ -1,4 +1,5 @@
 import { useZero } from "@rocicorp/zero/react";
+import type { LocationIssue } from "@zero-lag/platform";
 import { webPlatform } from "@zero-lag/platform/web";
 import {
 	mutators,
@@ -38,6 +39,7 @@ interface PositionTrackingInput {
 export interface PositionTracking {
 	readonly queueSize: number;
 	readonly lastFix: PositionSnapshot | null;
+	readonly locationIssue: LocationIssue | null;
 	sample(reason: PositionReason): Promise<void>;
 }
 
@@ -63,6 +65,9 @@ export function usePositionTracking({
 	const zero = useZero();
 	const [queueSize, setQueueSize] = useState(0);
 	const [lastFix, setLastFix] = useState<PositionSnapshot | null>(null);
+	const [locationIssue, setLocationIssue] = useState<LocationIssue | null>(
+		null,
+	);
 
 	const logRef = useRef<PositionLog | null>(null);
 	if (!logRef.current) logRef.current = new PositionLog(gameId);
@@ -88,6 +93,7 @@ export function usePositionTracking({
 		// The two fates of a fix are different destinations, not different fixes.
 		latest.current = fix;
 		setLastFix(fix);
+		setLocationIssue(webPlatform.location.issue());
 		channelRef.current?.sendPosition(fix);
 
 		if (!loggingRef.current) return;
@@ -119,6 +125,7 @@ export function usePositionTracking({
 			if (!live) return;
 			latest.current = fix;
 			setLastFix(fix);
+			setLocationIssue(webPlatform.location.issue());
 			channel?.sendPosition(fix);
 		};
 
@@ -201,7 +208,7 @@ export function usePositionTracking({
 	// context, and a fresh object every render would rebuild the shell — and with
 	// it every screen inside the game — on each tick of the position watch.
 	return useMemo(
-		() => ({ queueSize, lastFix, sample }),
-		[queueSize, lastFix, sample],
+		() => ({ queueSize, lastFix, locationIssue, sample }),
+		[queueSize, lastFix, locationIssue, sample],
 	);
 }

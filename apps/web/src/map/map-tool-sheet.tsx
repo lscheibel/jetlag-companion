@@ -1,18 +1,21 @@
 import type { LngLat } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Field } from "@zero-lag/ui/components/field";
+import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
+import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import { TEAM_COLORS } from "../lobby/palette";
 import type { MapPin } from "./pin-layer";
 import {
 	type BoundaryListItem,
-	type ConstraintListItem,
 	formatCoordinates,
 	formatDistance,
 	type MapTool,
-	pathSegments,
 	type SearchableStop,
 	type SearchResult,
 	searchStops,
+	toggleBoundaryLevel,
 } from "./toolkit";
 
 interface MapToolSheetProps {
@@ -22,15 +25,10 @@ interface MapToolSheetProps {
 	readonly editingPin: MapPin | null;
 	readonly teamColor: string;
 	readonly canPlaceZone: boolean;
-	readonly canEditConstraints: boolean;
-	readonly constraints: readonly ConstraintListItem[];
 	/** The stops this game carries — what place search runs over. m4-spec §5. */
 	readonly stops: readonly SearchableStop[];
 	readonly onToolChange: (tool: MapTool) => void;
 	readonly onCancel: () => void;
-	readonly onUndoMeasure: () => void;
-	readonly onUndoPolygonVertex: () => void;
-	readonly onSeedMeasure: () => void;
 	readonly onSavePin: (input: {
 		label: string;
 		note: string;
@@ -42,201 +40,55 @@ interface MapToolSheetProps {
 	readonly onClearZone: () => void;
 	readonly onSearchResult: (result: SearchResult) => void;
 	readonly onSearchStopZone: (stop: SearchableStop) => void;
-	readonly onCommitConstraint: (
-		mode: "include" | "exclude",
-		name: string,
-	) => void;
-	readonly onToggleConstraint: (id: string, enabled: boolean) => void;
-	readonly onRenameConstraint: (id: string, name: string) => void;
-	readonly onRemoveConstraint: (id: string) => void;
 	readonly boundaries: readonly BoundaryListItem[];
 	readonly onSelectBoundary: (id: string | null) => void;
 }
 
 export function MapToolSheet(props: MapToolSheetProps) {
-	if (props.tool.kind === "measure") return <MeasureSheet {...props} />;
-	if (props.tool.kind === "placingPin" && props.draftPoint) {
-		return <PinForm key={formatCoordinates(props.draftPoint)} {...props} />;
-	}
-	if (props.tool.kind === "editingPin" && props.editingPin) {
-		return <PinForm key={props.editingPin.id} {...props} />;
-	}
-	if (props.tool.kind === "placingZone" && props.tool.center) {
-		return <ZoneForm {...props} />;
-	}
-	if (
-		props.tool.kind === "drawingRadiusConstraint" &&
-		props.tool.center !== null
-	) {
-		return <ConstraintConfirmSheet {...props} />;
-	}
-	if (
-		props.tool.kind === "drawingPolygonConstraint" &&
-		props.tool.ring.length >= 3
-	) {
-		return <ConstraintConfirmSheet {...props} />;
-	}
-	if (props.tool.kind === "drawingPolygonConstraint") {
-		return <PolygonConstraintPrompt {...props} />;
-	}
-	if (props.tool.kind === "listingConstraints") {
-		return <ConstraintListSheet {...props} />;
-	}
-	if (
-		props.tool.kind === "pickingBoundaryConstraint" &&
-		props.tool.selectedId
-	) {
-		return <ConstraintConfirmSheet {...props} />;
-	}
-	if (props.tool.kind === "pickingBoundaryConstraint") {
-		return <BoundaryPickerSheet {...props} />;
-	}
-	if (props.tool.kind !== "none") {
-		return (
-			<ActivePrompt name={toolName(props.tool)} onCancel={props.onCancel} />
-		);
-	}
-	return <ToolMenu {...props} />;
+	const searching = props.tool.kind === "searching";
+	const pinOpen =
+		(props.tool.kind === "placingPin" && props.draftPoint !== null) ||
+		(props.tool.kind === "editingPin" && props.editingPin !== null);
+	const zoneOpen =
+		props.tool.kind === "placingZone" && props.tool.center !== null;
+	const picking =
+		props.tool.kind === "pickingBoundaryConstraint" && !props.tool.selectedId;
+
+	return (
+		<>
+			<SearchSheet {...props} open={searching} />
+			<PinForm {...props} open={pinOpen} />
+			<ZoneForm {...props} open={zoneOpen} />
+			<BoundaryPickerSheet {...props} open={picking} />
+		</>
+	);
 }
 
-function ToolMenu(props: MapToolSheetProps) {
+function SearchSheet(props: MapToolSheetProps & { readonly open: boolean }) {
 	const [query, setQuery] = useState("");
 	const results = searchStops(props.stops, query, props.origin).slice(0, 8);
 	return (
-		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
-			<div className="flex gap-2 overflow-x-auto pb-2">
-				<button
-					className="min-h-11 shrink-0 rounded border px-3"
-					onClick={() =>
-						props.onToolChange({
-							kind: "measure",
-							measure: { kind: "path", points: [] },
-						})
-					}
-					type="button"
-				>
-					Measure path
-				</button>
-				<button
-					className="min-h-11 shrink-0 rounded border px-3"
-					onClick={() =>
-						props.onToolChange({
-							kind: "measure",
-							measure: { kind: "radius", center: null, radiusMeters: 500 },
-						})
-					}
-					type="button"
-				>
-					Measure radius
-				</button>
-				<button
-					className="min-h-11 shrink-0 rounded border px-3"
-					onClick={() => props.onToolChange({ kind: "placingPin" })}
-					type="button"
-				>
-					Drop pin
-				</button>
-				{props.canPlaceZone && (
-					<button
-						className="min-h-11 shrink-0 rounded border px-3"
-						onClick={() =>
-							props.onToolChange({
-								kind: "placingZone",
-								center: null,
-								radiusMeters: 500,
-								stopId: null,
-							})
-						}
-						type="button"
-					>
-						Search zone
-					</button>
-				)}
-				{props.canEditConstraints && (
-					<>
-						<button
-							className="min-h-11 shrink-0 rounded border px-3"
-							data-testid="add-radius-constraint"
-							onClick={() =>
-								props.onToolChange({
-									kind: "drawingRadiusConstraint",
-									center: null,
-									radiusMeters: 500,
-								})
-							}
-							type="button"
-						>
-							Inside this radius
-						</button>
-						<button
-							className="min-h-11 shrink-0 rounded border px-3"
-							data-testid="add-polygon-constraint"
-							onClick={() =>
-								props.onToolChange({
-									kind: "drawingPolygonConstraint",
-									ring: [],
-								})
-							}
-							type="button"
-						>
-							Inside this shape
-						</button>
-						<button
-							className="min-h-11 shrink-0 rounded border px-3"
-							data-testid="add-bezirk-constraint"
-							onClick={() =>
-								props.onToolChange({
-									kind: "pickingBoundaryConstraint",
-									adminLevel: 9,
-									selectedId: null,
-								})
-							}
-							type="button"
-						>
-							Bezirk
-						</button>
-						<button
-							className="min-h-11 shrink-0 rounded border px-3"
-							data-testid="add-ortsteil-constraint"
-							onClick={() =>
-								props.onToolChange({
-									kind: "pickingBoundaryConstraint",
-									adminLevel: 10,
-									selectedId: null,
-								})
-							}
-							type="button"
-						>
-							Ortsteil
-						</button>
-						<button
-							className="min-h-11 shrink-0 rounded border px-3"
-							data-testid="constraint-list"
-							onClick={() => props.onToolChange({ kind: "listingConstraints" })}
-							type="button"
-						>
-							Constraints
-						</button>
-					</>
-				)}
-			</div>
-			<label className="block">
-				<span className="sr-only">Search places or coordinates</span>
-				<input
-					className="min-h-11 w-full rounded border px-3"
-					data-testid="map-search"
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search stops or coordinates"
-					type="search"
-					value={query}
-				/>
-			</label>
+		<Sheet
+			onClose={props.onCancel}
+			open={props.open}
+			testId="map-search-sheet"
+			title="Search"
+		>
+			<Field
+				autoFocus
+				data-testid="map-search"
+				label="Stops or coordinates"
+				onChange={(event) => setQuery(event.target.value)}
+				placeholder="Görlitzer Bahnhof"
+				type="search"
+				value={query}
+			/>
 			{results.length > 0 && (
-				<ul className="mt-2 max-h-48 overflow-y-auto">
+				<ul className="max-h-64 overflow-y-auto">
 					{results.map((result, index) => (
 						<li className="flex gap-1" key={searchKey(result)}>
 							<button
-								className="min-h-11 flex-1 rounded px-2 text-left hover:bg-surface-raised"
+								className="min-h-11 flex-1 rounded-control px-2 text-left hover:bg-surface-raised"
 								onClick={() => props.onSearchResult(result)}
 								type="button"
 							>
@@ -248,7 +100,7 @@ function ToolMenu(props: MapToolSheetProps) {
 							{result.kind === "stop" && props.canPlaceZone && (
 								<button
 									aria-label={`Mark zone at ${result.stop.name}`}
-									className="min-h-11 rounded border px-2"
+									className="min-h-11 rounded-control border border-hairline px-2"
 									onClick={() => props.onSearchStopZone(result.stop)}
 									type="button"
 								>
@@ -256,7 +108,7 @@ function ToolMenu(props: MapToolSheetProps) {
 								</button>
 							)}
 							{index === 0 && result.kind === "coordinate" && (
-								<span className="self-center text-xs">
+								<span className="self-center text-ink-dim text-xs">
 									{result.parsed.swapped ? "lng/lat swapped" : "lat/lng"}
 								</span>
 							)}
@@ -264,137 +116,90 @@ function ToolMenu(props: MapToolSheetProps) {
 					))}
 				</ul>
 			)}
-		</section>
+		</Sheet>
 	);
 }
 
-function MeasureSheet(props: MapToolSheetProps) {
-	if (props.tool.kind !== "measure") return null;
-	const measure = props.tool.measure;
-	const segments = measure.kind === "path" ? pathSegments(measure.points) : [];
-	const total = segments.reduce((sum, segment) => sum + segment, 0);
+function PinForm(props: MapToolSheetProps & { readonly open: boolean }) {
+	const identity =
+		props.editingPin?.id ??
+		(props.draftPoint ? formatCoordinates(props.draftPoint) : null);
+	const formId = useHeldValue(props.open, identity);
+	const pin = useHeldValue(props.open, props.editingPin);
+	const draftPoint = useHeldValue(props.open, props.draftPoint);
 	return (
-		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
-			<div className="flex items-center justify-between">
-				<strong>
-					{measure.kind === "path" ? "Measure path" : "Measure radius"}
-				</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-			<p className="font-semibold text-xl" data-testid="measure-total">
-				{formatDistance(measure.kind === "path" ? total : measure.radiusMeters)}
-			</p>
-			{measure.kind === "path" ? (
-				<div className="flex flex-wrap gap-2">
-					<button
-						className="min-h-11 rounded border px-3"
-						disabled={measure.points.length === 0}
-						onClick={props.onUndoMeasure}
-						type="button"
-					>
-						Undo last point
-					</button>
-					{measure.points.length === 0 && (
-						<button
-							className="min-h-11 rounded border px-3"
-							onClick={props.onSeedMeasure}
-							type="button"
-						>
-							From my position
-						</button>
-					)}
-					{segments.map((segment, index) => (
-						<span
-							className="rounded bg-surface-raised px-2 py-1 text-sm"
-							key={`${measure.points[index]?.join(",")}:${measure.points[index + 1]?.join(",")}`}
-						>
-							{index + 1}: {formatDistance(segment)}
-						</span>
-					))}
-				</div>
-			) : (
-				<div className="flex flex-wrap gap-2">
-					{[100, 250, 500, 1_000, 2_000].map((radius) => (
-						<button
-							className="min-h-11 rounded border px-3"
-							key={radius}
-							onClick={() =>
-								props.onToolChange({
-									kind: "measure",
-									measure: { ...measure, radiusMeters: radius },
-								})
-							}
-							type="button"
-						>
-							{formatDistance(radius)}
-						</button>
-					))}
-					{measure.center && (
-						<button
-							className="min-h-11 rounded border px-3"
-							onClick={() => props.onToolChange({ kind: "placingPin" })}
-							type="button"
-						>
-							Keep as pin
-						</button>
-					)}
-				</div>
+		<Sheet
+			onClose={props.onCancel}
+			open={props.open}
+			testId="pin-sheet"
+			title={pin ? "Edit pin" : "Pin this spot"}
+		>
+			{formId && (
+				<PinFields
+					draftPoint={draftPoint}
+					key={formId}
+					onDeletePin={props.onDeletePin}
+					onSavePin={props.onSavePin}
+					pin={pin}
+					teamColor={props.teamColor}
+					tool={props.tool}
+				/>
 			)}
-		</section>
+		</Sheet>
 	);
 }
 
-function PinForm(props: MapToolSheetProps) {
-	const pin = props.editingPin;
+function PinFields({
+	pin,
+	draftPoint,
+	teamColor,
+	tool,
+	onSavePin,
+	onDeletePin,
+}: {
+	readonly pin: MapPin | null;
+	readonly draftPoint: LngLat | null;
+	readonly teamColor: string;
+	readonly tool: MapTool;
+	readonly onSavePin: MapToolSheetProps["onSavePin"];
+	readonly onDeletePin: () => void;
+}) {
 	const [label, setLabel] = useState(pin?.label ?? "");
 	const [note, setNote] = useState(pin?.note ?? "");
-	const [color, setColor] = useState(pin?.color ?? props.teamColor);
+	const [color, setColor] = useState(pin?.color ?? teamColor);
 	const radius =
-		props.tool.kind === "placingPin" && props.draftPoint
+		tool.kind === "placingPin" && draftPoint
 			? null
 			: (pin?.radiusMeters ?? null);
 	return (
 		<form
-			className="pointer-events-auto space-y-2 rounded bg-surface/95 p-3 shadow"
+			className="flex flex-col gap-3"
 			onSubmit={(event) => {
 				event.preventDefault();
-				props.onSavePin({ label, note, color, radiusMeters: radius });
+				onSavePin({ label, note, color, radiusMeters: radius });
 			}}
 		>
-			<div className="flex items-center justify-between">
-				<strong>{pin ? "Edit pin" : "New pin"}</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-			<input
-				className="min-h-11 w-full rounded border px-3"
+			<Field
+				label="What is it"
 				maxLength={80}
 				onChange={(event) => setLabel(event.target.value)}
-				placeholder="Label (optional)"
+				placeholder="Optional"
 				value={label}
 			/>
-			<textarea
-				className="min-h-20 w-full rounded border p-3"
-				onChange={(event) => setNote(event.target.value)}
-				placeholder="Team note"
-				value={note}
-			/>
+			<label className="flex min-h-22 flex-col gap-1 rounded-tile border-2 border-hairline-strong bg-surface px-3.5 py-2">
+				<span className="eyebrow">Note</span>
+				<textarea
+					className="min-h-16 w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-faint"
+					onChange={(event) => setNote(event.target.value)}
+					placeholder="Everyone on the team sees this"
+					value={note}
+				/>
+			</label>
 			<div className="flex gap-2">
 				{TEAM_COLORS.map((choice) => (
 					<button
 						aria-label={`Use ${choice}`}
-						className={`size-11 rounded-full border-4 ${choice === color ? "border-ink" : "border-transparent"}`}
+						className={`size-10 rounded-[10px] ${choice === color ? "ring-2 ring-action ring-offset-2 ring-offset-surface" : ""}`}
 						key={choice}
 						onClick={() => setColor(choice)}
 						style={{ backgroundColor: choice }}
@@ -402,178 +207,71 @@ function PinForm(props: MapToolSheetProps) {
 					/>
 				))}
 			</div>
-			<div className="flex gap-2">
-				<button className="min-h-11 rounded border px-4" type="submit">
-					Save
-				</button>
-				{pin && (
-					<button
-						className="min-h-11 rounded border px-4"
-						onClick={props.onDeletePin}
-						type="button"
-					>
-						Delete
-					</button>
-				)}
-			</div>
-		</form>
-	);
-}
-
-function ZoneForm(props: MapToolSheetProps) {
-	const [note, setNote] = useState("");
-	if (props.tool.kind !== "placingZone") return null;
-	const zone = props.tool;
-	return (
-		<form
-			className="pointer-events-auto space-y-2 rounded bg-surface/95 p-3 shadow"
-			onSubmit={(event) => {
-				event.preventDefault();
-				props.onSaveZone(note);
-			}}
-		>
-			<div className="flex items-center justify-between">
-				<strong>Suspected search zone</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-			<p>{formatDistance(props.tool.radiusMeters)} radius</p>
-			<div className="flex flex-wrap gap-2">
-				{[100, 250, 500, 1_000, 2_000].map((radius) => (
-					<button
-						className="min-h-11 rounded border px-3"
-						key={radius}
-						onClick={() =>
-							props.onToolChange({ ...zone, radiusMeters: radius })
-						}
-						type="button"
-					>
-						{formatDistance(radius)}
-					</button>
-				))}
-			</div>
-			<textarea
-				className="min-h-20 w-full rounded border p-3"
-				onChange={(event) => setNote(event.target.value)}
-				placeholder="Team note"
-				value={note}
-			/>
-			<div className="flex gap-2">
-				<button className="min-h-11 rounded border px-4" type="submit">
-					Declare zone
-				</button>
-				<button
-					className="min-h-11 rounded border px-4"
-					onClick={props.onClearZone}
-					type="button"
-				>
-					Clear existing
-				</button>
-			</div>
-		</form>
-	);
-}
-
-function ActivePrompt({
-	name,
-	onCancel,
-}: {
-	readonly name: string;
-	readonly onCancel: () => void;
-}) {
-	return (
-		<div className="pointer-events-auto flex items-center justify-between rounded bg-surface/95 p-3 shadow">
-			<strong>{name}: tap the map</strong>
-			<button className="min-h-11 px-3" onClick={onCancel} type="button">
-				Cancel
-			</button>
-		</div>
-	);
-}
-
-function ConstraintConfirmSheet(props: MapToolSheetProps) {
-	const vertexCount =
-		props.tool.kind === "drawingPolygonConstraint"
-			? props.tool.ring.length
-			: null;
-	let suggestedName = "";
-	if (props.tool.kind === "pickingBoundaryConstraint") {
-		const id = props.tool.selectedId;
-		suggestedName = props.boundaries.find((row) => row.id === id)?.name ?? "";
-	}
-	const [name, setName] = useState(suggestedName);
-	return (
-		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
-			<div className="flex items-center justify-between">
-				<strong>They are…</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-			{vertexCount !== null && (
-				<p className="text-sm">
-					<span data-testid="constraint-vertex-count">{vertexCount}</span>{" "}
-					points
-				</p>
+			<ActionButton type="submit">Save pin</ActionButton>
+			{pin && (
+				<ActionButton onClick={onDeletePin} tone="danger" type="button">
+					Delete
+				</ActionButton>
 			)}
-			<label className="mt-2 block">
-				<span className="sr-only">Constraint name</span>
-				<input
-					className="min-h-11 w-full rounded border px-3"
-					data-testid="constraint-name"
-					maxLength={80}
-					onChange={(event) => setName(event.target.value)}
-					placeholder="Name (optional)"
-					value={name}
-				/>
-			</label>
-			<div className="mt-2 flex flex-wrap gap-2">
-				<button
-					className="min-h-11 rounded border px-3"
-					data-testid="they-are-inside"
-					onClick={() => props.onCommitConstraint("include", name)}
-					type="button"
+		</form>
+	);
+}
+
+function ZoneForm(props: MapToolSheetProps & { readonly open: boolean }) {
+	const [note, setNote] = useState("");
+	const zone = props.tool.kind === "placingZone" ? props.tool : null;
+	return (
+		<Sheet
+			onClose={props.onCancel}
+			open={props.open}
+			testId="zone-sheet"
+			title="Suspected search zone"
+		>
+			{zone && (
+				<form
+					className="flex flex-col gap-3"
+					onSubmit={(event) => {
+						event.preventDefault();
+						props.onSaveZone(note);
+					}}
 				>
-					They are inside this
-				</button>
-				<button
-					className="min-h-11 rounded border px-3"
-					data-testid="they-are-outside"
-					onClick={() => props.onCommitConstraint("exclude", name)}
-					type="button"
-				>
-					They are outside this
-				</button>
-				{props.tool.kind === "drawingPolygonConstraint" && (
-					<button
-						className="min-h-11 rounded border px-3"
-						disabled={props.tool.ring.length === 0}
-						onClick={props.onUndoPolygonVertex}
+					<p className="font-mono text-sm">
+						{formatDistance(zone.radiusMeters)} radius
+					</p>
+					<div className="flex flex-wrap gap-2">
+						{[100, 250, 500, 1_000, 2_000].map((radius) => (
+							<button
+								className="min-h-11 rounded-control border border-hairline px-3"
+								key={radius}
+								onClick={() =>
+									props.onToolChange({ ...zone, radiusMeters: radius })
+								}
+								type="button"
+							>
+								{formatDistance(radius)}
+							</button>
+						))}
+					</div>
+					<label className="flex min-h-22 flex-col gap-1 rounded-tile border-2 border-hairline-strong bg-surface px-3.5 py-2">
+						<span className="eyebrow">Note</span>
+						<textarea
+							className="min-h-16 w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-faint"
+							onChange={(event) => setNote(event.target.value)}
+							placeholder="Team note"
+							value={note}
+						/>
+					</label>
+					<ActionButton type="submit">Declare zone</ActionButton>
+					<ActionButton
+						onClick={props.onClearZone}
+						tone="secondary"
 						type="button"
 					>
-						Undo last point
-					</button>
-				)}
-				{props.tool.kind === "pickingBoundaryConstraint" && (
-					<button
-						className="min-h-11 rounded border px-3"
-						onClick={() => props.onSelectBoundary(null)}
-						type="button"
-					>
-						Pick another
-					</button>
-				)}
-			</div>
-		</section>
+						Clear existing
+					</ActionButton>
+				</form>
+			)}
+		</Sheet>
 	);
 }
 
@@ -588,181 +286,134 @@ function boundarySlug(name: string): string {
 		.replace(/^-|-$/g, "");
 }
 
-function BoundaryPickerSheet(props: MapToolSheetProps) {
+function BoundaryPickerSheet(
+	props: MapToolSheetProps & { readonly open: boolean },
+) {
 	const [query, setQuery] = useState("");
-	if (props.tool.kind !== "pickingBoundaryConstraint") return null;
-	const title = props.tool.adminLevel === 9 ? "Bezirk" : "Ortsteil";
+	const picking =
+		props.tool.kind === "pickingBoundaryConstraint" ? props.tool : null;
+	const levels = picking?.levels ?? [9, 10];
 	const folded = query.trim().toLocaleLowerCase("de");
-	const rows = folded
-		? props.boundaries.filter((row) =>
-				row.name.toLocaleLowerCase("de").includes(folded),
-			)
-		: props.boundaries;
+	const rows = props.boundaries.filter((row) => {
+		if (row.adminLevel !== 9 && row.adminLevel !== 10) return false;
+		if (!levels.includes(row.adminLevel)) return false;
+		if (!folded) return true;
+		return row.name.toLocaleLowerCase("de").includes(folded);
+	});
 	return (
-		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
-			<div className="flex items-center justify-between">
-				<strong>{title}</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-			<p className="text-sm">Tap the map or pick from the list.</p>
-			<label className="mt-2 block">
-				<span className="sr-only">Search {title}</span>
-				<input
-					className="min-h-11 w-full rounded border px-3"
-					data-testid="boundary-search"
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder={`Search ${title}`}
-					type="search"
-					value={query}
+		<Sheet
+			onClose={props.onCancel}
+			open={props.open}
+			testId="boundary-sheet"
+			title="Pick a place"
+		>
+			<div
+				className="grid shrink-0 grid-cols-2 gap-1 rounded-[15px] border border-hairline bg-surface p-1"
+				data-testid="boundary-filters"
+			>
+				<FilterChip
+					label="Bezirk"
+					on={levels.includes(9)}
+					onClick={() => {
+						if (!picking) return;
+						props.onToolChange({
+							...picking,
+							levels: toggleBoundaryLevel(picking.levels, 9),
+							selectedId: null,
+						});
+					}}
+					testId="boundary-level-9"
 				/>
-			</label>
+				<FilterChip
+					label="Ortsteil"
+					on={levels.includes(10)}
+					onClick={() => {
+						if (!picking) return;
+						props.onToolChange({
+							...picking,
+							levels: toggleBoundaryLevel(picking.levels, 10),
+							selectedId: null,
+						});
+					}}
+					testId="add-ortsteil-constraint"
+				/>
+			</div>
+			<Field
+				data-testid="boundary-search"
+				label="Find a place"
+				onChange={(event) => setQuery(event.target.value)}
+				placeholder="Mitte, Prenzlauer Berg…"
+				type="search"
+				value={query}
+			/>
 			{rows.length === 0 ? (
-				<p className="mt-2 text-sm">None in view.</p>
+				<p className="text-ink-dim text-sm">
+					{levels.length === 0
+						? "Turn a kind on to search it."
+						: query.trim()
+							? `Nothing named “${query.trim()}”.`
+							: "None in view."}
+				</p>
 			) : (
-				<ul className="mt-2 max-h-48 overflow-y-auto">
-					{rows.map((row) => (
-						<li key={row.id}>
+				<div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+					{rows.map((row) => {
+						const on = row.id === picking?.selectedId;
+						return (
 							<button
-								className="min-h-11 w-full rounded px-2 text-left hover:bg-surface-raised"
+								className={cn(
+									"flex w-full shrink-0 items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+									on ? "border-action" : "border-hairline",
+								)}
 								data-testid={`boundary-${row.adminLevel}-${boundarySlug(row.name)}`}
+								key={row.id}
 								onClick={() => props.onSelectBoundary(row.id)}
 								type="button"
 							>
-								{row.name}
-								<span className="ml-2 text-xs">{row.label}</span>
+								<span className="min-w-0 flex-1">
+									<b className="block text-[0.85rem] leading-tight">
+										{row.name}
+									</b>
+									<span className="eyebrow mt-0.5 block text-ink-dim">
+										{row.label}
+									</span>
+								</span>
+								<span className="eyebrow text-ink-dim">
+									{on ? "Picked" : "Place"}
+								</span>
 							</button>
-						</li>
-					))}
-				</ul>
+						);
+					})}
+				</div>
 			)}
-		</section>
+		</Sheet>
 	);
 }
 
-function PolygonConstraintPrompt(props: MapToolSheetProps) {
-	const count =
-		props.tool.kind === "drawingPolygonConstraint" ? props.tool.ring.length : 0;
+function FilterChip({
+	label,
+	on,
+	onClick,
+	testId,
+}: {
+	readonly label: string;
+	readonly on: boolean;
+	readonly onClick: () => void;
+	readonly testId: string;
+}) {
 	return (
-		<div className="pointer-events-auto flex items-center justify-between gap-2 rounded bg-surface/95 p-3 shadow">
-			<strong>
-				Tap to add, tap an edge to insert
-				<span
-					className="ml-2 font-normal text-sm"
-					data-testid="constraint-vertex-count"
-				>
-					{count}
-				</span>
-			</strong>
-			<div className="flex gap-2">
-				<button
-					className="min-h-11 rounded border px-3"
-					disabled={count === 0}
-					onClick={props.onUndoPolygonVertex}
-					type="button"
-				>
-					Undo
-				</button>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Cancel
-				</button>
-			</div>
-		</div>
-	);
-}
-
-function ConstraintListSheet(props: MapToolSheetProps) {
-	return (
-		<section className="pointer-events-auto rounded bg-surface/95 p-3 shadow">
-			<div className="flex items-center justify-between">
-				<strong>Constraints</strong>
-				<button
-					className="min-h-11 px-3"
-					onClick={props.onCancel}
-					type="button"
-				>
-					Done
-				</button>
-			</div>
-			{props.constraints.length === 0 ? (
-				<p className="text-sm">None yet.</p>
-			) : (
-				<ul className="mt-2 space-y-2">
-					{props.constraints.map((row) => (
-						<li
-							className="flex items-center gap-2"
-							data-testid={`constraint-${row.id}`}
-							key={row.id}
-						>
-							<label className="flex-1">
-								<span className="sr-only">Constraint name</span>
-								<input
-									className="min-h-11 w-full rounded border px-2 text-sm"
-									data-testid={`constraint-name-${row.id}`}
-									defaultValue={row.name ?? ""}
-									key={`${row.id}:${row.name ?? ""}`}
-									maxLength={80}
-									onBlur={(event) => {
-										const next = event.target.value.trim();
-										if (next !== (row.name ?? "")) {
-											props.onRenameConstraint(row.id, next);
-										}
-									}}
-									placeholder={`${row.kind} · ${row.mode}`}
-								/>
-							</label>
-							<span className="text-sm">
-								{row.mode}
-								{row.source === "answer" ? " · from an answer" : ""}
-								{row.enabled ? "" : " · off"}
-							</span>
-							<button
-								className="min-h-11 rounded border px-3"
-								data-testid={`toggle-constraint-${row.id}`}
-								onClick={() => props.onToggleConstraint(row.id, !row.enabled)}
-								type="button"
-							>
-								{row.enabled ? "Disable" : "Enable"}
-							</button>
-							{row.source === "manual" && (
-								<button
-									className="min-h-11 rounded border px-3"
-									data-testid={`remove-constraint-${row.id}`}
-									onClick={() => props.onRemoveConstraint(row.id)}
-									type="button"
-								>
-									Delete
-								</button>
-							)}
-						</li>
-					))}
-				</ul>
+		<button
+			aria-pressed={on}
+			className={cn(
+				"rounded-[11px] py-2 font-mono text-[0.6rem] uppercase tracking-[0.08em]",
+				on ? "bg-action font-bold text-action-ink" : "text-ink-dim",
 			)}
-		</section>
+			data-testid={testId}
+			onClick={onClick}
+			type="button"
+		>
+			{label}
+		</button>
 	);
-}
-
-function toolName(tool: MapTool): string {
-	if (tool.kind === "placingPin") return "Drop pin";
-	if (tool.kind === "placingZone") return "Search zone";
-	if (tool.kind === "editingPin") return "Edit pin";
-	if (tool.kind === "measure") return "Measure";
-	if (tool.kind === "drawingRadiusConstraint") return "Radius constraint";
-	if (tool.kind === "drawingPolygonConstraint") return "Shape constraint";
-	if (tool.kind === "pickingBoundaryConstraint") {
-		return tool.adminLevel === 9 ? "Bezirk" : "Ortsteil";
-	}
-	if (tool.kind === "listingConstraints") return "Constraints";
-	return "Map";
 }
 
 function searchKey(result: SearchResult): string {
@@ -787,7 +438,7 @@ export function CoordinateCopy({ point }: { readonly point: LngLat }) {
 			<span className="select-all">{text}</span>
 			{available ? (
 				<button
-					className="min-h-11 rounded border px-2"
+					className="min-h-11 rounded-control border border-hairline px-2"
 					onClick={() =>
 						void webPlatform.clipboard
 							.write(text)

@@ -101,8 +101,13 @@ async function call<T>(
 export function fetchCatalogStops(
 	session: Session,
 	bbox: readonly [number, number, number, number],
+	options?: { readonly all?: boolean },
 ): Promise<CatalogView> {
-	return call<CatalogView>(`/catalog/stops?bbox=${bbox.join(",")}`, session);
+	const query = options?.all ? "&limit=all" : "";
+	return call<CatalogView>(
+		`/catalog/stops?bbox=${bbox.join(",")}${query}`,
+		session,
+	);
 }
 
 export interface CatalogBoundaryRow {

@@ -17,11 +17,10 @@ interface LobbyMenuProps {
 	onBriefing: () => void;
 	onHostToggle: () => void;
 	onGameArea: () => void;
+	onTransit: () => void;
+	onHidingZone: () => void;
 	onLeave: () => void;
 	leaving: boolean;
-	/** Null once a round is running: a clock that has started is not a setting. */
-	hidingMinutes: string | null;
-	onHidingMinutes: (minutes: string) => void;
 }
 
 export function LobbyMenu({
@@ -31,10 +30,10 @@ export function LobbyMenu({
 	onBriefing,
 	onHostToggle,
 	onGameArea,
+	onTransit,
+	onHidingZone,
 	onLeave,
 	leaving,
-	hidingMinutes,
-	onHidingMinutes,
 }: LobbyMenuProps) {
 	return (
 		<Sheet
@@ -69,22 +68,6 @@ export function LobbyMenu({
 				{amHost ? "Stop hosting" : "Be a host too"}
 			</ActionButton>
 
-			{amHost && hidingMinutes !== null && (
-				<label className="flex min-h-tap-comfortable items-center gap-3 rounded-control border border-hairline bg-surface px-3">
-					<span className="eyebrow flex-1">Time to hide</span>
-					<input
-						className="num w-16 rounded-control border border-hairline bg-surface px-2 py-1 text-right text-ink"
-						data-testid="hiding-duration"
-						inputMode="numeric"
-						min={1}
-						onChange={(event) => onHidingMinutes(event.target.value)}
-						type="number"
-						value={hidingMinutes}
-					/>
-					<span className="eyebrow">min</span>
-				</label>
-			)}
-
 			{/* The area is a host act. The editor lives under setup so it can
 			    reuse the pieces the wizard already holds. */}
 			{amHost && (
@@ -94,6 +77,26 @@ export function LobbyMenu({
 					tone="secondary"
 				>
 					Game area
+				</ActionButton>
+			)}
+
+			{amHost && (
+				<ActionButton
+					data-testid="open-transit"
+					onClick={onTransit}
+					tone="secondary"
+				>
+					Transit
+				</ActionButton>
+			)}
+
+			{amHost && (
+				<ActionButton
+					data-testid="open-hiding-zone"
+					onClick={onHidingZone}
+					tone="secondary"
+				>
+					Hiding zone
 				</ActionButton>
 			)}
 

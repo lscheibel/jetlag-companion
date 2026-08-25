@@ -16,8 +16,10 @@ interface LobbyHeaderProps {
 	title: string;
 	players: number;
 	teams: number;
-	onInvite: () => void;
-	onMenu: () => void;
+	onInvite?: () => void;
+	onMenu?: () => void;
+	/** Clock, readout — sits with the invite and menu controls. */
+	status?: ReactNode;
 }
 
 export function LobbyHeader({
@@ -26,6 +28,7 @@ export function LobbyHeader({
 	teams,
 	onInvite,
 	onMenu,
+	status,
 }: LobbyHeaderProps) {
 	return (
 		<ScreenHeader
@@ -33,33 +36,38 @@ export function LobbyHeader({
 			title={title}
 			trailing={
 				<div className="flex shrink-0 items-center gap-1.5">
-					<HeaderButton
-						label="Ask people in"
-						onClick={onInvite}
-						testId="show-qr"
-					>
-						<svg
-							aria-hidden="true"
-							fill="none"
-							height="19"
-							stroke="currentColor"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth="2"
-							viewBox="0 0 24 24"
-							width="19"
+					{status}
+					{onInvite && (
+						<HeaderButton
+							label="Ask people in"
+							onClick={onInvite}
+							testId="show-qr"
 						>
-							<title>Ask people in</title>
-							<path d="M12 16V4" />
-							<path d="M8 8l4-4 4 4" />
-							<path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
-						</svg>
-					</HeaderButton>
-					<HeaderButton label="More" onClick={onMenu} testId="lobby-menu">
-						<span aria-hidden className="pb-1 text-lg leading-none">
-							⋯
-						</span>
-					</HeaderButton>
+							<svg
+								aria-hidden="true"
+								fill="none"
+								height="19"
+								stroke="currentColor"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth="2"
+								viewBox="0 0 24 24"
+								width="19"
+							>
+								<title>Ask people in</title>
+								<path d="M12 16V4" />
+								<path d="M8 8l4-4 4 4" />
+								<path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+							</svg>
+						</HeaderButton>
+					)}
+					{onMenu && (
+						<HeaderButton label="More" onClick={onMenu} testId="lobby-menu">
+							<span aria-hidden className="pb-1 text-lg leading-none">
+								⋯
+							</span>
+						</HeaderButton>
+					)}
 				</div>
 			}
 		/>

@@ -1,8 +1,18 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { fadeOnly, riseFromBottom, scrimFade } from "../lib/motion";
 import { cn } from "../lib/utils";
+
+/**
+ * Keep the last value while `active` is false, so a sheet can animate out
+ * with the content it had when it was open. Unmounting on close skips exit.
+ */
+export function useHeldValue<T>(active: boolean, value: T): T {
+	const held = useRef(value);
+	if (active) held.current = value;
+	return active ? value : held.current;
+}
 
 /**
  * A panel that rises from the bottom edge over whatever it interrupts.
@@ -62,28 +72,36 @@ export function Sheet({
 	return (
 		<AnimatePresence>
 			{open && (
-				<div className="fixed inset-0 z-50 flex flex-col justify-end">
+				<motion.div
+					animate="shown"
+					className="fixed inset-0 z-50 flex flex-col justify-end"
+					exit="leaving"
+					initial="hidden"
+					key="sheet"
+					variants={{
+						hidden: {},
+						shown: {},
+						leaving: { transition: { when: "afterChildren" } },
+					}}
+				>
 					<motion.button
-						animate="shown"
 						aria-label="Close"
 						className="absolute inset-0 bg-scrim"
 						data-testid={`${testId}-scrim`}
-						exit="leaving"
-						initial="hidden"
-						onClick={onClose}
+						onPointerDown={(event) => {
+							event.preventDefault();
+							onClose();
+						}}
 						type="button"
 						variants={scrimFade}
 					/>
 					<motion.div
-						animate="shown"
 						className={cn(
 							"relative flex max-h-[86dvh] flex-col gap-3 rounded-t-sheet border-hairline border-t bg-surface",
 							"px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_40px_-20px_rgb(0_0_0/0.6)]",
 							className,
 						)}
 						data-testid={testId}
-						exit="leaving"
-						initial="hidden"
 						variants={panelVariants}
 					>
 						<div
@@ -97,27 +115,27 @@ export function Sheet({
 									<h2 className="truncate text-lg">{title}</h2>
 								</div>
 								{closable && (
-								<button
-									aria-label="Close"
-									className="-mr-1 flex size-tap shrink-0 items-center justify-center rounded-control text-ink-dim transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90"
-									data-testid={`${testId}-close`}
-									onClick={onClose}
-									type="button"
-								>
-									<svg
-										aria-hidden="true"
-										fill="none"
-										height="20"
-										stroke="currentColor"
-										strokeLinecap="round"
-										strokeWidth="2.5"
-										viewBox="0 0 24 24"
-										width="20"
+									<button
+										aria-label="Close"
+										className="-mr-1 flex size-tap shrink-0 items-center justify-center rounded-control text-ink-dim transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90"
+										data-testid={`${testId}-close`}
+										onClick={onClose}
+										type="button"
 									>
-										<title>Close</title>
-										<path d="M6 6l12 12M18 6L6 18" />
-									</svg>
-								</button>
+										<svg
+											aria-hidden="true"
+											fill="none"
+											height="20"
+											stroke="currentColor"
+											strokeLinecap="round"
+											strokeWidth="2.5"
+											viewBox="0 0 24 24"
+											width="20"
+										>
+											<title>Close</title>
+											<path d="M6 6l12 12M18 6L6 18" />
+										</svg>
+									</button>
 								)}
 							</div>
 						)}
@@ -126,7 +144,7 @@ export function Sheet({
 						</div>
 						{actions && <div className="flex flex-col gap-2">{actions}</div>}
 					</motion.div>
-				</div>
+				</motion.div>
 			)}
 		</AnimatePresence>
 	);

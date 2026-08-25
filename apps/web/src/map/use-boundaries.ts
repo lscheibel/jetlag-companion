@@ -18,26 +18,28 @@ import type { Session } from "../session";
 export function useBoundaries(
 	session: Session,
 	bbox: readonly [number, number, number, number] | null,
-	adminLevel: 4 | 9 | 10 | null,
+	adminLevels: readonly (4 | 9 | 10)[],
 ): readonly CatalogBoundaryRow[] {
 	const [rows, setRows] = useState<readonly CatalogBoundaryRow[]>([]);
-	const exact = useRef({ bbox, adminLevel });
-	exact.current = { bbox, adminLevel };
+	const exact = useRef({ bbox, adminLevels });
+	exact.current = { bbox, adminLevels };
 	const key =
-		bbox && adminLevel
-			? `${adminLevel}:${bbox.map((n) => n.toFixed(3)).join(",")}`
+		bbox && adminLevels.length > 0
+			? `${[...adminLevels].sort().join(",")}:${bbox.map((n) => n.toFixed(3)).join(",")}`
 			: null;
 
 	useEffect(() => {
-		const { bbox: box, adminLevel: level } = exact.current;
-		if (!key || !box || !level) {
+		const { bbox: box, adminLevels: levels } = exact.current;
+		if (!key || !box || levels.length === 0) {
 			setRows([]);
 			return;
 		}
 		let live = true;
-		fetchCatalogBoundaries(session, box, level)
-			.then((result) => {
-				if (live) setRows(result.boundaries);
+		Promise.all(
+			levels.map((level) => fetchCatalogBoundaries(session, box, level)),
+		)
+			.then((results) => {
+				if (live) setRows(results.flatMap((result) => result.boundaries));
 			})
 			.catch(() => {
 				if (live) setRows([]);

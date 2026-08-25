@@ -111,17 +111,20 @@ export function TeamDrawer({
 	}
 
 	function submit() {
-		if (name.length === 0) return;
+		if (editable && name.length === 0) return;
 		if (team) {
-			updateTeam(team.id, {
-				name,
-				color: value.color,
-				emoji: value.emoji,
-			});
+			if (editable) {
+				updateTeam(team.id, {
+					name,
+					color: value.color,
+					emoji: value.emoji,
+				});
+			}
 			if (amHost && value.role && value.role !== team.role) {
 				saveSide(team.id, value.role);
 			}
 		} else {
+			if (name.length === 0) return;
 			const teamId = createTeam({
 				name,
 				color: value.color,
@@ -151,28 +154,27 @@ export function TeamDrawer({
 							Remove
 						</ActionButton>
 					)}
-					{editable ? (
+					{team && !mine && (
+						<ActionButton
+							className="flex-1"
+							data-testid={`join-${team.name}`}
+							onClick={() => {
+								onJoin();
+								close();
+							}}
+						>
+							Join team
+						</ActionButton>
+					)}
+					{(editable || amHost) && (
 						<ActionButton
 							className={team && amHost ? "flex-[2]" : "flex-1"}
 							data-testid="team-editor-done"
-							disabled={name.length === 0}
+							disabled={editable && name.length === 0}
 							onClick={submit}
 						>
 							{team ? "Save" : "Create team"}
 						</ActionButton>
-					) : (
-						team && (
-							<ActionButton
-								className={amHost ? "flex-[2]" : "flex-1"}
-								data-testid={`join-${team.name}`}
-								onClick={() => {
-									onJoin();
-									close();
-								}}
-							>
-								Join team
-							</ActionButton>
-						)
 					)}
 				</div>
 			}

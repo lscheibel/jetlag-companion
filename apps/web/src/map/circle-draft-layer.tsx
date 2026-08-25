@@ -1,5 +1,6 @@
 import { circleLngLat, type LngLat, offsetLngLat } from "@zero-lag/geo";
 import { useMemo } from "react";
+import { yellowBlackLine } from "./draft-paint";
 import {
 	EMPTY_FEATURES,
 	lineFeature,
@@ -14,24 +15,18 @@ const MEASURE_FILL = [
 	{
 		id: "measure-fill",
 		type: "fill" as const,
-		paint: { "fill-color": "#0072B2", "fill-opacity": 0.14 },
+		paint: { "fill-color": "#ffe01f", "fill-opacity": 0.14 },
 	},
 ];
-const MEASURE_SPOKE = [
-	{
-		id: "measure-line",
-		type: "line" as const,
-		paint: { "line-color": "#0072B2", "line-width": 3 },
-	},
-];
+const MEASURE_SPOKE = yellowBlackLine("measure-line");
 const MEASURE_VERTICES = [
 	{
 		id: "measure-vertices",
 		type: "circle" as const,
 		paint: {
-			"circle-color": "#ffffff",
+			"circle-color": "#08111c",
 			"circle-radius": 8,
-			"circle-stroke-color": "#0072B2",
+			"circle-stroke-color": "#ffe01f",
 			"circle-stroke-width": 2,
 		},
 	},
@@ -40,31 +35,23 @@ const CONSTRAINT_FILL = [
 	{
 		id: "constraint-draft-fill",
 		type: "fill" as const,
-		paint: { "fill-color": "#111827", "fill-opacity": 0.12 },
+		paint: {
+			"fill-color": "#ffe01f",
+			"fill-opacity": 0.1,
+			"fill-outline-color": "rgba(0,0,0,0)",
+		},
 	},
 ];
-const CONSTRAINT_OUTLINE = [
-	{
-		id: "constraint-draft-outline",
-		type: "line" as const,
-		paint: { "line-color": "#111827", "line-width": 2 },
-	},
-];
-const CONSTRAINT_SPOKE = [
-	{
-		id: "constraint-draft-line",
-		type: "line" as const,
-		paint: { "line-color": "#111827", "line-width": 2 },
-	},
-];
+const CONSTRAINT_OUTLINE = yellowBlackLine("constraint-draft-outline");
+const CONSTRAINT_SPOKE = yellowBlackLine("constraint-draft-line");
 const CONSTRAINT_VERTICES = [
 	{
 		id: "constraint-draft-vertices",
 		type: "circle" as const,
 		paint: {
-			"circle-color": "#ffffff",
+			"circle-color": "#08111c",
 			"circle-radius": 8,
-			"circle-stroke-color": "#111827",
+			"circle-stroke-color": "#ffe01f",
 			"circle-stroke-width": 2,
 		},
 	},

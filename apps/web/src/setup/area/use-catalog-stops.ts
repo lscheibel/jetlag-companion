@@ -30,7 +30,7 @@ export function useCatalogStops(
 			return;
 		}
 		let live = true;
-		fetchCatalogStops(session, bbox)
+		fetchCatalogStops(session, bbox, { all: true })
 			.then((result) => {
 				if (live) setView({ stops: result.stops, truncated: result.truncated });
 			})

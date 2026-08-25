@@ -204,6 +204,7 @@ test("6. a game plays from its own rows, with the catalog unreachable", async ({
 
 	await openMap(player, code);
 	await waitForSync(player);
+	await player.page.getByTestId("map-search-tool").click();
 	await player.page.getByTestId("map-search").fill(inside.name);
 	await expect(
 		player.page.getByRole("button", { name: escapeRegExp(inside.name) }),
