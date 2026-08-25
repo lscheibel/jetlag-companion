@@ -133,10 +133,6 @@ function ConstraintDraft({
 		(tool.kind === "drawingRadiusConstraint" && tool.center !== null) ||
 		(tool.kind === "drawingPolygonConstraint" && tool.ring.length >= 3) ||
 		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId !== null);
-	const note =
-		tool.kind === "drawingRadiusConstraint" && tool.center === null
-			? "Tap to place the centre, then drag the handles. The map still pans."
-			: null;
 	const pickAnother =
 		tool.kind === "pickingBoundaryConstraint" && ready
 			? () => onSelectBoundary(null)
@@ -196,7 +192,6 @@ function ConstraintDraft({
 						value={formatZone(tool.radiusMeters)}
 					/>
 				)}
-				{note && <p className="text-ink-dim text-xs leading-snug">{note}</p>}
 				{ready && (
 					<Field
 						data-testid="constraint-name"

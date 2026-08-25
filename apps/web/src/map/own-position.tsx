@@ -103,9 +103,7 @@ function AccuracyRing({ fix }: { fix: PositionSnapshot | null }) {
  * when they cannot be served by a picture. m2-spec §11.
  */
 export function OwnPositionReadout({ fix }: { fix: PositionSnapshot | null }) {
-	if (!fix || fix.source === "unavailable") {
-		return <p data-testid="own-readout">No fix from this device yet.</p>;
-	}
+	if (!fix || fix.source === "unavailable") return null;
 	return (
 		<p data-testid="own-readout">
 			{formatCoordinates([fix.lng, fix.lat])} ·{" "}

@@ -99,6 +99,8 @@ export interface PlatformAdapter {
 	readonly clipboard: {
 		capability(): Capability;
 		write(text: string): Promise<boolean>;
+		/** The system clipboard, or null when the browser refuses the read. */
+		read(): Promise<string | null>;
 	};
 	/**
 	 * Handing the link to whatever the phone can hand it to. m1-spec §8.

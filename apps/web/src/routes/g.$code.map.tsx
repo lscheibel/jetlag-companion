@@ -10,8 +10,7 @@ import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
 import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
-import { useMemo, useState } from "react";
-import { FoundSheet } from "../game/found-sheet";
+import { useEffect, useMemo, useState } from "react";
 import { GameTabs } from "../game/game-tabs";
 import { HiderTeamSheet } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
@@ -32,6 +31,7 @@ import type { RadiusDraft, RingDraft } from "../map/draw-gestures";
 import { DrawLayer } from "../map/draw-layer";
 import { EliminatedLayer } from "../map/eliminated-layer";
 import { GameAreaLayer } from "../map/game-area-layer";
+import { HidingZoneLayer } from "../map/hiding-zone-layer";
 import { MapBar } from "../map/map-bar";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
 import { MapControls } from "../map/map-controls";
@@ -41,10 +41,11 @@ import {
 	type PointerMode,
 } from "../map/map-interactions";
 import {
+	ConstraintsPickerSheet,
 	CutsCard,
 	GpsHelpSheet,
 	MeasureCard,
-	PinPromptCard,
+	PinCard,
 } from "../map/map-overlay";
 import type { GestureCause } from "../map/map-pointer";
 import { MapHud } from "../map/map-rail";
@@ -52,7 +53,7 @@ import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
 import { OwnPosition, OwnPositionReadout } from "../map/own-position";
-import { PinLayer } from "../map/pin-layer";
+import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import {
@@ -69,6 +70,7 @@ import {
 	nearestStopPx,
 	type SearchableStop,
 	type SearchResult,
+	STOP_TAP_PX,
 	stopPosition,
 } from "../map/toolkit";
 import { useBlindness } from "../map/use-blindness";
@@ -82,11 +84,7 @@ import { stepZoneMeters } from "../setup/game-size";
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
 
 function pointerMode(tool: MapTool): PointerMode {
-	if (
-		tool.kind === "editingPin" ||
-		tool.kind === "listingConstraints" ||
-		tool.kind === "searching"
-	) {
+	if (tool.kind === "listingConstraints" || tool.kind === "searching") {
 		return { kind: "off" };
 	}
 	if (tool.kind === "none") {
@@ -149,6 +147,7 @@ function MapScreen() {
 	const [searchZones] = useQuery(queries.searchZones());
 	const [rounds] = useQuery(queries.rounds());
 	const [constraints] = useQuery(queries.constraints());
+	const [commitments] = useQuery(queries.commitments());
 
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
@@ -177,6 +176,23 @@ function MapScreen() {
 	const [hiderSheetOpen, setHiderSheetOpen] = useState(false);
 	const [cut, setCut] = useState(false);
 	const [gpsHelpOpen, setGpsHelpOpen] = useState(false);
+	const [constraintPickerOpen, setConstraintPickerOpen] = useState(false);
+	const [hidingPick, setHidingPick] = useState<{
+		readonly roundId: string;
+		readonly stopId: string;
+	} | null>(null);
+
+	useEffect(() => {
+		if (
+			tool.kind === "searching" ||
+			tool.kind === "measure" ||
+			tool.kind === "placingPin" ||
+			tool.kind === "editingPin" ||
+			tool.kind === "placingZone"
+		) {
+			setConstraintPickerOpen(false);
+		}
+	}, [tool.kind]);
 
 	const headingDeg = useCompassHeading();
 	const blindness = useBlindness(session.gameId);
@@ -277,7 +293,24 @@ function MapScreen() {
 	);
 	const canEditConstraints =
 		role.role === "seeker" && role.teamId !== null && role.roundId !== null;
+	const isHidingHider = role.role === "hider" && role.roundStatus === "hiding";
 	const defaultRadiusMeters = games[0]?.mapConfig?.hidingRadiusMeters ?? 800;
+	const hidingCommitment = commitments.find(
+		(row) => row.roundId === role.roundId && row.hiderTeamId === role.teamId,
+	);
+	const hidingPickId =
+		hidingPick && hidingPick.roundId === role.roundId
+			? hidingPick.stopId
+			: null;
+	const hidingDefaultId =
+		searchableStops.find((stop) => stop.insideArea)?.stopId ??
+		searchableStops[0]?.stopId ??
+		null;
+	const hidingStopId = isHidingHider
+		? (hidingPickId ?? hidingCommitment?.stopId ?? hidingDefaultId)
+		: (hidingCommitment?.stopId ?? null);
+	const hidingStop =
+		searchableStops.find((stop) => stop.stopId === hidingStopId) ?? null;
 
 	const pickingLevels =
 		tool.kind === "pickingBoundaryConstraint" ? BOUNDARY_CONSTRAINT_LEVELS : [];
@@ -301,17 +334,22 @@ function MapScreen() {
 		setTool({ kind: "none" });
 		setDraftPoint(null);
 		setDraftRadius(null);
+		setConstraintPickerOpen(false);
 	};
 
 	const changeTool = (next: MapTool) => {
-		if (
-			next.kind === "placingPin" &&
-			tool.kind === "measure" &&
-			tool.measure.kind === "radius" &&
-			tool.measure.center
-		) {
-			setDraftPoint(tool.measure.center);
-			setDraftRadius(tool.measure.radiusMeters);
+		if (next.kind === "placingPin") {
+			if (
+				tool.kind === "measure" &&
+				tool.measure.kind === "radius" &&
+				tool.measure.center
+			) {
+				setDraftPoint(tool.measure.center);
+				setDraftRadius(tool.measure.radiusMeters);
+			} else if (tool.kind !== "editingPin") {
+				setDraftPoint(null);
+				setDraftRadius(null);
+			}
 		}
 		if (next.kind !== "none") {
 			setSelectedStopId(null);
@@ -324,21 +362,31 @@ function MapScreen() {
 		project: (lngLat: LngLat) => { x: number; y: number },
 		screen: { x: number; y: number },
 	) => {
-		if (
-			tool.kind === "editingPin" ||
-			tool.kind === "listingConstraints" ||
-			tool.kind === "searching"
-		) {
+		if (tool.kind === "listingConstraints" || tool.kind === "searching") {
 			return;
 		}
 		if (tool.kind === "none") {
-			const hit = nearestStopPx(searchableStops, screen, project);
+			const hit = nearestStopPx(
+				searchableStops,
+				screen,
+				project,
+				isHidingHider ? 36 : STOP_TAP_PX,
+			);
+			if (isHidingHider) {
+				if (hit) {
+					webPlatform.haptics.vibrate([10]);
+					setHidingPick(
+						role.roundId ? { roundId: role.roundId, stopId: hit.stopId } : null,
+					);
+				}
+				return;
+			}
 			setSelectedStopId(hit?.stopId ?? null);
 			if (hit) setSelectedId(null);
 			return;
 		}
 		webPlatform.haptics.vibrate([10]);
-		if (tool.kind === "placingPin") {
+		if (tool.kind === "placingPin" || tool.kind === "editingPin") {
 			setDraftPoint(point);
 			return;
 		}
@@ -435,6 +483,8 @@ function MapScreen() {
 		note: string;
 		color: string;
 		radiusMeters: number | null;
+		lng: number;
+		lat: number;
 	}) => {
 		if (!role.teamId) return;
 		if (editingPin) {
@@ -442,19 +492,26 @@ function MapScreen() {
 				mutators.pin.update({
 					...event(),
 					pinId: editingPin.id,
-					...input,
+					label: input.label,
+					note: input.note,
+					color: input.color,
+					radiusMeters: input.radiusMeters,
+					lng: input.lng,
+					lat: input.lat,
 				}),
 			);
-		} else if (draftPoint) {
+		} else {
 			void zero.mutate(
 				mutators.pin.create({
 					...event(),
 					pinId: crypto.randomUUID(),
 					teamId: role.teamId,
 					roundId: role.roundId,
-					lng: draftPoint[0],
-					lat: draftPoint[1],
-					...input,
+					lng: input.lng,
+					lat: input.lat,
+					label: input.label,
+					note: input.note,
+					color: input.color,
 					radiusMeters: draftRadius ?? input.radiusMeters,
 				}),
 			);
@@ -658,16 +715,33 @@ function MapScreen() {
 								: area
 						}
 					/>
+					{role.role === "hider" && (
+						<HidingZoneLayer
+							center={hidingStop ? [hidingStop.lng, hidingStop.lat] : null}
+							committed={hidingCommitment?.stopId === hidingStopId}
+							radiusMeters={defaultRadiusMeters}
+						/>
+					)}
 					<BuilderStopsLayer id="play-stops" stops={searchableStops} />
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
-						disabled={tool.kind !== "none"}
+						disabled={tool.kind !== "none" || isHidingHider}
+						omitId={editingPin?.id}
 						onSelect={(pinId) => {
+							const pin = pins.find((row) => row.id === pinId);
 							setSelectedStopId(null);
+							setDraftPoint(pin ? [pin.lng, pin.lat] : null);
 							setTool({ kind: "editingPin", pinId });
 						}}
 						pins={pins}
 					/>
+					{(tool.kind === "placingPin" || tool.kind === "editingPin") &&
+						draftPoint && (
+							<PinDraftMarker
+								color={editingPin?.color ?? myTeam?.color ?? "#0072B2"}
+								point={draftPoint}
+							/>
+						)}
 					<MeasureLayer measure={measure} />
 					{tool.kind === "drawingRadiusConstraint" && (
 						<ConstraintDraftLayer
@@ -722,9 +796,10 @@ function MapScreen() {
 						bounds={areaBBox}
 						camera={camera}
 						canEditConstraints={canEditConstraints}
-						defaultRadiusMeters={defaultRadiusMeters}
+						constraintsOpen={constraintPickerOpen}
 						hasFix={Boolean(ownFix && ownFix.source !== "unavailable")}
 						onCancel={cancelTool}
+						onConstraintsClick={() => setConstraintPickerOpen((open) => !open)}
 						onCycleCamera={() => {
 							if (!ownFix || ownFix.source === "unavailable") {
 								setGpsHelpOpen(true);
@@ -733,6 +808,7 @@ function MapScreen() {
 							setCamera((current) => nextCamera(current, hasCompass));
 						}}
 						onToolChange={changeTool}
+						playTools={!isHidingHider}
 						tool={tool}
 					/>
 				</MapCanvas>
@@ -741,15 +817,15 @@ function MapScreen() {
 					<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
 				)}
 
-				<Surface
-					className="absolute top-3 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
-					raised
-				>
-					<OwnPositionReadout fix={ownFix} />
-					{ownFix && ownFix.source !== "unavailable" && (
+				{ownFix && ownFix.source !== "unavailable" && (
+					<Surface
+						className="absolute top-3 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
+						raised
+					>
+						<OwnPositionReadout fix={ownFix} />
 						<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
-					)}
-				</Surface>
+					</Surface>
+				)}
 				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
 					<ZoneNotice fix={ownFix} role={role} />
 				</div>
@@ -788,13 +864,44 @@ function MapScreen() {
 								tool={tool}
 							/>
 						)}
-						{tool.kind === "placingPin" && !draftPoint && <PinPromptCard />}
+						{(tool.kind === "placingPin" || tool.kind === "editingPin") && (
+							<PinCard
+								draftPoint={draftPoint}
+								key={editingPin?.id ?? "new"}
+								onCancel={cancelTool}
+								onDelete={
+									editingPin
+										? () => {
+												void zero.mutate(
+													mutators.pin.delete({
+														...event(),
+														pinId: editingPin.id,
+													}),
+												);
+												cancelTool();
+											}
+										: null
+								}
+								onDraftPoint={setDraftPoint}
+								onSave={savePin}
+								pin={editingPin}
+								teamColor={myTeam?.color ?? "#0072B2"}
+							/>
+						)}
 						{tool.kind === "listingConstraints" && (
 							<CutsCard
 								constraints={constraintItems}
 								onRemove={removeConstraint}
 								onRename={renameConstraint}
 								onToggle={toggleConstraint}
+							/>
+						)}
+						{tool.kind === "none" && (
+							<HidingSheet
+								clockOffsetMs={ephemeral.clockOffsetMs ?? 0}
+								radiusMeters={defaultRadiusMeters}
+								role={role}
+								selectedStop={hidingStop}
 							/>
 						)}
 						{canEditConstraints && (
@@ -829,15 +936,22 @@ function MapScreen() {
 							/>
 						)}
 					</div>
-					<div className="pointer-events-auto max-w-sm">
-						{tool.kind === "none" && <HidingSheet role={role} />}
-						{tool.kind === "none" && (
-							<FoundSheet role={role} token={session.token} />
-						)}
-					</div>
 				</div>
 			</div>
 
+			{canEditConstraints && (
+				<ConstraintsPickerSheet
+					current={tool}
+					defaultRadiusMeters={defaultRadiusMeters}
+					onClose={() => setConstraintPickerOpen(false)}
+					onPick={(next) => {
+						setConstraintPickerOpen(false);
+						if (tool.kind === next.kind) cancelTool();
+						else changeTool(next);
+					}}
+					open={constraintPickerOpen}
+				/>
+			)}
 			<MapToolSheet
 				boundaries={visibleBoundaries}
 				canPlaceZone={
@@ -845,23 +959,9 @@ function MapScreen() {
 					role.teamId !== null &&
 					role.roundId !== null
 				}
-				draftPoint={draftPoint}
-				editingPin={editingPin}
 				stops={searchableStops}
 				onCancel={cancelTool}
 				onClearZone={clearZone}
-				onDeletePin={() => {
-					if (editingPin) {
-						void zero.mutate(
-							mutators.pin.delete({
-								...event(),
-								pinId: editingPin.id,
-							}),
-						);
-					}
-					cancelTool();
-				}}
-				onSavePin={savePin}
 				onSaveZone={saveZone}
 				onSelectBoundary={(id) => {
 					if (tool.kind !== "pickingBoundaryConstraint") return;
@@ -879,7 +979,6 @@ function MapScreen() {
 				onSearchStopZone={handleSearchStopZone}
 				onToolChange={changeTool}
 				origin={origin}
-				teamColor={myTeam?.color ?? "#0072B2"}
 				tool={tool}
 			/>
 			<GpsHelpSheet

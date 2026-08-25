@@ -5,6 +5,7 @@ import { ThemeToggle } from "@zero-lag/ui/components/theme";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { SceneMenu } from "../debug/scene-menu";
 import { loadSession } from "../session";
 import { Wordmark } from "../setup/wordmark";
 
@@ -94,6 +95,8 @@ export default function Start() {
 						<Chip tone="action">Rejoin</Chip>
 					</button>
 				)}
+
+				{import.meta.env.DEV && <SceneMenu />}
 
 				<div className="flex items-center justify-between gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 					<ThemeToggle />

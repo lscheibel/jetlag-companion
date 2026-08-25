@@ -1,14 +1,23 @@
+import type { LngLat } from "@zero-lag/geo";
 import type { LocationIssue } from "@zero-lag/platform";
+import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Field } from "@zero-lag/ui/components/field";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { Switch } from "@zero-lag/ui/components/switch";
 import { cn } from "@zero-lag/ui/lib/utils";
+import { useRef, useState } from "react";
+import { TEAM_COLORS } from "../lobby/palette";
 import { COMPACT_SECONDARY } from "./map-bar";
+import type { MapPin } from "./pin-layer";
 import {
+	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
+	formatCoordinates,
 	formatDistance,
 	type MapTool,
+	parseCoordinates,
 	pathSegments,
 } from "./toolkit";
 
@@ -122,16 +131,297 @@ export function MeasureCard({
 	);
 }
 
-export function PinPromptCard() {
+interface PinCardProps {
+	readonly pin: MapPin | null;
+	readonly draftPoint: LngLat | null;
+	readonly teamColor: string;
+	readonly onDraftPoint: (point: LngLat) => void;
+	readonly onCancel: () => void;
+	readonly onSave: (input: {
+		label: string;
+		note: string;
+		color: string;
+		radiusMeters: number | null;
+		lng: number;
+		lat: number;
+	}) => void;
+	readonly onDelete: (() => void) | null;
+}
+
+/** Pin details on the map. A map tap only writes the coordinates. */
+export function PinCard({
+	pin,
+	draftPoint,
+	teamColor,
+	onDraftPoint,
+	onCancel,
+	onSave,
+	onDelete,
+}: PinCardProps) {
+	const [label, setLabel] = useState(pin?.label ?? "");
+	const [note, setNote] = useState(pin?.note ?? "");
+	const [color, setColor] = useState(pin?.color ?? teamColor);
+	const lastEmitted = useRef<LngLat | null>(draftPoint);
+	const [coords, setCoords] = useState(
+		draftPoint ? formatCoordinates(draftPoint) : "",
+	);
+	const parsed = parseCoordinates(coords);
+	const fromMap =
+		draftPoint != null &&
+		(lastEmitted.current == null ||
+			lastEmitted.current[0] !== draftPoint[0] ||
+			lastEmitted.current[1] !== draftPoint[1]);
+	if (fromMap) {
+		lastEmitted.current = draftPoint;
+		const next = formatCoordinates(draftPoint);
+		if (coords !== next) setCoords(next);
+	} else if (!draftPoint && lastEmitted.current) {
+		lastEmitted.current = null;
+		if (coords) setCoords("");
+	}
+
+	const applyPoint = (point: LngLat, text: string) => {
+		lastEmitted.current = point;
+		setCoords(text);
+		onDraftPoint(point);
+	};
+
+	const paste = () => {
+		void webPlatform.clipboard.read().then((text) => {
+			if (!text) return;
+			const found = parseCoordinates(text);
+			if (!found) {
+				setCoords(text.trim());
+				return;
+			}
+			applyPoint(found.point, formatCoordinates(found.point));
+		});
+	};
+
+	const canPlace = Boolean(draftPoint ?? parsed?.point);
+	const editing = pin !== null;
+
 	return (
 		<Surface
-			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
-			data-testid="pin-prompt-card"
+			className="pointer-events-auto flex max-h-[45%] w-full max-w-sm flex-col gap-2 overflow-y-auto px-3 py-2.5"
+			data-testid="pin-card"
 			raised
 		>
-			<p className="text-sm leading-snug">Tap to drop a pin</p>
+			<form
+				className="flex flex-col gap-2"
+				onSubmit={(event) => {
+					event.preventDefault();
+					const point = draftPoint ?? parsed?.point;
+					if (!point) return;
+					onSave({
+						label,
+						note,
+						color,
+						radiusMeters: pin?.radiusMeters ?? null,
+						lng: point[0],
+						lat: point[1],
+					});
+				}}
+			>
+				<Field
+					data-testid="pin-coordinates"
+					label="Coordinates"
+					onChange={(event) => {
+						const next = event.target.value;
+						setCoords(next);
+						const found = parseCoordinates(next);
+						if (!found) return;
+						lastEmitted.current = found.point;
+						onDraftPoint(found.point);
+					}}
+					placeholder="52.52000, 13.40500"
+					trailing={
+						webPlatform.clipboard.capability().available ? (
+							<button
+								className="shrink-0 font-mono text-[0.65rem] text-ink-dim uppercase tracking-[0.06em]"
+								data-testid="pin-paste"
+								onClick={paste}
+								type="button"
+							>
+								Paste
+							</button>
+						) : null
+					}
+					value={coords}
+				/>
+				<Field
+					label="What is it"
+					maxLength={80}
+					onChange={(event) => setLabel(event.target.value)}
+					placeholder="Optional"
+					value={label}
+				/>
+				<label className="flex min-h-22 flex-col gap-1 rounded-tile border-2 border-hairline-strong bg-surface px-3.5 py-2">
+					<span className="eyebrow">Note</span>
+					<textarea
+						className="min-h-16 w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-faint"
+						onChange={(event) => setNote(event.target.value)}
+						placeholder="Everyone on the team sees this"
+						value={note}
+					/>
+				</label>
+				<div className="flex gap-2">
+					{TEAM_COLORS.map((choice) => (
+						<button
+							aria-label={`Use ${choice}`}
+							className={`size-10 rounded-[10px] ${choice === color ? "ring-2 ring-action ring-offset-2 ring-offset-surface" : ""}`}
+							key={choice}
+							onClick={() => setColor(choice)}
+							style={{ backgroundColor: choice }}
+							type="button"
+						/>
+					))}
+				</div>
+				<div className="flex items-center gap-2">
+					<ActionButton
+						className={COMPACT_SECONDARY}
+						data-testid="pin-cancel"
+						inline
+						onClick={onCancel}
+						size="compact"
+						tone="secondary"
+						type="button"
+					>
+						Cancel
+					</ActionButton>
+					<ActionButton
+						className="w-auto min-w-0 flex-1"
+						data-testid="pin-place"
+						disabled={!canPlace}
+						type="submit"
+					>
+						{editing ? "Save pin" : "Place pin"}
+					</ActionButton>
+				</div>
+				{onDelete && (
+					<ActionButton onClick={onDelete} tone="danger" type="button">
+						Delete
+					</ActionButton>
+				)}
+			</form>
 		</Surface>
 	);
+}
+
+interface ConstraintsPickerSheetProps {
+	readonly open: boolean;
+	readonly defaultRadiusMeters: number;
+	readonly current: MapTool;
+	readonly onClose: () => void;
+	readonly onPick: (next: MapTool) => void;
+}
+
+const CONSTRAINT_TYPES: readonly {
+	readonly glyph: string;
+	readonly label: string;
+	readonly hint: string;
+	readonly testId: string;
+	readonly kind: MapTool["kind"];
+}[] = [
+	{
+		glyph: "▦",
+		label: "Place",
+		hint: "A Bezirk or Ortsteil",
+		testId: "add-bezirk-constraint",
+		kind: "pickingBoundaryConstraint",
+	},
+	{
+		glyph: "✎",
+		label: "Draw",
+		hint: "A polygon on the map",
+		testId: "add-polygon-constraint",
+		kind: "drawingPolygonConstraint",
+	},
+	{
+		glyph: "◎",
+		label: "Circle",
+		hint: "A radius around a point",
+		testId: "add-radius-constraint",
+		kind: "drawingRadiusConstraint",
+	},
+	{
+		glyph: "☰",
+		label: "Cuts",
+		hint: "The ones already placed",
+		testId: "constraint-list",
+		kind: "listingConstraints",
+	},
+];
+
+export function ConstraintsPickerSheet({
+	open,
+	defaultRadiusMeters,
+	current,
+	onClose,
+	onPick,
+}: ConstraintsPickerSheetProps) {
+	return (
+		<Sheet
+			onClose={onClose}
+			open={open}
+			testId="constraints-picker"
+			title="Add a constraint"
+		>
+			<div className="flex flex-col gap-2">
+				{CONSTRAINT_TYPES.map((row) => (
+					<button
+						className={cn(
+							"flex w-full items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+							current.kind === row.kind ? "border-action" : "border-hairline",
+						)}
+						data-testid={row.testId}
+						key={row.testId}
+						onClick={() =>
+							onPick(constraintTool(row.kind, defaultRadiusMeters))
+						}
+						type="button"
+					>
+						<span
+							aria-hidden
+							className="grid size-9 place-items-center text-lg"
+						>
+							{row.glyph}
+						</span>
+						<span className="min-w-0 flex-1">
+							<b className="block text-[0.85rem] leading-tight">{row.label}</b>
+							<span className="eyebrow mt-0.5 block text-ink-dim">
+								{row.hint}
+							</span>
+						</span>
+					</button>
+				))}
+			</div>
+		</Sheet>
+	);
+}
+
+function constraintTool(
+	kind: MapTool["kind"],
+	defaultRadiusMeters: number,
+): MapTool {
+	if (kind === "pickingBoundaryConstraint") {
+		return {
+			kind: "pickingBoundaryConstraint",
+			levels: BOUNDARY_CONSTRAINT_LEVELS,
+			selectedId: null,
+		};
+	}
+	if (kind === "drawingPolygonConstraint") {
+		return { kind: "drawingPolygonConstraint", ring: [] };
+	}
+	if (kind === "drawingRadiusConstraint") {
+		return {
+			kind: "drawingRadiusConstraint",
+			center: null,
+			radiusMeters: defaultRadiusMeters,
+		};
+	}
+	return { kind: "listingConstraints" };
 }
 
 interface CutsCardProps {

@@ -329,6 +329,15 @@ const clipboard: PlatformAdapter["clipboard"] = {
 			return false;
 		}
 	},
+
+	async read(): Promise<string | null> {
+		if (!clipboard.capability().available) return null;
+		try {
+			return await navigator.clipboard.readText();
+		} catch {
+			return null;
+		}
+	},
 };
 
 const share: PlatformAdapter["share"] = {

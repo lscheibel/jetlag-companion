@@ -1,7 +1,7 @@
 import type { BBox } from "@zero-lag/geo";
 import { type Camera, cameraLabel } from "./camera";
 import { MapFitSelection, MapHudButton } from "./map-interactions";
-import { BOUNDARY_CONSTRAINT_LEVELS, type MapTool } from "./toolkit";
+import type { MapTool } from "./toolkit";
 
 interface MapHudProps {
 	readonly camera: Camera;
@@ -13,7 +13,19 @@ interface MapHudProps {
 	readonly onToolChange: (tool: MapTool) => void;
 	readonly onCancel: () => void;
 	readonly canEditConstraints: boolean;
-	readonly defaultRadiusMeters: number;
+	readonly constraintsOpen: boolean;
+	readonly onConstraintsClick: () => void;
+	/** Off during hiding: hiders only need locate, fit, and a station tap. */
+	readonly playTools?: boolean;
+}
+
+function constraintToolOn(tool: MapTool): boolean {
+	return (
+		tool.kind === "pickingBoundaryConstraint" ||
+		tool.kind === "drawingPolygonConstraint" ||
+		tool.kind === "drawingRadiusConstraint" ||
+		tool.kind === "listingConstraints"
+	);
 }
 
 /**
@@ -30,7 +42,9 @@ export function MapHud({
 	onToolChange,
 	onCancel,
 	canEditConstraints,
-	defaultRadiusMeters,
+	constraintsOpen,
+	onConstraintsClick,
+	playTools = true,
 }: MapHudProps) {
 	return (
 		<div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-end px-3">
@@ -70,116 +84,59 @@ export function MapHud({
 						<EyeIcon struck={blindness.blind} />
 					</MapHudButton>
 				)}
-				<div className="mt-1 grid grid-cols-2 gap-1">
-					<HudTool
-						glyph="⌕"
-						label="Search"
-						on={tool.kind === "searching" || tool.kind === "placingZone"}
-						onClick={() =>
-							toggle(
-								tool.kind === "searching",
-								{ kind: "searching" },
-								onToolChange,
-								onCancel,
-							)
-						}
-						testId="map-search-tool"
-					/>
-					<HudTool
-						glyph="━"
-						label="Measure"
-						on={tool.kind === "measure"}
-						onClick={() =>
-							toggle(
-								tool.kind === "measure",
-								{ kind: "measure", measure: { kind: "path", points: [] } },
-								onToolChange,
-								onCancel,
-							)
-						}
-						testId="map-measure-tool"
-					/>
-					<HudTool
-						glyph="◉"
-						label="Pin"
-						on={tool.kind === "placingPin" || tool.kind === "editingPin"}
-						onClick={() =>
-							toggle(
-								tool.kind === "placingPin" || tool.kind === "editingPin",
-								{ kind: "placingPin" },
-								onToolChange,
-								onCancel,
-							)
-						}
-						testId="map-pin-tool"
-					/>
-				</div>
-				{canEditConstraints && (
-					<div className="grid grid-cols-2 gap-1">
+				{playTools && (
+					<div className="mt-1 grid grid-cols-2 gap-1">
 						<HudTool
-							glyph="▦"
-							label="Place"
-							on={tool.kind === "pickingBoundaryConstraint"}
+							glyph="⌕"
+							label="Search"
+							on={tool.kind === "searching" || tool.kind === "placingZone"}
 							onClick={() =>
 								toggle(
-									tool.kind === "pickingBoundaryConstraint",
-									{
-										kind: "pickingBoundaryConstraint",
-										levels: BOUNDARY_CONSTRAINT_LEVELS,
-										selectedId: null,
-									},
+									tool.kind === "searching",
+									{ kind: "searching" },
 									onToolChange,
 									onCancel,
 								)
 							}
-							testId="add-bezirk-constraint"
+							testId="map-search-tool"
 						/>
 						<HudTool
-							glyph="✎"
-							label="Draw"
-							on={tool.kind === "drawingPolygonConstraint"}
+							glyph="━"
+							label="Measure"
+							on={tool.kind === "measure"}
 							onClick={() =>
 								toggle(
-									tool.kind === "drawingPolygonConstraint",
-									{ kind: "drawingPolygonConstraint", ring: [] },
+									tool.kind === "measure",
+									{ kind: "measure", measure: { kind: "path", points: [] } },
 									onToolChange,
 									onCancel,
 								)
 							}
-							testId="add-polygon-constraint"
+							testId="map-measure-tool"
 						/>
 						<HudTool
-							glyph="◎"
-							label="Circle"
-							on={tool.kind === "drawingRadiusConstraint"}
+							glyph="◉"
+							label="Pin"
+							on={tool.kind === "placingPin" || tool.kind === "editingPin"}
 							onClick={() =>
 								toggle(
-									tool.kind === "drawingRadiusConstraint",
-									{
-										kind: "drawingRadiusConstraint",
-										center: null,
-										radiusMeters: defaultRadiusMeters,
-									},
+									tool.kind === "placingPin" || tool.kind === "editingPin",
+									{ kind: "placingPin" },
 									onToolChange,
 									onCancel,
 								)
 							}
-							testId="add-radius-constraint"
+							testId="map-pin-tool"
 						/>
-						<HudTool
-							glyph="☰"
-							label="Cuts"
-							on={tool.kind === "listingConstraints"}
-							onClick={() =>
-								toggle(
-									tool.kind === "listingConstraints",
-									{ kind: "listingConstraints" },
-									onToolChange,
-									onCancel,
-								)
-							}
-							testId="constraint-list"
-						/>
+						{canEditConstraints && (
+							<HudTool
+								glyph="⬡"
+								label="Constraints"
+								on={constraintsOpen || constraintToolOn(tool)}
+								onClick={onConstraintsClick}
+								testId="constraints-tool"
+							/>
+						)}
 					</div>
 				)}
 			</div>

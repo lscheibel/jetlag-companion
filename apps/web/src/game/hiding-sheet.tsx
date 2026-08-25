@@ -1,52 +1,73 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { nearestStationMeters } from "@zero-lag/catalog";
 import {
 	circleRegion,
 	normalizeRegion,
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
+import { elapsed } from "@zero-lag/rules";
 import { mutators, queries } from "@zero-lag/schema";
-import { useState } from "react";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Surface } from "@zero-lag/ui/components/surface";
+import type { SearchableStop } from "../map/toolkit";
+import { useNow } from "../map/use-now";
+import { formatZone } from "../setup/game-size";
+import { formatHms } from "./round-bar";
 import type { MyRole } from "./use-role";
 
 interface HidingSheetProps {
-	role: MyRole;
+	readonly role: MyRole;
+	readonly selectedStop: SearchableStop | null;
+	readonly radiusMeters: number;
+	readonly clockOffsetMs?: number;
 }
 
-export function HidingSheet({ role }: HidingSheetProps) {
+export function HidingSheet({
+	role,
+	selectedStop,
+	radiusMeters,
+	clockOffsetMs = 0,
+}: HidingSheetProps) {
 	const zero = useZero();
 	const [games] = useQuery(queries.game());
-	const [mapStops] = useQuery(queries.mapStops());
 	const [commitments] = useQuery(queries.commitments());
-	const [stopId, setStopId] = useState("");
+	const [rounds] = useQuery(queries.rounds());
+	const [pauses] = useQuery(queries.roundPauses());
+	const now = useNow(1_000) + clockOffsetMs;
 
 	if (role.role !== "hider" || role.roundStatus !== "hiding") return null;
 
 	const mapConfig = games[0]?.mapConfig;
-	const choices = [...mapStops].sort(
-		(a, b) =>
-			Number(b.insideArea) - Number(a.insideArea) ||
-			a.name.localeCompare(b.name, "de"),
-	);
-	const selectedId = stopId || (choices[0]?.stopId ?? "");
-	const selected = choices.find((stop) => stop.stopId === selectedId);
 	const mine = commitments.find(
 		(commitment) =>
 			commitment.roundId === role.roundId &&
 			commitment.hiderTeamId === role.teamId,
 	);
-	const nearestMeters = selected
-		? nearestStationMeters([selected.lng, selected.lat], mapStops)
-		: Number.POSITIVE_INFINITY;
-	const farFromStation =
-		mapConfig !== undefined && nearestMeters > mapConfig.hidingRadiusMeters;
+	const round = rounds.find((candidate) => candidate.id === role.roundId);
+	const remaining =
+		round?.status === "hiding" && round.hidingStartedAt !== null
+			? Math.max(
+					0,
+					round.hidingDurationMs -
+						elapsed(
+							round.hidingStartedAt,
+							pauses.filter((pause) => pause.roundId === round.id),
+							now,
+						),
+				)
+			: null;
+	const timeLabel =
+		remaining === null
+			? "Hiding"
+			: remaining === 0
+				? "Hiding time is up"
+				: `${formatHms(remaining)} left`;
 
 	function commit() {
-		if (!role.roundId || !role.teamId || !mapConfig || !selected) return;
+		if (!role.roundId || !role.teamId || !mapConfig || !selectedStop) return;
 		const zone = regionToMultiPolygon(
 			normalizeRegion(
 				circleRegion(
-					[selected.lng, selected.lat],
+					[selectedStop.lng, selectedStop.lat],
 					mapConfig.hidingRadiusMeters,
 				),
 			),
@@ -57,7 +78,7 @@ export function HidingSheet({ role }: HidingSheetProps) {
 				commitmentId: mine?.id ?? crypto.randomUUID(),
 				roundId: role.roundId,
 				hiderTeamId: role.teamId,
-				stopId: selected.stopId,
+				stopId: selectedStop.stopId,
 				zone: zone.map((polygon) =>
 					polygon.map((ring) =>
 						ring.map(([lng, lat]) => [lng, lat] as [number, number]),
@@ -67,61 +88,53 @@ export function HidingSheet({ role }: HidingSheetProps) {
 		);
 	}
 
-	return (
-		<section
-			className="space-y-2 rounded-xl border bg-surface/95 p-3 shadow-lg"
-			data-testid="hiding-sheet"
-		>
-			<h2 className="font-medium">Choose your hiding station</h2>
-			<div className="pointer-events-auto flex gap-2">
-				<select
-					className="min-h-11 min-w-0 flex-1 rounded border bg-surface px-2"
-					data-testid="hiding-stop"
-					onChange={(event) => setStopId(event.target.value)}
-					value={selectedId}
-				>
-					{choices.map((stop) => (
-						<option key={stop.stopId} value={stop.stopId}>
-							{stop.name}
-							{stop.insideArea ? "" : " · outside the area"}
-						</option>
-					))}
-				</select>
-				<button
-					className="min-h-11 rounded border px-4 font-medium"
-					data-testid="commit-zone"
-					disabled={!selected || !role.roundId}
-					onClick={commit}
-					type="button"
-				>
-					{mine ? "Change" : "Commit"}
-				</button>
-			</div>
-			{selected && !selected.insideArea && (
-				<p className="text-amber-700 text-sm" data-testid="hiding-outside-area">
-					{selected.name} is outside the game area. You can still hide here —
-					this is a reminder, not a rule.
-				</p>
-			)}
-			{farFromStation && (
-				<p
-					className="text-amber-700 text-sm"
-					data-testid="hiding-station-distance"
-				>
-					That is {formatDistance(nearestMeters)} from the nearest station in
-					play.
-				</p>
-			)}
-			{mine && (
-				<p className="text-ink-dim text-sm" data-testid="committed-stop">
-					Zone committed.
-				</p>
-			)}
-		</section>
-	);
-}
+	const committedHere = mine?.stopId === selectedStop?.stopId;
 
-function formatDistance(meters: number): string {
-	if (meters < 1_000) return `${Math.round(meters)} m`;
-	return `${(meters / 1_000).toFixed(1)} km`;
+	return (
+		<Surface
+			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
+			data-testid="hiding-sheet"
+			raised
+		>
+			<span className="eyebrow block">Hiding</span>
+			<p className="font-medium font-mono text-lg leading-none">{timeLabel}</p>
+			{selectedStop ? (
+				<div className="mt-2 flex flex-col gap-2">
+					<p className="text-sm leading-snug">
+						<span className="font-medium">{selectedStop.name}</span>
+						<span className="text-ink-dim">
+							{" "}
+							· {formatZone(radiusMeters)} zone
+						</span>
+					</p>
+					{!selectedStop.insideArea && (
+						<p
+							className="text-amber-700 text-sm"
+							data-testid="hiding-outside-area"
+						>
+							{selectedStop.name} is outside the game area. You can still hide
+							here — this is a reminder, not a rule.
+						</p>
+					)}
+					<ActionButton
+						data-testid="commit-zone"
+						disabled={!selectedStop || !role.roundId}
+						onClick={commit}
+						size="compact"
+					>
+						{mine && !committedHere ? "Change" : "Hide here"}
+					</ActionButton>
+					{mine && (
+						<p className="text-ink-dim text-sm" data-testid="committed-stop">
+							Zone committed.
+						</p>
+					)}
+				</div>
+			) : (
+				<p className="mt-2 text-ink-dim text-sm leading-snug">
+					Tap a station to hide there.
+				</p>
+			)}
+		</Surface>
+	);
 }

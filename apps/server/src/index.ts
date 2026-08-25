@@ -11,6 +11,7 @@ import { attachEphemeralChannel } from "./ephemeral";
 import { processPhoto } from "./photo";
 import { findPhotoForGame, loadPhotoBytes, savePhotoUpload } from "./photo-db";
 import { catalog } from "./routes/catalog";
+import { mountDevRoutes } from "./routes/dev";
 import { games } from "./routes/games";
 import { gameMaps, maps } from "./routes/maps";
 import { createPhotosRoute } from "./routes/photos";
@@ -48,6 +49,7 @@ app.route(
 	}),
 );
 app.route("/api/zero", zero);
+mountDevRoutes(app, env.NODE_ENV);
 
 // Read once, at startup rather than on the first request, so a missing
 // artifact is a line in the boot log instead of a slow first builder open.

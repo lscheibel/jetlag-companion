@@ -2,11 +2,9 @@ import type { LngLat } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
-import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
+import { Sheet } from "@zero-lag/ui/components/sheet";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
-import { TEAM_COLORS } from "../lobby/palette";
-import type { MapPin } from "./pin-layer";
 import {
 	type BoundaryListItem,
 	formatCoordinates,
@@ -21,21 +19,11 @@ import {
 interface MapToolSheetProps {
 	readonly tool: MapTool;
 	readonly origin: LngLat;
-	readonly draftPoint: LngLat | null;
-	readonly editingPin: MapPin | null;
-	readonly teamColor: string;
 	readonly canPlaceZone: boolean;
 	/** The stops this game carries — what place search runs over. m4-spec §5. */
 	readonly stops: readonly SearchableStop[];
 	readonly onToolChange: (tool: MapTool) => void;
 	readonly onCancel: () => void;
-	readonly onSavePin: (input: {
-		label: string;
-		note: string;
-		color: string;
-		radiusMeters: number | null;
-	}) => void;
-	readonly onDeletePin: () => void;
 	readonly onSaveZone: (note: string) => void;
 	readonly onClearZone: () => void;
 	readonly onSearchResult: (result: SearchResult) => void;
@@ -46,9 +34,6 @@ interface MapToolSheetProps {
 
 export function MapToolSheet(props: MapToolSheetProps) {
 	const searching = props.tool.kind === "searching";
-	const pinOpen =
-		(props.tool.kind === "placingPin" && props.draftPoint !== null) ||
-		(props.tool.kind === "editingPin" && props.editingPin !== null);
 	const zoneOpen =
 		props.tool.kind === "placingZone" && props.tool.center !== null;
 	const picking =
@@ -57,7 +42,6 @@ export function MapToolSheet(props: MapToolSheetProps) {
 	return (
 		<>
 			<SearchSheet {...props} open={searching} />
-			<PinForm {...props} open={pinOpen} />
 			<ZoneForm {...props} open={zoneOpen} />
 			<BoundaryPickerSheet {...props} open={picking} />
 		</>
@@ -117,103 +101,6 @@ function SearchSheet(props: MapToolSheetProps & { readonly open: boolean }) {
 				</ul>
 			)}
 		</Sheet>
-	);
-}
-
-function PinForm(props: MapToolSheetProps & { readonly open: boolean }) {
-	const identity =
-		props.editingPin?.id ??
-		(props.draftPoint ? formatCoordinates(props.draftPoint) : null);
-	const formId = useHeldValue(props.open, identity);
-	const pin = useHeldValue(props.open, props.editingPin);
-	const draftPoint = useHeldValue(props.open, props.draftPoint);
-	return (
-		<Sheet
-			onClose={props.onCancel}
-			open={props.open}
-			testId="pin-sheet"
-			title={pin ? "Edit pin" : "Pin this spot"}
-		>
-			{formId && (
-				<PinFields
-					draftPoint={draftPoint}
-					key={formId}
-					onDeletePin={props.onDeletePin}
-					onSavePin={props.onSavePin}
-					pin={pin}
-					teamColor={props.teamColor}
-					tool={props.tool}
-				/>
-			)}
-		</Sheet>
-	);
-}
-
-function PinFields({
-	pin,
-	draftPoint,
-	teamColor,
-	tool,
-	onSavePin,
-	onDeletePin,
-}: {
-	readonly pin: MapPin | null;
-	readonly draftPoint: LngLat | null;
-	readonly teamColor: string;
-	readonly tool: MapTool;
-	readonly onSavePin: MapToolSheetProps["onSavePin"];
-	readonly onDeletePin: () => void;
-}) {
-	const [label, setLabel] = useState(pin?.label ?? "");
-	const [note, setNote] = useState(pin?.note ?? "");
-	const [color, setColor] = useState(pin?.color ?? teamColor);
-	const radius =
-		tool.kind === "placingPin" && draftPoint
-			? null
-			: (pin?.radiusMeters ?? null);
-	return (
-		<form
-			className="flex flex-col gap-3"
-			onSubmit={(event) => {
-				event.preventDefault();
-				onSavePin({ label, note, color, radiusMeters: radius });
-			}}
-		>
-			<Field
-				label="What is it"
-				maxLength={80}
-				onChange={(event) => setLabel(event.target.value)}
-				placeholder="Optional"
-				value={label}
-			/>
-			<label className="flex min-h-22 flex-col gap-1 rounded-tile border-2 border-hairline-strong bg-surface px-3.5 py-2">
-				<span className="eyebrow">Note</span>
-				<textarea
-					className="min-h-16 w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-faint"
-					onChange={(event) => setNote(event.target.value)}
-					placeholder="Everyone on the team sees this"
-					value={note}
-				/>
-			</label>
-			<div className="flex gap-2">
-				{TEAM_COLORS.map((choice) => (
-					<button
-						aria-label={`Use ${choice}`}
-						className={`size-10 rounded-[10px] ${choice === color ? "ring-2 ring-action ring-offset-2 ring-offset-surface" : ""}`}
-						key={choice}
-						onClick={() => setColor(choice)}
-						style={{ backgroundColor: choice }}
-						type="button"
-					/>
-				))}
-			</div>
-			<ActionButton type="submit">Save pin</ActionButton>
-			{pin && (
-				<ActionButton onClick={onDeletePin} tone="danger" type="button">
-					Delete
-				</ActionButton>
-			)}
-		</form>
 	);
 }
 

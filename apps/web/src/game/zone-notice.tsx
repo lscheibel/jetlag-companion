@@ -23,7 +23,7 @@ export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
 
 	if (
 		role.role !== "hider" ||
-		role.roundStatus !== "seeking" ||
+		(role.roundStatus !== "hiding" && role.roundStatus !== "seeking") ||
 		!role.teamId ||
 		!fix ||
 		fix.source === "unavailable"

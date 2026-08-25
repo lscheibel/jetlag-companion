@@ -178,3 +178,39 @@ export async function fetchPhoto(id: string, token: string): Promise<Blob> {
 	}
 	return response.blob();
 }
+
+export type DevSceneSummary = {
+	id: string;
+	group: "lobby" | "hiding" | "seeking";
+	label: string;
+	hint: string;
+};
+
+type SpawnResponse = CreateResponse & { path: string };
+
+const sceneList = z.object({
+	scenes: z.array(
+		z.object({
+			id: z.string(),
+			group: z.enum(["lobby", "hiding", "seeking"]),
+			label: z.string(),
+			hint: z.string(),
+		}),
+	),
+});
+
+export async function listDevScenes(): Promise<DevSceneSummary[]> {
+	const parsed = sceneList.safeParse(await get("/api/dev/scenes"));
+	if (!parsed.success) throw new Error("unreadable scene list");
+	return parsed.data.scenes;
+}
+
+export async function spawnDevScene(
+	id: string,
+): Promise<Session & { path: string }> {
+	const device = deviceId();
+	const result = await post<SpawnResponse>(`/api/dev/scenes/${id}`, {
+		deviceId: device,
+	});
+	return { ...result, deviceId: device };
+}

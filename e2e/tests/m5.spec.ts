@@ -183,7 +183,7 @@ test("1. a full round, end to end", async ({ browser }) => {
 	await ana.page.getByTestId("start-seeking").click();
 	await expectPhase(phones, "seeking");
 
-	await openMap(cara, code);
+	await openLobby(cara, code);
 	await waitForSync(cara);
 	await expect(cara.page.getByTestId("found-sheet")).toBeVisible();
 	await cara.page
@@ -226,7 +226,7 @@ test("2. the recorded duration matches a stopwatch", async ({ browser }) => {
 
 	const started = Date.now();
 	await new Promise((resolve) => setTimeout(resolve, 2_500));
-	await openMap(host, code);
+	await openLobby(host, code);
 	await waitForSync(host);
 	await host.page.getByTestId("mark-found").click();
 	await expect(host.page.getByTestId("unmark-found")).toBeVisible();
@@ -422,7 +422,7 @@ test("7. a found is markable by anyone and correctable", async ({
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
 
-	await openMap(other, code);
+	await openLobby(other, code);
 	await waitForSync(other);
 	await other.page.getByTestId("mark-found").click();
 	await expect(other.page.getByTestId("unmark-found")).toBeVisible();
@@ -481,7 +481,7 @@ test("8. a round that ends with a hider unfound records that", async ({
 	await openLobby(ana, code);
 	await ana.page.getByTestId("start-seeking").click();
 
-	await openMap(ana, code);
+	await openLobby(ana, code);
 	await waitForSync(ana);
 	await ana.page
 		.getByTestId("found-hider-team")
@@ -525,7 +525,7 @@ test("9. a photo survives the round and loses its coordinates", async ({
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
-	await openMap(host, code);
+	await openLobby(host, code);
 	await waitForSync(host);
 	await host.page.getByTestId("mark-found").click();
 	await host.page.getByTestId("found-photo").setInputFiles(GPS_JPEG);
@@ -574,7 +574,7 @@ test("10. the suite makes no third-party request, including /photos", async ({
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
-	await openMap(host, code);
+	await openLobby(host, code);
 	await host.page.getByTestId("mark-found").click();
 	await host.page.getByTestId("found-photo").setInputFiles(GPS_JPEG);
 	await openLobby(other, code);

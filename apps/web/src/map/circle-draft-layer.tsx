@@ -49,9 +49,9 @@ const CONSTRAINT_VERTICES = [
 		id: "constraint-draft-vertices",
 		type: "circle" as const,
 		paint: {
-			"circle-color": "#08111c",
+			"circle-color": "#ffe01f",
 			"circle-radius": 8,
-			"circle-stroke-color": "#ffe01f",
+			"circle-stroke-color": "#08111c",
 			"circle-stroke-width": 2,
 		},
 	},

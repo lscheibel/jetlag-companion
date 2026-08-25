@@ -43,6 +43,19 @@ async function startSeeking(host: Phone, code: string): Promise<void> {
 	).toContainText("seeking", { timeout: 20_000 });
 }
 
+async function pickConstraint(
+	phone: Phone,
+	testId:
+		| "add-radius-constraint"
+		| "add-polygon-constraint"
+		| "add-bezirk-constraint"
+		| "constraint-list",
+): Promise<void> {
+	await phone.page.getByTestId("constraints-tool").click();
+	await expect(phone.page.getByTestId("constraints-picker")).toBeVisible();
+	await phone.page.getByTestId(testId).click();
+}
+
 async function tapMap(phone: Phone, fx: number, fy: number): Promise<void> {
 	const canvas = phone.page.getByTestId("map-canvas");
 	await expect(canvas).toBeVisible();
@@ -92,7 +105,7 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 	await expect(ben.page.getByTestId("add-radius-constraint")).toHaveCount(0);
 
-	await ana.page.getByTestId("add-radius-constraint").click();
+	await pickConstraint(ana, "add-radius-constraint");
 	await tapMap(ana, 0.5, 0.2);
 	await ana.page.getByTestId("constraint-name").fill("north park");
 	await ana.page.getByTestId("they-are-inside").click();
@@ -106,7 +119,7 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
-	await ana.page.getByTestId("constraint-list").click();
+	await pickConstraint(ana, "constraint-list");
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("north park");
@@ -149,7 +162,7 @@ test("two hider teams switch folds from the selector", async ({ browser }) => {
 	const foxesId = await teamIdForName(code, "Foxes");
 	const seed = await areaHash(ana);
 
-	await ana.page.getByTestId("add-radius-constraint").click();
+	await pickConstraint(ana, "add-radius-constraint");
 	await tapMap(ana, 0.5, 0.2);
 	await ana.page.getByTestId("they-are-inside").click();
 	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
@@ -200,7 +213,7 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	const seed = await areaHash(ana);
 	await expect(ben.page.getByTestId("add-bezirk-constraint")).toHaveCount(0);
 
-	await ana.page.getByTestId("add-bezirk-constraint").click();
+	await pickConstraint(ana, "add-bezirk-constraint");
 	await expect(ana.page.getByTestId("boundary-9-mitte")).toBeVisible({
 		timeout: 20_000,
 	});
@@ -216,7 +229,7 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
-	await ana.page.getByTestId("constraint-list").click();
+	await pickConstraint(ana, "constraint-list");
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("Mitte");

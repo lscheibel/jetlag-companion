@@ -35,26 +35,28 @@ const RADIUS_LAYERS = [
 interface PinLayerProps {
 	readonly pins: readonly MapPin[];
 	readonly disabled: boolean;
+	readonly omitId?: string | null;
 	readonly onSelect: (pinId: string) => void;
 }
 
-export function PinLayer({ pins, disabled, onSelect }: PinLayerProps) {
+export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
+	const shown = omitId ? pins.filter((pin) => pin.id !== omitId) : pins;
 	const radii = useMemo(
 		() =>
 			ringsFeature(
-				pins.flatMap((pin) =>
+				shown.flatMap((pin) =>
 					pin.radiusMeters && pin.radiusMeters > 0
 						? circleLngLat([pin.lng, pin.lat], pin.radiusMeters).flat()
 						: [],
 				),
 			),
-		[pins],
+		[shown],
 	);
 	useGeoJsonLayer("pin-radius-source", radii, RADIUS_LAYERS);
 
 	return (
 		<>
-			{pins.map((pin, index) => (
+			{shown.map((pin, index) => (
 				<MapMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
 					<button
 						className="flex min-h-11 items-center gap-1 rounded-full bg-surface/90 pr-2 font-semibold text-xs shadow"
@@ -72,5 +74,23 @@ export function PinLayer({ pins, disabled, onSelect }: PinLayerProps) {
 				</MapMarker>
 			))}
 		</>
+	);
+}
+
+export function PinDraftMarker({
+	point,
+	color,
+}: {
+	readonly point: readonly [number, number];
+	readonly color: string;
+}) {
+	return (
+		<MapMarker lat={point[1]} lng={point[0]}>
+			<span
+				className="block size-5 rounded-full border-2 border-white shadow"
+				data-testid="pin-draft"
+				style={{ backgroundColor: color }}
+			/>
+		</MapMarker>
 	);
 }
