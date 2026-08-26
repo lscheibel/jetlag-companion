@@ -87,7 +87,7 @@ function Lobby() {
 	const { session } = useGameShell();
 	const zero = useZero();
 	const lobby = useLobby();
-	const { claimHost, joinTeam, leaveGame, leaveTeam, releaseHost, setReady } =
+	const { claimHost, joinTeam, leaveGame, leaveTeam, setReady } =
 		useLobbyActions();
 	const { rejection, dismiss } = useLobbyRejection();
 	const [overlay, setOverlay] = useState<Overlay>({ kind: "none" });
@@ -372,9 +372,8 @@ function Lobby() {
 				onHidingZone={() =>
 					void navigate(`/g/${session.code}/setup/size?from=lobby`)
 				}
-				onHostToggle={() => {
-					if (lobby.amHost) releaseHost();
-					else claimHost();
+				onClaimHost={() => {
+					claimHost();
 					setOverlay({ kind: "none" });
 				}}
 				onLeave={leave}

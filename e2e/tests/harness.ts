@@ -496,14 +496,18 @@ export async function joinTeamInHarness(
 }
 
 /**
- * The host hat, from the game menu. Claimable by anyone and droppable by
- * whoever is wearing it — more than one at a time is fine. m1-spec §6.
+ * The host hat. Claimable from the game menu; droppable from your own player
+ * sheet. More than one at a time is fine. m1-spec §6.
  */
 export async function toggleHost(phone: Phone): Promise<void> {
+	const badge = phone.page.getByTestId(`host-badge-${phone.name}`);
+	if ((await badge.count()) > 0) {
+		await phone.page.getByTestId(`player-${phone.name}`).click();
+		await phone.page.getByTestId("release-host").click();
+		return;
+	}
 	await phone.page.getByTestId("lobby-menu").click();
-	const claim = phone.page.getByTestId("claim-host");
-	if (await claim.isVisible()) await claim.click();
-	else await phone.page.getByTestId("release-host").click();
+	await phone.page.getByTestId("claim-host").click();
 }
 
 /**

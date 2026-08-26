@@ -1,17 +1,16 @@
 import type { LngLat } from "@zero-lag/geo";
 import type { LocationIssue } from "@zero-lag/platform";
-import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Icon, type IconName } from "@zero-lag/ui/components/icon";
-import { IconButton } from "@zero-lag/ui/components/icon-button";
 import { ColorPicker } from "@zero-lag/ui/components/picker";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { Switch } from "@zero-lag/ui/components/switch";
 import { cn } from "@zero-lag/ui/lib/utils";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { COLOR_OPTIONS } from "../lobby/palette";
+import { CoordinateFields } from "./coordinate-fields";
 import { COMPACT_SECONDARY } from "./map-bar";
 import type { MapPin } from "./pin-layer";
 import {
@@ -19,7 +18,6 @@ import {
 	type ConstraintListItem,
 	formatDistance,
 	type MapTool,
-	parsePastedCoordinates,
 	pathSegments,
 } from "./toolkit";
 
@@ -175,64 +173,8 @@ export function PinCard({
 		setColor(next);
 		onLook?.({ color: next, label });
 	}
-	const lastEmitted = useRef<LngLat | null>(draftPoint);
-	const [latText, setLatText] = useState(
-		draftPoint ? formatLat(draftPoint) : "",
-	);
-	const [lngText, setLngText] = useState(
-		draftPoint ? formatLng(draftPoint) : "",
-	);
-	const typedPoint = pointFromFields(latText, lngText);
-	const fromMap =
-		draftPoint != null &&
-		(lastEmitted.current == null ||
-			lastEmitted.current[0] !== draftPoint[0] ||
-			lastEmitted.current[1] !== draftPoint[1]);
-	if (fromMap) {
-		lastEmitted.current = draftPoint;
-		const nextLat = formatLat(draftPoint);
-		const nextLng = formatLng(draftPoint);
-		if (latText !== nextLat) setLatText(nextLat);
-		if (lngText !== nextLng) setLngText(nextLng);
-	} else if (!draftPoint && lastEmitted.current) {
-		lastEmitted.current = null;
-		if (latText) setLatText("");
-		if (lngText) setLngText("");
-	}
 
-	const applyPoint = (point: LngLat) => {
-		lastEmitted.current = point;
-		setLatText(formatLat(point));
-		setLngText(formatLng(point));
-		onDraftPoint(point);
-	};
-
-	const paste = () => {
-		void webPlatform.clipboard.read().then((text) => {
-			if (!text) return;
-			const found = parsePastedCoordinates(text);
-			if (!found) return;
-			applyPoint(found.point);
-		});
-	};
-
-	const onLatChange = (next: string) => {
-		setLatText(next);
-		const point = pointFromFields(next, lngText);
-		if (!point) return;
-		lastEmitted.current = point;
-		onDraftPoint(point);
-	};
-
-	const onLngChange = (next: string) => {
-		setLngText(next);
-		const point = pointFromFields(latText, next);
-		if (!point) return;
-		lastEmitted.current = point;
-		onDraftPoint(point);
-	};
-
-	const canPlace = Boolean(draftPoint ?? typedPoint);
+	const canPlace = draftPoint !== null;
 	const editing = pin !== null;
 
 	return (
@@ -245,50 +187,22 @@ export function PinCard({
 				className="flex flex-col gap-2"
 				onSubmit={(event) => {
 					event.preventDefault();
-					const point = draftPoint ?? typedPoint;
-					if (!point) return;
+					if (!draftPoint) return;
 					onSave({
 						label,
 						note,
 						color,
 						radiusMeters: pin?.radiusMeters ?? null,
-						lng: point[0],
-						lat: point[1],
+						lng: draftPoint[0],
+						lat: draftPoint[1],
 					});
 				}}
 			>
-				<div className="flex items-center gap-2" data-testid="pin-coordinates">
-					<div className="min-w-0 flex-1">
-						<Field
-							data-testid="pin-lat"
-							inputMode="decimal"
-							label="Latitude"
-							onChange={(event) => onLatChange(event.target.value)}
-							placeholder="52.52000"
-							value={latText}
-						/>
-					</div>
-					<div className="min-w-0 flex-1">
-						<Field
-							data-testid="pin-lng"
-							inputMode="decimal"
-							label="Longitude"
-							onChange={(event) => onLngChange(event.target.value)}
-							placeholder="13.40500"
-							value={lngText}
-						/>
-					</div>
-					{webPlatform.clipboard.capability().available ? (
-						<IconButton
-							aria-label="Paste coordinates"
-							className="rounded-[8px]"
-							onClick={paste}
-							testId="pin-paste"
-						>
-							<Icon name="clipboard" size="sm" />
-						</IconButton>
-					) : null}
-				</div>
+				<CoordinateFields
+					onPoint={onDraftPoint}
+					point={draftPoint}
+					testIdPrefix="pin"
+				/>
 				<Field
 					label="What is it"
 					maxLength={80}
@@ -308,6 +222,7 @@ export function PinCard({
 				{/* A grid, not a row: eight 40px squares plus their gaps were wider
 				    than the card they sat in, so the last two fell off the edge. */}
 				<ColorPicker
+					className="[&_button]:aspect-auto [&_button]:h-10"
 					label="Pin colour"
 					onChange={changeColor}
 					options={COLOR_OPTIONS}
@@ -388,6 +303,13 @@ const CONSTRAINT_TYPES: readonly {
 		kind: "drawingRadiusConstraint",
 	},
 	{
+		icon: "line-segment",
+		label: "Split",
+		hint: "A thermometer line through two points",
+		testId: "add-split-constraint",
+		kind: "drawingSplitConstraint",
+	},
+	{
 		icon: "list-bullets",
 		label: "Cuts",
 		hint: "The ones already placed",
@@ -461,6 +383,14 @@ function constraintTool(
 			radiusMeters: defaultRadiusMeters,
 		};
 	}
+	if (kind === "drawingSplitConstraint") {
+		return {
+			kind: "drawingSplitConstraint",
+			from: null,
+			to: null,
+			focus: "from",
+		};
+	}
 	return { kind: "listingConstraints" };
 }
 
@@ -517,7 +447,12 @@ function ConstraintRow({
 	readonly onRemove?: () => void;
 }) {
 	const minus = row.mode === "exclude";
-	const kind = row.kind === "radius" ? "Circle" : "Area";
+	const kind =
+		row.kind === "radius"
+			? "Circle"
+			: row.kind === "halfPlane"
+				? "Split"
+				: "Area";
 	const origin = row.source === "answer" ? "from an answer" : "placed";
 	return (
 		<div
@@ -574,20 +509,4 @@ function ConstraintRow({
 			)}
 		</div>
 	);
-}
-
-function formatLat(point: LngLat): string {
-	return point[1].toFixed(5);
-}
-
-function formatLng(point: LngLat): string {
-	return point[0].toFixed(5);
-}
-
-function pointFromFields(latText: string, lngText: string): LngLat | null {
-	const lat = Number(latText);
-	const lng = Number(lngText);
-	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-	if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-	return [lng, lat];
 }

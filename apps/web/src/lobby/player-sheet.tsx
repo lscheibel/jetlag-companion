@@ -1,6 +1,7 @@
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Chip } from "@zero-lag/ui/components/chip";
 import { Field } from "@zero-lag/ui/components/field";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
 import { useGameShell } from "../game/shell";
@@ -17,8 +18,13 @@ import type { LobbyPerson } from "./model";
  * and removing them are the host's, and they live here rather than as a row of
  * buttons that grew every time a host looked at the board. Last seen is a
  * status, not a control — it is the one fact the row's dot cannot say out
- * loud.
+ * loud. Stepping down from host is here too, on your own sheet, so it is not
+ * sitting next to the briefing in the game menu.
  */
+
+/** Square icon ActionButton, matching the primary Move height. */
+const SQUARE_ACTION =
+	"shrink-0 [&_.zl-press-face]:size-tap-primary [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
 
 interface PlayerSheetProps {
 	person: LobbyPerson | null;
@@ -42,12 +48,15 @@ export function PlayerSheet({
 	showReady = true,
 }: PlayerSheetProps) {
 	const { ephemeral } = useGameShell();
-	const { renamePlayer, removePlayer, readmitPlayer } = useLobbyActions();
+	const { renamePlayer, removePlayer, readmitPlayer, releaseHost, setReady } =
+		useLobbyActions();
 	const now = useNow();
 	const [draft, setDraft] = useState<string | null>(null);
 
 	const canRename = person !== null && (isMe || amHost) && !removed;
 	const name = draft ?? person?.displayName ?? "";
+	const canMarkReady =
+		amHost && showReady && person !== null && person.readyAt === null && !removed;
 
 	function close() {
 		saveName();
@@ -79,31 +88,61 @@ export function PlayerSheet({
 						Let back in
 					</ActionButton>
 				) : (
-					<div className="flex gap-2.5">
-						{!isMe && (
+					<div className="flex flex-col gap-2">
+						{isMe && (
 							<ActionButton
-								className="flex-1"
-								data-testid={`remove-${person.displayName}`}
+								data-testid="release-host"
 								onClick={() => {
-									removePlayer(person.id);
+									releaseHost();
 									close();
 								}}
-								tone="danger"
+								size="compact"
+								tone="secondary"
 							>
-								Remove
+								Stop hosting
 							</ActionButton>
 						)}
-						<ActionButton
-							className={!isMe ? "flex-[2]" : "flex-1"}
-							data-testid={`move-${person.displayName}`}
-							onClick={() => {
-								saveName();
-								setDraft(null);
-								onMove();
-							}}
-						>
-							{person.teamId === null ? "Put on a team" : "Move"}
-						</ActionButton>
+						<div className="flex items-stretch gap-2.5">
+							{!isMe && (
+								<ActionButton
+									className="flex-1"
+									data-testid={`remove-${person.displayName}`}
+									onClick={() => {
+										removePlayer(person.id);
+										close();
+									}}
+									tone="danger"
+								>
+									Remove
+								</ActionButton>
+							)}
+							<ActionButton
+								className={!isMe ? "min-w-0 flex-[2]" : "min-w-0 flex-1"}
+								data-testid={`move-${person.displayName}`}
+								onClick={() => {
+									saveName();
+									setDraft(null);
+									onMove();
+								}}
+							>
+								{person.teamId === null ? "Put on a team" : "Move"}
+							</ActionButton>
+							{canMarkReady && (
+								<ActionButton
+									aria-label={`Mark ${person.displayName} ready`}
+									className={SQUARE_ACTION}
+									data-testid={`host-ready-${person.displayName}`}
+									inline
+									onClick={() =>
+										setReady(true, isMe ? undefined : person.id)
+									}
+									size="primary"
+									tone="live"
+								>
+									<Icon name="check" size="md" />
+								</ActionButton>
+							)}
+						</div>
 					</div>
 				))
 			}

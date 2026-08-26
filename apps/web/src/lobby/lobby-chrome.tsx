@@ -25,7 +25,7 @@ export function LobbyChrome({
 	const lobby = useLobby();
 	const { session } = useGameShell();
 	const navigate = useNavigate();
-	const { claimHost, releaseHost, leaveGame } = useLobbyActions();
+	const { claimHost, leaveGame } = useLobbyActions();
 	const [overlay, setOverlay] = useState<"none" | "invite" | "menu">("none");
 	const [leaving, setLeaving] = useState(false);
 
@@ -63,9 +63,8 @@ export function LobbyChrome({
 						onHidingZone={() =>
 							void navigate(`/g/${session.code}/setup/size?from=lobby`)
 						}
-						onHostToggle={() => {
-							if (lobby.amHost) releaseHost();
-							else claimHost();
+						onClaimHost={() => {
+							claimHost();
 							setOverlay("none");
 						}}
 						onLeave={leave}

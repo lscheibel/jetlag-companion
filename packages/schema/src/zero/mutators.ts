@@ -280,19 +280,26 @@ export const mutators = defineMutators({
 		),
 
 		/**
-		 * Ready, in the player's own words. m1-spec §11.
-		 *
-		 * Self-scoped with no host override at all: the point of a ready check is
-		 * that somebody standing on a platform said yes, and a host who can tick
-		 * it for them has built a progress bar rather than a check. Reversible,
+		 * Ready, in the player's own words — or a host ticking it for someone
+		 * who is already on a platform and just has not pressed the button.
+		 * `playerId` names somebody else, and only a host may do that. Reversible,
 		 * because people say yes and then get on the wrong train.
 		 */
 		setReady: defineMutator(
-			z.object({ ...withEvent, ready: z.boolean() }),
+			z.object({
+				...withEvent,
+				ready: z.boolean(),
+				playerId: z.string().optional(),
+			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
+				const target = args.playerId ?? playerId;
+				if (target !== playerId) {
+					await requireHost(tx, playerId, "marking another player ready");
+				}
+
 				await tx.mutate.player.update({
-					id: playerId,
+					id: target,
 					readyAt: args.ready ? now() : null,
 				});
 				await appendEvent(tx, {
@@ -301,7 +308,10 @@ export const mutators = defineMutators({
 					type: "player.readyChanged",
 					actorPlayerId: playerId,
 					actorTeamId: null,
-					payload: { ready: args.ready },
+					payload:
+						target === playerId
+							? { ready: args.ready }
+							: { ready: args.ready, playerId: target },
 				});
 			},
 		),
@@ -1724,6 +1734,127 @@ export const mutators = defineMutators({
 					actorTeamId: args.seekerTeamId,
 					payload: { constraintId: args.constraintId, source: "manual" },
 				});
+			},
+		),
+
+		/**
+		 * The M13 macro: they are in this station's hiding zone now, so every
+		 * earlier cut is stale. Disable the rest (do not delete them) and fold in
+		 * an include-radius of `hidingRadiusMeters` around the stop.
+		 */
+		suspectHidingZone: defineMutator(
+			z.object({
+				...withEvent,
+				constraintId: z.string(),
+				roundId: z.string(),
+				seekerTeamId: z.string(),
+				hiderTeamId: z.string(),
+				lng: longitude,
+				lat: latitude,
+				radiusMeters,
+				name: z.string().max(80).nullable(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				await requireTeamMember(
+					tx,
+					playerId,
+					args.seekerTeamId,
+					"suspecting a hiding zone",
+				);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"suspecting a hiding zone",
+				);
+				if (!round) return;
+				if (
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"seeking",
+						"suspecting a hiding zone",
+					)
+				) {
+					return;
+				}
+				if (
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.seekerTeamId,
+						gameId,
+						"seeker",
+						"suspecting a hiding zone",
+					))
+				) {
+					return;
+				}
+				if (
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"suspecting a hiding zone",
+					))
+				) {
+					return;
+				}
+
+				const rows = await tx.run(
+					zql.constraint.where("roundId", args.roundId),
+				);
+				const scoped = rows.filter(
+					(row) =>
+						row.seekerTeamId === args.seekerTeamId &&
+						row.hiderTeamId === args.hiderTeamId,
+				);
+				const toDisable = scoped.filter((row) => row.enabled);
+				for (const row of toDisable) {
+					await tx.mutate.constraint.update({
+						id: row.id,
+						enabled: false,
+					});
+				}
+				const ordinal =
+					scoped.reduce((max, row) => Math.max(max, row.ordinal), -1) + 1;
+				await tx.mutate.constraint.insert({
+					id: args.constraintId,
+					roundId: args.roundId,
+					seekerTeamId: args.seekerTeamId,
+					hiderTeamId: args.hiderTeamId,
+					source: "manual",
+					answerId: null,
+					geometry: {
+						kind: "radius",
+						center: [args.lng, args.lat],
+						radius: args.radiusMeters,
+					},
+					mode: "include",
+					name: args.name?.trim() || null,
+					enabled: true,
+					ordinal,
+					createdAt: now(),
+				});
+				await appendEvents(tx, gameId, [
+					...toDisable.map((row) => ({
+						eventId: `${args.eventId}:off:${row.id}`,
+						type: "constraint.enabledChanged" as const,
+						actorPlayerId: playerId,
+						actorTeamId: args.seekerTeamId,
+						payload: { constraintId: row.id, enabled: false },
+					})),
+					{
+						eventId: args.eventId,
+						type: "constraint.created" as const,
+						actorPlayerId: playerId,
+						actorTeamId: args.seekerTeamId,
+						payload: { constraintId: args.constraintId, source: "manual" },
+					},
+				]);
 			},
 		),
 

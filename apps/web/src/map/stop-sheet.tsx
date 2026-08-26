@@ -1,4 +1,5 @@
 import { groupLinesByMode, type ModeId } from "@zero-lag/catalog";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import type { SearchableStop } from "./toolkit";
 
@@ -17,18 +18,35 @@ interface StopSheetProps {
 	readonly stop: SearchableStop | null;
 	readonly open: boolean;
 	readonly onClose: () => void;
+	/** Seekers in seeking: treat this stop as the hiding zone. */
+	readonly onSuspectHidingZone?: (stop: SearchableStop) => void;
 }
 
 /**
  * Tap a station. Lines live here, not as map labels — a hub with ICE numbers
  * and buses is a long card, not a pile of text on the board.
  */
-export function StopSheet({ stop, open, onClose }: StopSheetProps) {
+export function StopSheet({
+	stop,
+	open,
+	onClose,
+	onSuspectHidingZone,
+}: StopSheetProps) {
 	const shown = useHeldValue(open, stop);
 	const groups = shown ? groupLinesByMode(shown.lines) : [];
 
 	return (
 		<Sheet
+			actions={
+				onSuspectHidingZone && shown ? (
+					<ActionButton
+						data-testid="suspect-hiding-zone"
+						onClick={() => onSuspectHidingZone(shown)}
+					>
+						Suspect hiding zone
+					</ActionButton>
+				) : undefined
+			}
 			eyebrow={
 				shown
 					? shown.insideArea

@@ -145,7 +145,6 @@ async function unmarkFound(phone: Phone, code: string): Promise<void> {
 }
 
 async function pauseRound(phone: Phone, reason: string): Promise<void> {
-	await phone.page.getByTestId("lobby-menu").click();
 	await phone.page.getByTestId("open-pause").click();
 	await expect(phone.page.getByTestId("pause-sheet")).toBeVisible();
 	await phone.page.getByTestId("pause-reason").fill(reason);

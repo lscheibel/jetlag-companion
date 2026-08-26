@@ -72,6 +72,12 @@ export type MapTool =
 			readonly ring: readonly LngLat[];
 	  }
 	| {
+			readonly kind: "drawingSplitConstraint";
+			readonly from: LngLat | null;
+			readonly to: LngLat | null;
+			readonly focus: "from" | "to";
+	  }
+	| {
 			readonly kind: "pickingBoundaryConstraint";
 			readonly levels: readonly (9 | 10)[];
 			readonly selectedId: string | null;

@@ -23,8 +23,8 @@ interface AreaLayerProps {
 /**
  * The area a builder session has produced, filled. m4-spec §9.
  *
- * `GameAreaLayer` draws the same geometry as a dashed outline on the play
- * screen and deliberately does not fill it — a fill there would invent a
+ * `GameAreaLayer` draws the same geometry as a striped muted outline on the
+ * play screen and deliberately does not fill it — a fill there would invent a
  * meaning M13 has to undo. Here the fill *is* the meaning: it is the thing the
  * host is making, and they need to see its shape rather than infer it.
  */

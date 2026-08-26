@@ -50,6 +50,7 @@ async function pickConstraint(
 		| "add-radius-constraint"
 		| "add-polygon-constraint"
 		| "add-bezirk-constraint"
+		| "add-split-constraint"
 		| "constraint-list",
 ): Promise<void> {
 	await phone.page.getByTestId("map-ask").click();
@@ -236,4 +237,46 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("Mitte");
+});
+
+test("a seeker split cuts one side of the remaining area", async ({
+	browser,
+}) => {
+	test.setTimeout(120_000);
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben");
+	const code = await createGame(ana);
+	await joinGame(ben, code);
+	for (const phone of [ana, ben]) await waitForSync(phone);
+	await createTeam(ana, "Hiders");
+	await createTeam(ana, "Seekers");
+	await joinTeam(ana, "Seekers");
+	await joinTeam(ben, "Hiders");
+	await setSide(ana, "Hiders", "hider");
+	await setSide(ana, "Seekers", "seeker");
+
+	await startHiding([ana, ben], code, "30");
+	await commitZone(ben, code);
+	await startSeeking(ana, code);
+
+	await openMap(ana, code);
+	await waitForSync(ana);
+
+	const seed = await areaHash(ana);
+	await pickConstraint(ana, "add-split-constraint");
+	await expect(ana.page.getByTestId("split-draft")).toBeVisible();
+	await tapMap(ana, 0.35, 0.45);
+	await tapMap(ana, 0.65, 0.45);
+	await ana.page.getByTestId("constraint-name").fill("thermometer");
+	await ana.page.getByTestId("exclude-from-side").click();
+	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
+		timeout: 20_000,
+	});
+
+	const cut = await areaHash(ana);
+	expect(cut).not.toBe(seed);
+	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
+
+	await ana.close();
+	await ben.close();
 });

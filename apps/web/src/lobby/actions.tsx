@@ -25,8 +25,8 @@ export interface LobbyActions {
 	joinTeam(teamId: string, playerId?: string): void;
 	leaveTeam(teamId: string): void;
 	renamePlayer(displayName: string, playerId?: string): void;
-	/** Your own word, and nobody else's to give. m1-spec §11. */
-	setReady(ready: boolean): void;
+	/** Your own word, or a host ticking it for somebody else. */
+	setReady(ready: boolean, playerId?: string): void;
 	removePlayer(playerId: string): void;
 	readmitPlayer(playerId: string): void;
 	assignRoles(
@@ -86,8 +86,12 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 						mutators.player.rename({ ...event(), displayName, playerId }),
 					),
 				),
-			setReady: (ready) =>
-				submit(zero.mutate(mutators.player.setReady({ ...event(), ready }))),
+			setReady: (ready, playerId) =>
+				submit(
+					zero.mutate(
+						mutators.player.setReady({ ...event(), ready, playerId }),
+					),
+				),
 			removePlayer: (playerId) =>
 				submit(zero.mutate(mutators.player.remove({ ...event(), playerId }))),
 			readmitPlayer: (playerId) =>

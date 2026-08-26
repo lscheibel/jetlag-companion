@@ -9,8 +9,9 @@ import type { LobbyPerson } from "./model";
  * One person in the lobby, under the team they are on.
  *
  * The row is a fact, not a toolbar. Tapping it opens the person — that is
- * where a name is changed, and where a host moves or removes. The host hat
- * itself is in the game menu; the badge here is only a label.
+ * where a name is changed, and where a host moves or removes. Stepping down
+ * from host is on your own sheet; claiming it is still in the game menu. The
+ * badge here is only a label.
  *
  * Presence carries every player in the game, always — what it withholds is
  * where they are. m1-spec §9.

@@ -20,6 +20,7 @@ export type ActionButtonTone =
 	| "secondary"
 	| "danger"
 	| "curse"
+	| "live"
 	| "quiet";
 
 export type ActionButtonSize = "primary" | "comfortable" | "compact";
@@ -81,6 +82,12 @@ const TONES: Record<ActionButtonTone, Tone> = {
 	curse: {
 		edge: "[--press-edge:var(--edge-curse)]",
 		face: "bg-curse text-white",
+		press: "group-active:translate-y-[3px]",
+		lift: "hover:-translate-y-0.5",
+	},
+	live: {
+		edge: "[--press-edge:var(--edge-live)]",
+		face: "bg-live text-white",
 		press: "group-active:translate-y-[3px]",
 		lift: "hover:-translate-y-0.5",
 	},

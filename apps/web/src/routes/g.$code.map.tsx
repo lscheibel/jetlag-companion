@@ -58,6 +58,7 @@ import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import { buildMapPlayers, visibleMarkers } from "../map/players";
 import { SearchZoneLayer } from "../map/search-zone-layer";
+import { SplitDraftLayer } from "../map/split-draft-layer";
 import { StopSheet } from "../map/stop-sheet";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
@@ -390,6 +391,7 @@ function MapScreen() {
 			setSelectedStopId(null);
 			setSeekerOverlay("none");
 		}
+		if (next.kind === "drawingSplitConstraint") setCut(false);
 		setTool(next);
 	};
 
@@ -427,6 +429,18 @@ function MapScreen() {
 		webPlatform.haptics.vibrate([10]);
 		if (tool.kind === "placingPin" || tool.kind === "editingPin") {
 			setDraftPoint(point);
+			return;
+		}
+		if (tool.kind === "drawingSplitConstraint") {
+			if (tool.focus === "from") {
+				setTool({
+					...tool,
+					from: point,
+					focus: tool.to ? "from" : "to",
+				});
+			} else {
+				setTool({ ...tool, to: point });
+			}
 			return;
 		}
 		if (tool.kind === "pickingBoundaryConstraint") {
@@ -669,6 +683,25 @@ function MapScreen() {
 					name: label,
 				}),
 			);
+		} else if (tool.kind === "drawingSplitConstraint" && tool.from && tool.to) {
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: {
+						kind: "halfPlane",
+						a: [tool.from[0], tool.from[1]],
+						b: [tool.to[0], tool.to[1]],
+						nearer: cut ? "b" : "a",
+					},
+					mode: "exclude",
+					ordinal,
+					name: label,
+				}),
+			);
 		} else {
 			return;
 		}
@@ -700,6 +733,30 @@ function MapScreen() {
 		void zero.mutate(
 			mutators.constraint.remove({ ...event(), constraintId: id }),
 		);
+	};
+
+	const canSuspectHidingZone =
+		canEditConstraints &&
+		role.roundStatus === "seeking" &&
+		hiderTeamId !== null;
+
+	const suspectHidingZone = (stop: SearchableStop) => {
+		if (!role.teamId || !role.roundId || !hiderTeamId) return;
+		void zero.mutate(
+			mutators.constraint.suspectHidingZone({
+				...event(),
+				constraintId: crypto.randomUUID(),
+				roundId: role.roundId,
+				seekerTeamId: role.teamId,
+				hiderTeamId,
+				lng: stop.lng,
+				lat: stop.lat,
+				radiusMeters: defaultRadiusMeters,
+				name: stop.name.slice(0, 80),
+			}),
+		);
+		webPlatform.haptics.vibrate([15]);
+		setSelectedStopId(null);
 	};
 
 	return (
@@ -777,6 +834,7 @@ function MapScreen() {
 							/>
 						)}
 					<BuilderStopsLayer
+						area={area}
 						fold={
 							role.role === "seeker" ? (searchArea.surviving ?? null) : null
 						}
@@ -817,6 +875,16 @@ function MapScreen() {
 					)}
 					{tool.kind === "drawingPolygonConstraint" && (
 						<DrawLayer ring={tool.ring} />
+					)}
+					{tool.kind === "drawingSplitConstraint" && (
+						<SplitDraftLayer
+							excludeNearer={cut ? "b" : "a"}
+							focus={tool.focus}
+							from={tool.from}
+							onFocus={(which) => setTool({ ...tool, focus: which })}
+							surviving={searchArea.surviving}
+							to={tool.to}
+						/>
 					)}
 					{tool.kind === "placingZone" && (
 						<CircleDraftLayer
@@ -998,6 +1066,7 @@ function MapScreen() {
 									if (tool.kind !== "pickingBoundaryConstraint") return;
 									setTool({ ...tool, selectedId: id });
 								}}
+								onSplitChange={setTool}
 								onUndoPolygonVertex={() => {
 									if (tool.kind !== "drawingPolygonConstraint") return;
 									setTool({
@@ -1096,6 +1165,9 @@ function MapScreen() {
 
 			<StopSheet
 				onClose={() => setSelectedStopId(null)}
+				onSuspectHidingZone={
+					canSuspectHidingZone ? suspectHidingZone : undefined
+				}
 				open={selectedStop !== null}
 				stop={selectedStop}
 			/>

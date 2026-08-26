@@ -3,7 +3,7 @@
  * a dark core against the map.
  */
 export function yellowBlackLine(id: string, dashed = false) {
-	const dash = dashed ? ({ "line-dasharray": [2, 1.5] } as const) : {};
+	const dash = dashed ? { "line-dasharray": [2, 1.5] } : {};
 	return [
 		{
 			id: `${id}-case`,

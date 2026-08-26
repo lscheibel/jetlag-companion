@@ -1,3 +1,4 @@
+import { distanceMeters, type LngLat } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Icon } from "@zero-lag/ui/components/icon";
@@ -10,6 +11,7 @@ import {
 import { useState } from "react";
 import { HiderChip, type HiderOption } from "../game/hider-selector";
 import { formatZone, stepZoneMeters } from "../setup/game-size";
+import { CoordinateFields } from "./coordinate-fields";
 import type { MapTool } from "./toolkit";
 
 /**
@@ -21,6 +23,8 @@ import type { MapTool } from "./toolkit";
  * pair reads as one row rather than as two sizes of button.
  */
 export const COMPACT_SECONDARY = "shrink-0";
+
+type SplitTool = Extract<MapTool, { kind: "drawingSplitConstraint" }>;
 
 interface MapBarProps {
 	readonly tool: MapTool;
@@ -34,6 +38,7 @@ interface MapBarProps {
 	readonly onRadiusStep: (direction: 1 | -1) => void;
 	readonly onCommitConstraint: (name: string) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
+	readonly onSplitChange: (next: SplitTool) => void;
 	readonly cut: boolean;
 	readonly onCutChange: (cut: boolean) => void;
 }
@@ -55,6 +60,7 @@ export function MapBar({
 	onRadiusStep,
 	onCommitConstraint,
 	onSelectBoundary,
+	onSplitChange,
 	cut,
 	onCutChange,
 }: MapBarProps) {
@@ -63,6 +69,7 @@ export function MapBar({
 	if (
 		tool.kind === "drawingRadiusConstraint" ||
 		tool.kind === "drawingPolygonConstraint" ||
+		tool.kind === "drawingSplitConstraint" ||
 		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId)
 	) {
 		return (
@@ -73,6 +80,7 @@ export function MapBar({
 				onCutChange={onCutChange}
 				onRadiusStep={onRadiusStep}
 				onSelectBoundary={onSelectBoundary}
+				onSplitChange={onSplitChange}
 				onUndoPolygonVertex={onUndoPolygonVertex}
 				tool={tool}
 			/>
@@ -129,6 +137,7 @@ function ConstraintDraft({
 	onCommitConstraint,
 	onRadiusStep,
 	onSelectBoundary,
+	onSplitChange,
 	onUndoPolygonVertex,
 }: {
 	readonly cut: boolean;
@@ -138,45 +147,114 @@ function ConstraintDraft({
 	readonly onCommitConstraint: (name: string) => void;
 	readonly onRadiusStep: (direction: 1 | -1) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
+	readonly onSplitChange: (next: SplitTool) => void;
 	readonly onUndoPolygonVertex: () => void;
 }) {
 	const [name, setName] = useState("");
+	const split = tool.kind === "drawingSplitConstraint" ? tool : null;
 	const vertexCount =
 		tool.kind === "drawingPolygonConstraint" ? tool.ring.length : null;
 	const ready =
 		(tool.kind === "drawingRadiusConstraint" && tool.center !== null) ||
 		(tool.kind === "drawingPolygonConstraint" && tool.ring.length >= 3) ||
-		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId !== null);
+		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId !== null) ||
+		(split !== null &&
+			split.from !== null &&
+			split.to !== null &&
+			distanceMeters(split.from, split.to) > 0);
 	const pickAnother =
 		tool.kind === "pickingBoundaryConstraint" && ready
 			? () => onSelectBoundary(null)
 			: null;
 
+	function setSplitPoint(which: "from" | "to", point: LngLat) {
+		if (!split) return;
+		onSplitChange({ ...split, [which]: point });
+	}
+
 	return (
-		<Surface className="pointer-events-auto w-full" raised>
+		<Surface
+			className="pointer-events-auto flex max-h-[45%] w-full flex-col overflow-y-auto"
+			data-testid={split ? "split-draft" : undefined}
+			raised
+		>
 			<div className="flex flex-col gap-2">
+				{split && (
+					<>
+						<p className="text-ink-dim text-xs leading-snug">
+							Tap the map to place the highlighted point.
+						</p>
+						<div className="flex flex-col gap-1">
+							<span className="eyebrow">From</span>
+							<CoordinateFields
+								focused={split.focus === "from"}
+								onFocus={() => onSplitChange({ ...split, focus: "from" })}
+								onPoint={(point) => setSplitPoint("from", point)}
+								point={split.from}
+								testIdPrefix="split-from"
+							/>
+						</div>
+						<div className="flex flex-col gap-1">
+							<span className="eyebrow">To</span>
+							<CoordinateFields
+								focused={split.focus === "to"}
+								onFocus={() => onSplitChange({ ...split, focus: "to" })}
+								onPoint={(point) => setSplitPoint("to", point)}
+								point={split.to}
+								testIdPrefix="split-to"
+							/>
+						</div>
+					</>
+				)}
 				<div className="flex items-stretch gap-2">
 					<ToggleModePair className="min-w-0 flex-1">
-						<ToggleButton
-							icon={<Icon name="plus" size="xs" />}
-							onClick={() => onCutChange(false)}
-							pressed={!cut}
-							shape="bar"
-							testId="constraint-mode-include"
-							tone="add"
-						>
-							Inside
-						</ToggleButton>
-						<ToggleButton
-							icon={<Icon name="scissors" size="xs" />}
-							onClick={() => onCutChange(true)}
-							pressed={cut}
-							shape="bar"
-							testId="constraint-mode-exclude"
-							tone="cut"
-						>
-							Outside
-						</ToggleButton>
+						{split ? (
+							<>
+								<ToggleButton
+									icon={<Icon name="scissors" size="xs" />}
+									onClick={() => onCutChange(false)}
+									pressed={!cut}
+									shape="bar"
+									testId="constraint-mode-from"
+									tone="cut"
+								>
+									From side
+								</ToggleButton>
+								<ToggleButton
+									icon={<Icon name="scissors" size="xs" />}
+									onClick={() => onCutChange(true)}
+									pressed={cut}
+									shape="bar"
+									testId="constraint-mode-to"
+									tone="cut"
+								>
+									To side
+								</ToggleButton>
+							</>
+						) : (
+							<>
+								<ToggleButton
+									icon={<Icon name="plus" size="xs" />}
+									onClick={() => onCutChange(false)}
+									pressed={!cut}
+									shape="bar"
+									testId="constraint-mode-include"
+									tone="add"
+								>
+									Inside
+								</ToggleButton>
+								<ToggleButton
+									icon={<Icon name="scissors" size="xs" />}
+									onClick={() => onCutChange(true)}
+									pressed={cut}
+									shape="bar"
+									testId="constraint-mode-exclude"
+									tone="cut"
+								>
+									Outside
+								</ToggleButton>
+							</>
+						)}
 					</ToggleModePair>
 					{tool.kind === "drawingPolygonConstraint" && (
 						<ActionButton
@@ -236,12 +314,26 @@ function ConstraintDraft({
 					<ActionButton
 						beacon
 						className="w-auto min-w-0 flex-1"
-						data-testid={cut ? "they-are-outside" : "they-are-inside"}
+						data-testid={
+							split
+								? cut
+									? "exclude-to-side"
+									: "exclude-from-side"
+								: cut
+									? "they-are-outside"
+									: "they-are-inside"
+						}
 						disabled={!ready}
 						onClick={() => onCommitConstraint(name)}
 						size="comfortable"
 					>
-						{cut ? "They are outside this" : "They are inside this"}
+						{split
+							? cut
+								? "Exclude the to side"
+								: "Exclude the from side"
+							: cut
+								? "They are outside this"
+								: "They are inside this"}
 					</ActionButton>
 				</div>
 			</div>

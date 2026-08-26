@@ -2,9 +2,8 @@ import { useQuery, useZero } from "@rocicorp/zero/react";
 import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet } from "@zero-lag/ui/components/sheet";
-import { useState } from "react";
+import { ThemeToggle } from "@zero-lag/ui/components/theme";
 import { hidersAllFound } from "./model";
-import { PauseSheet } from "./pause-sheet";
 
 /**
  * The things a game has that are not the screen you are on.
@@ -20,7 +19,7 @@ interface LobbyMenuProps {
 	onClose: () => void;
 	amHost: boolean;
 	onBriefing: () => void;
-	onHostToggle: () => void;
+	onClaimHost: () => void;
 	onGameArea: () => void;
 	onTransit: () => void;
 	onHidingZone: () => void;
@@ -33,7 +32,7 @@ export function LobbyMenu({
 	onClose,
 	amHost,
 	onBriefing,
-	onHostToggle,
+	onClaimHost,
 	onGameArea,
 	onTransit,
 	onHidingZone,
@@ -44,7 +43,6 @@ export function LobbyMenu({
 	const [rounds] = useQuery(queries.rounds());
 	const [pauses] = useQuery(queries.roundPauses());
 	const [outcomes] = useQuery(queries.hiderOutcomes());
-	const [pauseOpen, setPauseOpen] = useState(false);
 
 	const round =
 		[...rounds].reverse().find((candidate) => candidate.status !== "ended") ??
@@ -54,10 +52,6 @@ export function LobbyMenu({
 				(pause) => pause.roundId === round.id && pause.endedAt === null,
 			)
 		: undefined;
-	const running =
-		round !== undefined &&
-		(round.status === "hiding" || round.status === "seeking") &&
-		!openPause;
 	const seeking = round?.status === "seeking" && !openPause;
 	const hiderIds = round
 		? round.roles
@@ -68,118 +62,108 @@ export function LobbyMenu({
 		round !== undefined && hidersAllFound(hiderIds, outcomes, round.id);
 
 	return (
-		<>
-			<Sheet
-				onClose={onClose}
-				open={open}
-				testId="lobby-menu-sheet"
-				title="This game"
+		<Sheet
+			onClose={onClose}
+			open={open}
+			testId="lobby-menu-sheet"
+			title="This game"
+		>
+			{/*
+			 * The briefing stays reachable after it has been read once: it is the
+			 * only place the area, the clock and the house rules are said together,
+			 * and "what were we playing again" is a question people ask twice.
+			 */}
+			<ActionButton
+				data-testid="open-briefing"
+				onClick={onBriefing}
+				tone="secondary"
 			>
-				{/*
-				 * The briefing stays reachable after it has been read once: it is the
-				 * only place the area, the clock and the house rules are said together,
-				 * and "what were we playing again" is a question people ask twice.
-				 */}
+				The briefing
+			</ActionButton>
+
+			{amHost && seeking && round && !allFound && (
 				<ActionButton
-					data-testid="open-briefing"
-					onClick={onBriefing}
+					data-testid="end-round"
+					onClick={() => {
+						void zero.mutate(
+							mutators.round.end({
+								eventId: crypto.randomUUID(),
+								roundId: round.id,
+							}),
+						);
+						onClose();
+					}}
 					tone="secondary"
 				>
-					The briefing
+					End round
 				</ActionButton>
+			)}
 
-				{amHost && running && (
-					<ActionButton
-						data-testid="open-pause"
-						onClick={() => {
-							onClose();
-							setPauseOpen(true);
-						}}
-						tone="secondary"
-					>
-						Pause
-					</ActionButton>
-				)}
-
-				{amHost && seeking && round && !allFound && (
-					<ActionButton
-						data-testid="end-round"
-						onClick={() => {
-							void zero.mutate(
-								mutators.round.end({
-									eventId: crypto.randomUUID(),
-									roundId: round.id,
-								}),
-							);
-							onClose();
-						}}
-						tone="secondary"
-					>
-						End round
-					</ActionButton>
-				)}
-
-				{/*
-				 * The hat, claimable by anyone and droppable by whoever is wearing it.
-				 * More than one at a time is a normal Tuesday rather than a conflict, so
-				 * this is a plain toggle and never a transfer. m1-spec §6.
-				 */}
+			{/*
+			 * Claiming the hat lives here. Stepping down is on your own player
+			 * sheet — a host reaching for the briefing should not land on it.
+			 * More than one at a time is a normal Tuesday. m1-spec §6.
+			 */}
+			{!amHost && (
 				<ActionButton
-					data-testid={amHost ? "release-host" : "claim-host"}
-					onClick={onHostToggle}
+					data-testid="claim-host"
+					onClick={onClaimHost}
 					tone="secondary"
 				>
-					{amHost ? "Stop hosting" : "Be a host too"}
+					Be a host too
 				</ActionButton>
+			)}
 
-				{/* The area is a host act. The editor lives under setup so it can
+			{/* The area is a host act. The editor lives under setup so it can
 			    reuse the pieces the wizard already holds. */}
-				{amHost && (
-					<ActionButton
-						data-testid="open-builder"
-						onClick={onGameArea}
-						tone="secondary"
-					>
-						Game area
-					</ActionButton>
-				)}
-
-				{amHost && (
-					<ActionButton
-						data-testid="open-transit"
-						onClick={onTransit}
-						tone="secondary"
-					>
-						Transit
-					</ActionButton>
-				)}
-
-				{amHost && (
-					<ActionButton
-						data-testid="open-hiding-zone"
-						onClick={onHidingZone}
-						tone="secondary"
-					>
-						Hiding zone
-					</ActionButton>
-				)}
-
+			{amHost && (
 				<ActionButton
-					data-testid="leave-game"
-					disabled={leaving}
-					onClick={onLeave}
-					tone="danger"
+					data-testid="open-builder"
+					onClick={onGameArea}
+					tone="secondary"
 				>
-					{leaving ? "Leaving…" : "Leave game"}
+					Game area
 				</ActionButton>
+			)}
 
-				<p className="text-center text-ink-dim text-xs leading-snug">
-					Leaving takes you off your team. Coming back is free — the code still
-					works.
-				</p>
-			</Sheet>
+			{amHost && (
+				<ActionButton
+					data-testid="open-transit"
+					onClick={onTransit}
+					tone="secondary"
+				>
+					Transit
+				</ActionButton>
+			)}
 
-			<PauseSheet onClose={() => setPauseOpen(false)} open={pauseOpen} />
-		</>
+			{amHost && (
+				<ActionButton
+					data-testid="open-hiding-zone"
+					onClick={onHidingZone}
+					tone="secondary"
+				>
+					Hiding zone
+				</ActionButton>
+			)}
+
+			<div className="flex flex-col gap-2">
+				<p className="eyebrow">Appearance</p>
+				<ThemeToggle className="w-full max-w-none" />
+			</div>
+
+			<ActionButton
+				data-testid="leave-game"
+				disabled={leaving}
+				onClick={onLeave}
+				tone="danger"
+			>
+				{leaving ? "Leaving…" : "Leave game"}
+			</ActionButton>
+
+			<p className="text-center text-ink-dim text-xs leading-snug">
+				Leaving takes you off your team. Coming back is free — the code still
+				works.
+			</p>
+		</Sheet>
 	);
 }

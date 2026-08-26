@@ -1,10 +1,10 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
 import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
-import { ScreenActions } from "@zero-lag/ui/components/screen";
 import { useNavigate } from "react-router";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
+import { LobbyScreenActions } from "./lobby-actions";
 import { hidersAllFound } from "./model";
 import { useLobby } from "./use-lobby";
 
@@ -49,7 +49,7 @@ export function PlayMapAction() {
 
 	if (role.role === "seeker" && status === "seeking") {
 		return (
-			<ScreenActions>
+			<LobbyScreenActions>
 				<ActionButton
 					beacon
 					data-testid="lobby-open-map"
@@ -58,13 +58,13 @@ export function PlayMapAction() {
 				>
 					Go look for them
 				</ActionButton>
-			</ScreenActions>
+			</LobbyScreenActions>
 		);
 	}
 
 	if (role.role === "hider") {
 		return (
-			<ScreenActions>
+			<LobbyScreenActions>
 				<ActionButton
 					data-testid="lobby-open-map"
 					hint="On the map"
@@ -72,7 +72,7 @@ export function PlayMapAction() {
 				>
 					Track the seekers
 				</ActionButton>
-			</ScreenActions>
+			</LobbyScreenActions>
 		);
 	}
 
@@ -94,11 +94,12 @@ export function EndRoundAction() {
 	const roundId = round.id;
 
 	return (
-		<ScreenActions>
+		<LobbyScreenActions>
 			<ActionButton
 				beacon
 				data-testid="end-round"
 				disabled={!lobby.amHost}
+				hint="Hiders found"
 				onClick={() => {
 					void zero.mutate(
 						mutators.round.end({
@@ -110,12 +111,6 @@ export function EndRoundAction() {
 			>
 				End round
 			</ActionButton>
-			<p
-				className="text-center text-ink-dim text-xs leading-snug"
-				data-testid="end-round-note"
-			>
-				hiders found
-			</p>
-		</ScreenActions>
+		</LobbyScreenActions>
 	);
 }

@@ -19,7 +19,7 @@ interface SeekerActionsSheetProps {
 	readonly onNarrowDown: () => void;
 }
 
-/** Ask, cut the map down, or say you found them. Ask is still a stub. */
+/** Found them first; ask is last, and still a stub. */
 export function SeekerActionsSheet({
 	open,
 	found,
@@ -37,20 +37,6 @@ export function SeekerActionsSheet({
 			testId="seeker-actions"
 			title="What now?"
 		>
-			<ActionButton
-				data-testid="ask-question"
-				disabled={!canAsk}
-				onClick={() => {}}
-			>
-				Ask a question
-			</ActionButton>
-			<ActionButton
-				data-testid="narrow-it-down"
-				onClick={onNarrowDown}
-				tone="secondary"
-			>
-				Narrow it down
-			</ActionButton>
 			{canMarkFound &&
 				(found ? (
 					<ActionButton
@@ -69,6 +55,20 @@ export function SeekerActionsSheet({
 						Found them!
 					</ActionButton>
 				))}
+			<ActionButton
+				data-testid="narrow-it-down"
+				onClick={onNarrowDown}
+				tone="secondary"
+			>
+				Narrow it down
+			</ActionButton>
+			<ActionButton
+				data-testid="ask-question"
+				disabled={!canAsk}
+				onClick={() => {}}
+			>
+				Ask a question
+			</ActionButton>
 		</Sheet>
 	);
 }

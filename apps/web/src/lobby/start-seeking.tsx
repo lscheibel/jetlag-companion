@@ -3,11 +3,11 @@ import { elapsed } from "@zero-lag/rules";
 import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { InlineNotice } from "@zero-lag/ui/components/notice";
-import { ScreenActions } from "@zero-lag/ui/components/screen";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
 import { formatHms } from "../game/round-bar";
 import { useNow } from "../map/use-now";
+import { LobbyScreenActions } from "./lobby-actions";
 import { useLobby } from "./use-lobby";
 
 /**
@@ -61,7 +61,38 @@ export function StartSeekingAction() {
 	}
 
 	return (
-		<ScreenActions>
+		<LobbyScreenActions
+			after={
+				<Sheet
+					actions={
+						<ActionButton
+							data-testid="confirm-start-seeking"
+							onClick={confirm}
+							tone={timeLeft ? "secondary" : "primary"}
+						>
+							Start seeking
+						</ActionButton>
+					}
+					onClose={() => setOpen(false)}
+					open={open}
+					testId="start-seeking-sheet"
+					title="Start seeking?"
+				>
+					<p className="text-sm leading-snug">
+						This will start the seeking timer.
+					</p>
+					{timeLeft && (
+						<InlineNotice
+							testId="hiding-time-remaining"
+							title="Hiders still have time left to hide"
+							tone="warn"
+						>
+							{formatHms(remaining)} remaining. Starting now cuts that short.
+						</InlineNotice>
+					)}
+				</Sheet>
+			}
+		>
 			<ActionButton
 				beacon={!timeLeft}
 				data-testid="start-seeking"
@@ -69,34 +100,6 @@ export function StartSeekingAction() {
 			>
 				Start seeking
 			</ActionButton>
-			<Sheet
-				actions={
-					<ActionButton
-						data-testid="confirm-start-seeking"
-						onClick={confirm}
-						tone={timeLeft ? "secondary" : "primary"}
-					>
-						Start seeking
-					</ActionButton>
-				}
-				onClose={() => setOpen(false)}
-				open={open}
-				testId="start-seeking-sheet"
-				title="Start seeking?"
-			>
-				<p className="text-sm leading-snug">
-					This will start the seeking timer.
-				</p>
-				{timeLeft && (
-					<InlineNotice
-						testId="hiding-time-remaining"
-						title="Hiders still have time left to hide"
-						tone="warn"
-					>
-						{formatHms(remaining)} remaining. Starting now cuts that short.
-					</InlineNotice>
-				)}
-			</Sheet>
-		</ScreenActions>
+		</LobbyScreenActions>
 	);
 }
