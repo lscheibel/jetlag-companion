@@ -85,7 +85,7 @@ export function ScreenHeader({
 						onClick={onBack}
 						type="button"
 					>
-						<Icon name="caret-left" size="md" />
+						<Icon name="caret-left" size="md" weight="bold" />
 					</button>
 				)}
 				<div className="min-w-0 flex-1">

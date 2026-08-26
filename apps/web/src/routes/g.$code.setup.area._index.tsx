@@ -96,7 +96,7 @@ export default function SetupArea() {
 					<Door
 						chevron
 						data-testid="setup-area-district"
-						glyph={<Icon name="squares-four" size="lg" />}
+						glyph={<Icon name="map-pin-simple-area" size="lg" />}
 						hint="A Land, a district, or an Ortsteil anywhere in Germany"
 						onClick={() => edit("districts")}
 					>
@@ -105,7 +105,7 @@ export default function SetupArea() {
 					<Door
 						chevron
 						data-testid="setup-area-draw"
-						glyph={<Icon name="pencil-simple" size="lg" />}
+						glyph={<Icon name="pencil-line" size="lg" />}
 						hint="Trace the edge on the map"
 						onClick={() => edit("draw")}
 					>

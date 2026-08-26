@@ -11,8 +11,8 @@ import { useAreaEditor } from "./use-editor";
 export type AreaTool = "districts" | "draw" | "circle" | "file";
 
 const TOOLS: readonly { id: AreaTool; icon: IconName; label: string }[] = [
-	{ id: "districts", icon: "squares-four", label: "Place" },
-	{ id: "draw", icon: "pencil-simple", label: "Draw" },
+	{ id: "districts", icon: "map-pin-simple-area", label: "Place" },
+	{ id: "draw", icon: "pencil-line", label: "Draw" },
 	{ id: "circle", icon: "circle-dashed", label: "Circle" },
 	{ id: "file", icon: "upload-simple", label: "File" },
 ];

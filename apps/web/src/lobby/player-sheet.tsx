@@ -139,7 +139,7 @@ export function PlayerSheet({
 									size="primary"
 									tone="live"
 								>
-									<Icon name="check" size="md" />
+									<Icon name="check" size="md" weight="bold" />
 								</ActionButton>
 							)}
 						</div>

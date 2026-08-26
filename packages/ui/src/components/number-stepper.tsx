@@ -126,7 +126,7 @@ export function NumberStepper({
 				onClick={() => step(-1)}
 				testId={testId && `${testId}-down`}
 			>
-				<Icon name="minus" size="md" />
+				<Icon name="minus" size="md" weight="bold" />
 			</StepButton>
 			<StepButton
 				disabled={!canIncrease}
@@ -134,7 +134,7 @@ export function NumberStepper({
 				onClick={() => step(1)}
 				testId={testId && `${testId}-up`}
 			>
-				<Icon name="plus" size="md" />
+				<Icon name="plus" size="md" weight="bold" />
 			</StepButton>
 		</div>
 	);

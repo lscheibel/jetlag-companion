@@ -97,7 +97,7 @@ export function LobbyHeader({
 								onClick={onInvite}
 								testId="show-qr"
 							>
-								<Icon name="share-network" size="sm" />
+								<Icon name="share-fat" size="sm" />
 							</IconButton>
 						)}
 						{onMenu && (
@@ -106,7 +106,7 @@ export function LobbyHeader({
 								onClick={onMenu}
 								testId="lobby-menu"
 							>
-								<Icon name="dots-three" size="md" />
+								<Icon name="dots-three" size="md" weight="bold" />
 							</IconButton>
 						)}
 					</div>

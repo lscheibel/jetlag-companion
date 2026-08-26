@@ -282,14 +282,14 @@ const CONSTRAINT_TYPES: readonly {
 	readonly kind: MapTool["kind"];
 }[] = [
 	{
-		icon: "squares-four",
+		icon: "map-pin-simple-area",
 		label: "Place",
 		hint: "A Bezirk or Ortsteil",
 		testId: "add-bezirk-constraint",
 		kind: "pickingBoundaryConstraint",
 	},
 	{
-		icon: "pencil-simple",
+		icon: "pencil-line",
 		label: "Draw",
 		hint: "A polygon on the map",
 		testId: "add-polygon-constraint",

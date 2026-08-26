@@ -25,12 +25,13 @@ import {
 	ListBulletsIcon,
 	MagnifyingGlassIcon,
 	MapPinIcon,
+	MapPinSimpleAreaIcon,
 	MapTrifoldIcon,
 	MinusIcon,
 	MoonIcon,
 	NoteBlankIcon,
 	PauseIcon,
-	PencilSimpleIcon,
+	PencilLineIcon,
 	PlusIcon,
 	PolygonIcon,
 	ProhibitIcon,
@@ -39,9 +40,8 @@ import {
 	RulerIcon,
 	ScissorsIcon,
 	SealQuestionIcon,
-	ShareNetworkIcon,
+	ShareFatIcon,
 	SignOutIcon,
-	SquaresFourIcon,
 	SunIcon,
 	TimerIcon,
 	TrainSimpleIcon,
@@ -57,11 +57,11 @@ import { cn } from "../lib/utils";
 /**
  * One set, one weight.
  *
- * Bold, because a glyph in this app is read at 17px on a phone held at arm's
- * length in daylight, and because it is the only weight that keeps its shape
- * beside Bricolage at 800. The alternative it replaces was literal characters
- * typed into JSX — ▦ ✎ ◎ ⇪ ━ ◉ ☰ ⋯ — which render differently on every phone
- * and cannot take a weight at all.
+ * Fill, because a glyph in this app is read at 17px on a phone held at arm's
+ * length in daylight, and because a filled shape holds its own beside Bricolage
+ * at 800. The alternative it replaces was literal characters typed into JSX —
+ * ▦ ✎ ◎ ⇪ ━ ◉ ☰ ⋯ — which render differently on every phone and cannot take a
+ * weight at all.
  *
  * The registry is closed on purpose. A screen that needs a glyph the app has
  * no name for is a screen proposing a new piece of vocabulary, and that is
@@ -98,12 +98,13 @@ const ICONS = {
 	"list-bullets": ListBulletsIcon,
 	"magnifying-glass": MagnifyingGlassIcon,
 	"map-pin": MapPinIcon,
+	"map-pin-simple-area": MapPinSimpleAreaIcon,
 	"map-trifold": MapTrifoldIcon,
 	minus: MinusIcon,
 	moon: MoonIcon,
 	"note-blank": NoteBlankIcon,
 	pause: PauseIcon,
-	"pencil-simple": PencilSimpleIcon,
+	"pencil-line": PencilLineIcon,
 	plus: PlusIcon,
 	polygon: PolygonIcon,
 	prohibit: ProhibitIcon,
@@ -112,9 +113,8 @@ const ICONS = {
 	ruler: RulerIcon,
 	scissors: ScissorsIcon,
 	"seal-question": SealQuestionIcon,
-	"share-network": ShareNetworkIcon,
+	"share-fat": ShareFatIcon,
 	"sign-out": SignOutIcon,
-	"squares-four": SquaresFourIcon,
 	sun: SunIcon,
 	timer: TimerIcon,
 	"train-simple": TrainSimpleIcon,
@@ -139,7 +139,7 @@ const PX: Record<IconSize, number> = { xs: 14, sm: 17, md: 20, lg: 24 };
 interface IconProps {
 	name: IconName;
 	size?: IconSize;
-	/** Bold everywhere. Overridden only where a filled shape is the meaning. */
+	/** Fill everywhere. Overridden only where a stroke is the meaning. */
 	weight?: IconWeight;
 	className?: string;
 }
@@ -147,7 +147,7 @@ interface IconProps {
 export function Icon({
 	name,
 	size = "sm",
-	weight = "bold",
+	weight = "fill",
 	className,
 }: IconProps) {
 	const Glyph = ICONS[name];
