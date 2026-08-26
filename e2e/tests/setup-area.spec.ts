@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { closeDb } from "./db";
-import { openPhone, type Phone } from "./harness";
+import { openPhone, type Phone, submitCreateName } from "./harness";
 
 /**
  * The setup wizard's area editor: districts, a cut, back-to-picker, and
@@ -13,8 +13,7 @@ test.afterAll(async () => {
 
 async function openAreaStep(phone: Phone): Promise<void> {
 	await phone.page.getByTestId("create-game").click();
-	await phone.page.getByTestId("display-name").fill(phone.name);
-	await phone.page.getByTestId("create-confirm").click();
+	await submitCreateName(phone);
 	await phone.page.getByTestId("setup-area-district").waitFor();
 }
 

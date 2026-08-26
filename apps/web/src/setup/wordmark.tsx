@@ -17,10 +17,10 @@ export function Wordmark({ className }: WordmarkProps) {
 				className,
 			)}
 		>
-			zero
+			Jet Lag: The Game
 			<br />
 			<span className="rounded-md bg-action px-[0.1em] text-action-ink">
-				lag
+				Companion
 			</span>
 		</span>
 	);

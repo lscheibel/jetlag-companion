@@ -20,6 +20,20 @@ export default function CreateGameRoute() {
 
 	return (
 		<NameStep
+			disclaimer={
+				<>
+					This companion does not replace the physical game. You still need{" "}
+					<a
+						className="underline decoration-hairline-strong underline-offset-2 hover:text-ink"
+						href="https://store.nebula.tv/collections/jetlag"
+						rel="noreferrer"
+						target="_blank"
+					>
+						a copy of Hide + Seek
+					</a>{" "}
+					to play.
+				</>
+			}
 			errorTestId="create-error"
 			hint="You'll be running this game. You can hand that over to somebody else at any point."
 			onBack={() => void navigate("/")}
@@ -28,6 +42,7 @@ export default function CreateGameRoute() {
 				saveSession(session);
 				await navigate(`/g/${session.code}/setup/area`);
 			}}
+			pledge="I solemnly swear that I own a copy of the game."
 			steps={{ count: 5, current: 0, label: "Create game" }}
 			submitLabel="Continue"
 			submitTestId="create-confirm"

@@ -13,6 +13,7 @@ await page.goto("https://localhost:5173/");
 await page.evaluate(() => localStorage.setItem("zero-lag:theme", "dark"));
 await page.goto("https://localhost:5173/new");
 await page.getByTestId("display-name").fill("Pia");
+await page.getByTestId("own-copy").click();
 await page.getByTestId("create-confirm").click();
 await page.getByTestId("setup-area-district").waitFor();
 await page.getByTestId("setup-area-district").click();

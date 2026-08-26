@@ -5,7 +5,7 @@ import { Screen, ScreenBody } from "@zero-lag/ui/components/screen";
 import { ThemeToggle } from "@zero-lag/ui/components/theme";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { SceneMenu } from "../debug/scene-menu";
 import { loadSession } from "../session";
 import { Wordmark } from "../setup/wordmark";
@@ -31,11 +31,9 @@ export default function Start() {
 			<ScreenBody className="gap-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
 				<div className="flex flex-col items-start gap-2.5">
 					<h1>
-						<Wordmark className="text-[2.6rem]" />
+						<Wordmark className="text-[1.85rem]" />
 					</h1>
-					<p className="text-ink-dim text-sm">
-						Hide and seek, for a whole city.
-					</p>
+					<p className="text-ink-dim text-sm">Hide and seek.</p>
 				</div>
 
 				{/* The four colours the rest of the app spends: U-Bahn, S-Bahn, tram,
@@ -99,13 +97,28 @@ export default function Start() {
 
 				{import.meta.env.DEV && <SceneMenu />}
 
-				<div className="flex items-center justify-between gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+				<div className="flex items-end justify-between gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 					<ThemeToggle />
-					<p className="eyebrow text-right leading-snug">
-						Companion to
-						<br />
-						Jet Lag: Hide + Seek
-					</p>
+					<nav
+						aria-label="About"
+						className="flex items-center gap-1 text-ink-dim text-xs"
+					>
+						<Link
+							className="inline-flex min-h-tap items-center px-1.5 hover:text-ink"
+							to="/imprint"
+						>
+							Imprint
+						</Link>
+						<a
+							aria-label="Source on GitHub"
+							className="grid size-tap place-items-center hover:text-ink"
+							href="https://github.com/lscheibel/jetlag-companion"
+							rel="noreferrer"
+							target="_blank"
+						>
+							<Icon name="github" size="md" />
+						</a>
+					</nav>
 				</div>
 			</ScreenBody>
 		</Screen>

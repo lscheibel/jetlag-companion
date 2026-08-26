@@ -1,4 +1,5 @@
 import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Checkbox } from "@zero-lag/ui/components/checkbox";
 import { Field } from "@zero-lag/ui/components/field";
 import {
 	Screen,
@@ -14,9 +15,9 @@ import { setupFailureMessage } from "./join-code";
  * "What should we call you?" — the one screen both doors end on.
  *
  * Creating and joining ask for a name in the same shape and for the same
- * reason, and the only differences are what the button does and what is said
- * underneath the field. One field, nothing else, keyboard already up: the
- * screen has a single job and a single control.
+ * reason. Joining is still one field; creating adds a disclaimer and a pledge
+ * that the host owns the physical game, because that is the door that would
+ * otherwise look like a replacement for the box.
  */
 
 interface NameStepProps {
@@ -25,6 +26,16 @@ interface NameStepProps {
 	eyebrow?: ReactNode;
 	/** Why this is safe to answer quickly. Reassurance, not a warning. */
 	hint: ReactNode;
+	/**
+	 * What this app is not. Creating is the only door that needs it: joining
+	 * someone else's game has already been through this gate.
+	 */
+	disclaimer?: ReactNode;
+	/**
+	 * A required checkbox above Continue. Creating asks the host to swear they
+	 * own the physical game; joining does not.
+	 */
+	pledge?: ReactNode;
 	submitLabel: string;
 	submitTestId: string;
 	errorTestId: string;
@@ -41,6 +52,8 @@ export function NameStep({
 	title,
 	eyebrow,
 	hint,
+	disclaimer,
+	pledge,
 	submitLabel,
 	submitTestId,
 	errorTestId,
@@ -50,14 +63,16 @@ export function NameStep({
 	children,
 }: NameStepProps) {
 	const [displayName, setDisplayName] = useState("");
+	const [ownsCopy, setOwnsCopy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const name = displayName.trim();
+	const canSubmit = name.length > 0 && !busy && (!pledge || ownsCopy);
 
 	function submit(event: FormEvent) {
 		event.preventDefault();
-		if (name.length === 0 || busy) return;
+		if (!canSubmit) return;
 		setBusy(true);
 		setError(null);
 		void (async () => {
@@ -103,6 +118,11 @@ export function NameStep({
 						value={displayName}
 					/>
 					<p className="px-1 text-ink-dim text-xs leading-snug">{hint}</p>
+					{disclaimer && (
+						<p className="px-1 text-ink-dim text-xs leading-snug">
+							{disclaimer}
+						</p>
+					)}
 				</ScreenBody>
 
 				<ScreenActions
@@ -114,10 +134,19 @@ export function NameStep({
 						)
 					}
 				>
+					{pledge && (
+						<Checkbox
+							checked={ownsCopy}
+							className="opacity-100 [&_[data-state=off]]:border-ink-dim"
+							label={pledge}
+							onChange={(event) => setOwnsCopy(event.currentTarget.checked)}
+							testId="own-copy"
+						/>
+					)}
 					<ActionButton
 						beacon
 						data-testid={submitTestId}
-						disabled={name.length === 0 || busy}
+						disabled={!canSubmit}
 						type="submit"
 					>
 						{submitLabel}

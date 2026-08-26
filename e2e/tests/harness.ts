@@ -282,6 +282,13 @@ export async function chooseBerlinArea(phone: Phone): Promise<void> {
 	});
 }
 
+/** The create wizard's name step: say who you are, swear you own the box. */
+export async function submitCreateName(phone: Phone): Promise<void> {
+	await phone.page.getByTestId("display-name").fill(phone.name);
+	await phone.page.getByTestId("own-copy").click();
+	await phone.page.getByTestId("create-confirm").click();
+}
+
 /**
  * Creating and joining both land in the lobby at `/g/:code`, and both are now
  * wizards rather than one form: the start screen picks a door, and the name is
@@ -289,8 +296,7 @@ export async function chooseBerlinArea(phone: Phone): Promise<void> {
  */
 export async function createGame(phone: Phone): Promise<string> {
 	await phone.page.getByTestId("create-game").click();
-	await phone.page.getByTestId("display-name").fill(phone.name);
-	await phone.page.getByTestId("create-confirm").click();
+	await submitCreateName(phone);
 
 	/**
 	 * The wizard: area, transit, size, review. Area has no default — the host
