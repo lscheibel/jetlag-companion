@@ -72,6 +72,74 @@
 }
 
 /**
+ * The press, as a transform and nothing else.
+ *
+ * Every action in the kit stands on its own darker edge and drops onto it when
+ * a thumb lands. Drawn as `box-shadow: 0 5px 0` that press has to move the
+ * shadow's offset and the button's translate in lockstep — and it cannot,
+ * because a transform is handed to the compositor while a box-shadow repaints
+ * on the main thread every frame. The two drift apart under load, and what you
+ * see is the edge collapsing ahead of the button that is supposed to be
+ * squashing it.
+ *
+ * So the edge is a real box instead. The control is a container painted in the
+ * edge colour with the depth reserved as padding, and the face is the child
+ * that moves. Nothing animates but `transform`, the bottom of the control never
+ * moves at all, and the visible band goes 5px to 2px purely because the face
+ * came down over it.
+ */
+@utility zl-press {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	padding-bottom: var(--press-depth, 5px);
+	/*
+	 * `translate` and `scale`, not `transform`: Tailwind writes the individual
+	 * properties, and a transition that only names `transform` watches a
+	 * property nothing is changing.
+	 */
+	transition-property: transform, translate, scale;
+	transition-duration: var(--dur-press);
+	transition-timing-function: var(--ease-out-soft);
+
+	/*
+	 * The edge is the face's own silhouette pushed down by the depth — exactly
+	 * what the box-shadow drew, and inset from the top rather than filling the
+	 * box, so a pressed face uncovers the ground above it and not a rim of edge
+	 * colour.
+	 */
+	&::before {
+		content: "";
+		position: absolute;
+		inset: var(--press-depth, 5px) 0 0 0;
+		border-radius: inherit;
+		background: var(--press-edge, transparent);
+	}
+
+	/*
+	 * Down fast, back at the ordinary speed. A button has to answer on the frame
+	 * it is touched; letting go is not news.
+	 */
+	&:active,
+	&:active > * {
+		transition-duration: 70ms;
+	}
+}
+
+/** The part of a pressable control that actually moves. One per `zl-press`. */
+@utility zl-press-face {
+	position: relative;
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	justify-content: center;
+	border-radius: inherit;
+	transition-property: transform, translate, scale;
+	transition-duration: var(--dur-press);
+	transition-timing-function: var(--ease-out-soft);
+}
+
+/**
  * Numbers that line up: timers, distances, coordinates, percentages. Anything
  * a player reads twice to see whether it changed.
  */

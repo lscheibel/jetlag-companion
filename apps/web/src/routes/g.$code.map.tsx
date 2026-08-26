@@ -12,7 +12,6 @@ import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { useEffect, useMemo, useState } from "react";
 import { FoundCard, SeekerActionsSheet } from "../game/found-sheet";
-import { GameTabs } from "../game/game-tabs";
 import { HiderTeamSheet } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
 import { RoundBar } from "../game/round-bar";
@@ -57,11 +56,7 @@ import { OwnPosition, OwnPositionReadout } from "../map/own-position";
 import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
-import {
-	buildMapPlayers,
-	type MapPlayer,
-	visibleMarkers,
-} from "../map/players";
+import { buildMapPlayers, visibleMarkers } from "../map/players";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { StopSheet } from "../map/stop-sheet";
 import {
@@ -157,6 +152,11 @@ function MapScreen() {
 	const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 	const [tool, setTool] = useState<MapTool>({ kind: "none" });
 	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
+	const [pinLook, setPinLook] = useState<{
+		readonly key: string;
+		readonly color: string;
+		readonly label: string;
+	} | null>(null);
 	const [draftRadius, setDraftRadius] = useState<number | null>(null);
 	const [flyTarget, setFlyTarget] = useState<
 		| { readonly kind: "point"; readonly point: LngLat }
@@ -184,7 +184,7 @@ function MapScreen() {
 	>("none");
 	const [hidingPick, setHidingPick] = useState<{
 		readonly roundId: string;
-		readonly stopId: string;
+		readonly stopId: string | null;
 	} | null>(null);
 
 	useEffect(() => {
@@ -257,6 +257,19 @@ function MapScreen() {
 		tool.kind === "editingPin"
 			? (pins.find((pin) => pin.id === tool.pinId) ?? null)
 			: null;
+	const pinDraftKey =
+		tool.kind === "editingPin"
+			? tool.pinId
+			: tool.kind === "placingPin"
+				? "new"
+				: null;
+	const pinPreview =
+		pinLook && pinDraftKey !== null && pinLook.key === pinDraftKey
+			? pinLook
+			: {
+					color: editingPin?.color ?? myTeam?.color ?? "#0072B2",
+					label: editingPin?.label ?? "",
+				};
 	const zone = searchZones[0] ?? null;
 	const measure = tool.kind === "measure" ? tool.measure : null;
 	const origin: LngLat =
@@ -309,19 +322,29 @@ function MapScreen() {
 	const hidingCommitment = commitments.find(
 		(row) => row.roundId === role.roundId && row.hiderTeamId === role.teamId,
 	);
-	const hidingPickId =
-		hidingPick && hidingPick.roundId === role.roundId
-			? hidingPick.stopId
-			: null;
+	const hidingPickForRound =
+		hidingPick && hidingPick.roundId === role.roundId ? hidingPick : null;
 	const hidingDefaultId =
 		searchableStops.find((stop) => stop.insideArea)?.stopId ??
 		searchableStops[0]?.stopId ??
 		null;
 	const hidingStopId = isHidingHider
-		? (hidingPickId ?? hidingCommitment?.stopId ?? hidingDefaultId)
+		? hidingPickForRound
+			? hidingPickForRound.stopId
+			: (hidingCommitment?.stopId ?? hidingDefaultId)
 		: (hidingCommitment?.stopId ?? null);
 	const hidingStop =
 		searchableStops.find((stop) => stop.stopId === hidingStopId) ?? null;
+	const committedStop =
+		hidingCommitment == null
+			? null
+			: (searchableStops.find(
+					(stop) => stop.stopId === hidingCommitment.stopId,
+				) ?? null);
+	const previewingOtherZone =
+		hidingStop !== null &&
+		committedStop !== null &&
+		hidingStop.stopId !== committedStop.stopId;
 
 	const pickingLevels =
 		tool.kind === "pickingBoundaryConstraint" ? BOUNDARY_CONSTRAINT_LEVELS : [];
@@ -391,6 +414,9 @@ function MapScreen() {
 					setHidingPick(
 						role.roundId ? { roundId: role.roundId, stopId: hit.stopId } : null,
 					);
+				} else if (role.roundId) {
+					webPlatform.haptics.vibrate([10]);
+					setHidingPick({ roundId: role.roundId, stopId: null });
 				}
 				return;
 			}
@@ -693,7 +719,12 @@ function MapScreen() {
 				{role.role ?? "no role"}
 			</span>
 			{!loaded && (
-				<span data-testid="game-not-loaded">Game not loaded yet.</span>
+				<p
+					className="px-4 pb-2 text-ink-dim text-sm"
+					data-testid="game-not-loaded"
+				>
+					Game not loaded yet.
+				</p>
 			)}
 			<span className="sr-only" data-testid="surviving-area-hash">
 				{searchArea.hash ?? ""}
@@ -728,14 +759,30 @@ function MapScreen() {
 								: area
 						}
 					/>
-					{role.role === "hider" && (
+					{role.role === "hider" && committedStop && (
 						<HidingZoneLayer
-							center={hidingStop ? [hidingStop.lng, hidingStop.lat] : null}
-							committed={hidingCommitment?.stopId === hidingStopId}
+							center={[committedStop.lng, committedStop.lat]}
+							committed
+							id="hiding-zone-committed"
+							muted={previewingOtherZone}
 							radiusMeters={defaultRadiusMeters}
 						/>
 					)}
-					<BuilderStopsLayer id="play-stops" stops={searchableStops} />
+					{role.role === "hider" &&
+						hidingStop &&
+						(previewingOtherZone || !committedStop) && (
+							<HidingZoneLayer
+								center={[hidingStop.lng, hidingStop.lat]}
+								radiusMeters={defaultRadiusMeters}
+							/>
+						)}
+					<BuilderStopsLayer
+						fold={
+							role.role === "seeker" ? (searchArea.surviving ?? null) : null
+						}
+						id="play-stops"
+						stops={searchableStops}
+					/>
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
 						disabled={tool.kind !== "none" || isHidingHider}
@@ -751,7 +798,8 @@ function MapScreen() {
 					{(tool.kind === "placingPin" || tool.kind === "editingPin") &&
 						draftPoint && (
 							<PinDraftMarker
-								color={editingPin?.color ?? myTeam?.color ?? "#0072B2"}
+								color={pinPreview.color}
+								label={pinPreview.label}
 								point={draftPoint}
 							/>
 						)}
@@ -808,11 +856,8 @@ function MapScreen() {
 						blindness={blindnessControl}
 						bounds={areaBBox}
 						camera={camera}
-						canEditConstraints={canEditConstraints}
-						constraintsOpen={constraintPickerOpen}
 						hasFix={Boolean(ownFix && ownFix.source !== "unavailable")}
 						onCancel={cancelTool}
-						onConstraintsClick={() => setConstraintPickerOpen((open) => !open)}
 						onCycleCamera={() => {
 							if (!ownFix || ownFix.source === "unavailable") {
 								setGpsHelpOpen(true);
@@ -842,10 +887,9 @@ function MapScreen() {
 				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
 					<ZoneNotice fix={ownFix} role={role} />
 				</div>
-				<AbsentPlayers players={others} />
 				<MapControls blindness={blindnessControl} />
-				<div className="pointer-events-none absolute inset-3 z-20 flex items-end justify-between gap-3">
-					<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col justify-end">
+				<div className="pointer-events-none absolute inset-x-3 top-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-end justify-between gap-3">
+					<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col items-stretch justify-end">
 						{tool.kind === "measure" && (
 							<MeasureCard
 								onCancel={cancelTool}
@@ -896,6 +940,10 @@ function MapScreen() {
 										: null
 								}
 								onDraftPoint={setDraftPoint}
+								onLook={({ color, label }) => {
+									if (pinDraftKey === null) return;
+									setPinLook({ key: pinDraftKey, color, label });
+								}}
 								onSave={savePin}
 								pin={editingPin}
 								teamColor={myTeam?.color ?? "#0072B2"}
@@ -927,7 +975,6 @@ function MapScreen() {
 						)}
 						{canEditConstraints && seekerOverlay !== "found" && (
 							<MapBar
-								actionsOpen={seekerOverlay === "actions"}
 								canEditConstraints={canEditConstraints}
 								cut={cut}
 								hiders={hiderTeams}
@@ -968,10 +1015,15 @@ function MapScreen() {
 
 			{canEditConstraints && (
 				<SeekerActionsSheet
+					canAsk={role.roundStatus === "seeking"}
 					canMarkFound={role.roundStatus === "seeking"}
 					found={selectedHiderFound}
 					onClose={() => setSeekerOverlay("none")}
 					onFoundThem={() => setSeekerOverlay("found")}
+					onNarrowDown={() => {
+						setSeekerOverlay("none");
+						setConstraintPickerOpen(true);
+					}}
 					onUndoFound={() => {
 						if (!role.roundId || !hiderTeamId) return;
 						void zero.mutate(
@@ -1050,8 +1102,6 @@ function MapScreen() {
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
 			)}
-
-			<GameTabs code={session.code} />
 		</Screen>
 	);
 }
@@ -1079,29 +1129,6 @@ function OfflineSurface({ onRetry }: { onRetry: () => void }) {
 			>
 				Try again
 			</button>
-		</Surface>
-	);
-}
-
-/**
- * Everybody with no marker to put anywhere: in the game, and either never
- * connected or never managed a fix. Dropping them from the screen would be
- * exactly the "silently wrong" the build plan's reviewable-when rules out.
- * m2-spec §6.
- */
-function AbsentPlayers({ players }: { players: readonly MapPlayer[] }) {
-	const absent = players.filter(
-		(player) => player.fix === null || player.fix.source === "unavailable",
-	);
-	if (absent.length === 0) return null;
-
-	return (
-		<Surface
-			className="absolute top-16 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
-			data-testid="absent-players"
-			raised
-		>
-			No position: {absent.map((player) => player.displayName).join(", ")}
 		</Surface>
 	);
 }

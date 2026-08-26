@@ -3,6 +3,10 @@ import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Sheet } from "@zero-lag/ui/components/sheet";
+import {
+	ToggleButton,
+	ToggleModePair,
+} from "@zero-lag/ui/components/toggle-button";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import {
@@ -194,13 +198,9 @@ function BoundaryPickerSheet(
 			testId="boundary-sheet"
 			title="Pick a place"
 		>
-			<div
-				className="grid shrink-0 grid-cols-2 gap-1 rounded-[15px] border border-hairline bg-surface p-1"
-				data-testid="boundary-filters"
-			>
-				<FilterChip
-					label="Bezirk"
-					on={levels.includes(9)}
+			{/* Many at once — a filter, not a tool: both halves can be lit. */}
+			<ToggleModePair className="shrink-0" testId="boundary-filters">
+				<ToggleButton
 					onClick={() => {
 						if (!picking) return;
 						props.onToolChange({
@@ -209,11 +209,13 @@ function BoundaryPickerSheet(
 							selectedId: null,
 						});
 					}}
+					pressed={levels.includes(9)}
+					shape="bar"
 					testId="boundary-level-9"
-				/>
-				<FilterChip
-					label="Ortsteil"
-					on={levels.includes(10)}
+				>
+					Bezirk
+				</ToggleButton>
+				<ToggleButton
 					onClick={() => {
 						if (!picking) return;
 						props.onToolChange({
@@ -222,9 +224,13 @@ function BoundaryPickerSheet(
 							selectedId: null,
 						});
 					}}
+					pressed={levels.includes(10)}
+					shape="bar"
 					testId="add-ortsteil-constraint"
-				/>
-			</div>
+				>
+					Ortsteil
+				</ToggleButton>
+			</ToggleModePair>
 			<Field
 				data-testid="boundary-search"
 				label="Find a place"
@@ -273,33 +279,6 @@ function BoundaryPickerSheet(
 				</div>
 			)}
 		</Sheet>
-	);
-}
-
-function FilterChip({
-	label,
-	on,
-	onClick,
-	testId,
-}: {
-	readonly label: string;
-	readonly on: boolean;
-	readonly onClick: () => void;
-	readonly testId: string;
-}) {
-	return (
-		<button
-			aria-pressed={on}
-			className={cn(
-				"rounded-[11px] py-2 font-mono text-[0.6rem] uppercase tracking-[0.08em]",
-				on ? "bg-action font-bold text-action-ink" : "text-ink-dim",
-			)}
-			data-testid={testId}
-			onClick={onClick}
-			type="button"
-		>
-			{label}
-		</button>
 	);
 }
 

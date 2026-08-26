@@ -107,14 +107,16 @@ await page.waitForTimeout(900);
 await shot(page, "a3-invite");
 await page.keyboard.press("Escape");
 
-await page.getByTestId("tab-rules").click();
-await page.getByTestId("rules-input").fill(
-	"No image searching station names.\nBuses count as transit.",
-);
+await page.goto(`https://localhost:5173/g/${code}/briefing`);
+await page.getByTestId("briefing").waitFor();
+await page
+	.getByTestId("rules-input")
+	.fill("No image searching station names.\nBuses count as transit.");
 await page.getByTestId("save-rules").click();
 await page.waitForTimeout(900);
-await shot(page, "rules-tab");
-await page.getByTestId("tab-lobby").click();
+await shot(page, "c3-briefing-host");
+await page.getByTestId("screen-back").click();
+await page.getByTestId("lobby").waitFor();
 await page.waitForTimeout(600);
 await page.getByTestId("lobby-menu").click();
 await page.waitForTimeout(900);

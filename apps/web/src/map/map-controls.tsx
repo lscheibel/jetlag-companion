@@ -13,7 +13,7 @@ interface MapControlsProps {
 export function MapControls({ blindness }: MapControlsProps) {
 	if (!blindness?.blind) return null;
 	return (
-		<div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 space-y-2">
+		<div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 space-y-2">
 			<Surface
 				className="pointer-events-auto w-fit px-3 py-2 text-sm"
 				data-testid="blindness-notice"

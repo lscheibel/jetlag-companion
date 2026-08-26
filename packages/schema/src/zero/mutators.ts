@@ -1312,6 +1312,73 @@ export const mutators = defineMutators({
 				});
 			},
 		),
+
+		uncommitZone: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				hiderTeamId: z.string(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"leaving a hiding zone",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						"hiding",
+						"leaving a hiding zone",
+					) ||
+					!(await requireTeamForRole(
+						tx,
+						args.roundId,
+						args.hiderTeamId,
+						gameId,
+						"hider",
+						"leaving a hiding zone",
+					))
+				) {
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					args.hiderTeamId,
+					"leaving a hiding zone",
+				);
+				const existing = await tx.run(
+					zql.hidingCommitment
+						.where("roundId", args.roundId)
+						.where("hiderTeamId", args.hiderTeamId)
+						.one(),
+				);
+				if (!existing) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "a committed hiding zone",
+							actual: "none",
+						});
+					}
+					return;
+				}
+				await tx.mutate.hidingCommitment.delete({ id: existing.id });
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.zoneUncommitted",
+					actorPlayerId: playerId,
+					actorTeamId: args.hiderTeamId,
+					payload: { roundId: args.roundId, stopId: existing.stopId },
+				});
+			},
+		),
 	},
 
 	question: {

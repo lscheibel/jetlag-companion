@@ -11,6 +11,7 @@ import {
 	type Phone,
 	setSide,
 	startHiding,
+	startSeekingPhase,
 	waitForSync,
 } from "./harness";
 
@@ -29,12 +30,12 @@ async function commitZone(hider: Phone, code: string): Promise<void> {
 	await waitForSync(hider);
 	await expect(hider.page.getByTestId("hiding-sheet")).toBeVisible();
 	await hider.page.getByTestId("commit-zone").click();
-	await expect(hider.page.getByTestId("committed-stop")).toBeVisible();
+	await expect(hider.page.getByTestId("uncommit-zone")).toBeVisible();
 }
 
 async function startSeeking(host: Phone, code: string): Promise<void> {
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 	await expect(
 		host.page
 			.getByTestId("lobby-round-phase")
@@ -51,7 +52,9 @@ async function pickConstraint(
 		| "add-bezirk-constraint"
 		| "constraint-list",
 ): Promise<void> {
-	await phone.page.getByTestId("constraints-tool").click();
+	await phone.page.getByTestId("map-ask").click();
+	await expect(phone.page.getByTestId("seeker-actions")).toBeVisible();
+	await phone.page.getByTestId("narrow-it-down").click();
 	await expect(phone.page.getByTestId("constraints-picker")).toBeVisible();
 	await phone.page.getByTestId(testId).click();
 }

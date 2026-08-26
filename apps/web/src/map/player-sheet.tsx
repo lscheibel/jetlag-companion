@@ -1,3 +1,4 @@
+import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { formatBattery } from "./battery";
 import { PlayerTeamBadge } from "./player-marker";
 import type { MapPlayer } from "./players";
@@ -28,19 +29,23 @@ export function PlayerSheet({ player, onClose }: PlayerSheetProps) {
 
 	return (
 		<section
-			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-xl border-t bg-surface p-4 shadow-lg"
+			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-sheet border-hairline border-t bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_40px_-20px_rgb(0_0_0/0.6)]"
 			data-testid={`player-sheet-${player.displayName}`}
 		>
 			<header className="flex items-center gap-3">
-				<h2 className="font-semibold text-lg">{player.displayName}</h2>
-				<button
-					className="ml-auto min-h-11 rounded border px-3"
+				<h2 className="min-w-0 flex-1 truncate text-lg">
+					{player.displayName}
+				</h2>
+				<ActionButton
+					className="shrink-0"
 					data-testid="close-player-sheet"
+					inline
 					onClick={onClose}
-					type="button"
+					size="compact"
+					tone="secondary"
 				>
 					Close
-				</button>
+				</ActionButton>
 			</header>
 
 			<PlayerTeamBadge player={player} />

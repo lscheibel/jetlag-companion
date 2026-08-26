@@ -64,12 +64,18 @@ export function ChoiceGroup<T extends string>({
 					return (
 						<label
 							className={cn(
-								"flex min-h-tap-comfortable cursor-pointer items-center gap-3 rounded-tile border-2 px-3 py-2.5",
-								"transition-transform duration-[--dur-tap] ease-[--ease-pop]",
+								"flex min-h-tap-comfortable cursor-pointer items-center gap-3",
+								"rounded-control border-[1.5px] bg-surface px-3 py-2.5",
+								"transition-[border-color,background-color] duration-[--dur-tap]",
 								"has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus",
+								/*
+								 * The same rule the toggle strip follows: no border until it
+								 * is chosen, then the action colour. Nothing travels — the
+								 * indicator is the only thing that moves.
+								 */
 								selected
-									? "border-action bg-action/10"
-									: "border-hairline bg-surface hover:-translate-y-0.5",
+									? "border-action bg-[color-mix(in_oklab,var(--action)_10%,var(--surface))]"
+									: "border-transparent hover:border-hairline",
 								option.disabled && "pointer-events-none opacity-40",
 								layout === "row" && "justify-center text-center",
 							)}
@@ -85,12 +91,13 @@ export function ChoiceGroup<T extends string>({
 								type="radio"
 								value={option.value}
 							/>
+							{layout === "stack" && <RadioMark selected={selected} />}
 							{option.icon && (
 								<span aria-hidden className="text-xl leading-none">
 									{option.icon}
 								</span>
 							)}
-							<span className="min-w-0">
+							<span className={cn("min-w-0", layout === "stack" && "flex-1")}>
 								<span className="block font-semibold text-[0.95rem] leading-tight">
 									{option.label}
 								</span>
@@ -105,5 +112,30 @@ export function ChoiceGroup<T extends string>({
 				})}
 			</div>
 		</fieldset>
+	);
+}
+
+/**
+ * The dot is the only thing that animates, and it grows rather than fades: at
+ * arm's length a fade reads as the control still deciding.
+ */
+function RadioMark({ selected }: { readonly selected: boolean }) {
+	return (
+		<span
+			aria-hidden
+			className={cn(
+				"grid size-7 shrink-0 place-items-center rounded-full border-2 bg-surface",
+				"transition-colors duration-[--dur-tap]",
+				selected ? "border-action" : "border-hairline-strong",
+			)}
+		>
+			<span
+				className={cn(
+					"size-3.5 rounded-full bg-action",
+					"transition-transform duration-[--dur-move] ease-[--ease-pop]",
+					selected ? "scale-100" : "scale-0",
+				)}
+			/>
+		</span>
 	);
 }

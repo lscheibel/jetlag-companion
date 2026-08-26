@@ -59,17 +59,15 @@ export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
 			{shown.map((pin, index) => (
 				<MapMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
 					<button
-						className="flex min-h-11 items-center gap-1 rounded-full bg-surface/90 pr-2 font-semibold text-xs shadow"
 						data-testid={`pin-${pin.id}`}
 						disabled={disabled}
 						onClick={() => onSelect(pin.id)}
 						type="button"
 					>
-						<span
-							className="size-5 rounded-full border-2 border-white"
-							style={{ backgroundColor: pin.color }}
+						<PinMark
+							color={pin.color}
+							label={pin.label.trim() || `Pin ${index + 1}`}
 						/>
-						{pin.label.trim() || `Pin ${index + 1}`}
 					</button>
 				</MapMarker>
 			))}
@@ -80,17 +78,43 @@ export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
 export function PinDraftMarker({
 	point,
 	color,
+	label,
 }: {
 	readonly point: readonly [number, number];
 	readonly color: string;
+	readonly label: string;
 }) {
 	return (
 		<MapMarker lat={point[1]} lng={point[0]}>
-			<span
-				className="block size-5 rounded-full border-2 border-white shadow"
-				data-testid="pin-draft"
-				style={{ backgroundColor: color }}
-			/>
+			<span data-testid="pin-draft">
+				<PinMark color={color} label={label.trim() || "Pin"} />
+			</span>
 		</MapMarker>
+	);
+}
+
+function PinMark({
+	color,
+	label,
+}: {
+	readonly color: string;
+	readonly label: string;
+}) {
+	return (
+		<span className="flex min-h-11 flex-col items-center">
+			<PinDot color={color} />
+			<span className="mt-0.5 max-w-28 truncate rounded-md bg-surface/95 px-1.5 py-0.5 font-semibold text-[0.65rem] leading-tight shadow">
+				{label}
+			</span>
+		</span>
+	);
+}
+
+function PinDot({ color }: { readonly color: string }) {
+	return (
+		<span
+			className="block size-5 shrink-0 rounded-full border-2 border-white shadow"
+			style={{ backgroundColor: color }}
+		/>
 	);
 }

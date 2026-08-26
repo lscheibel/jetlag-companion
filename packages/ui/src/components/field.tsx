@@ -53,6 +53,9 @@ export function Field({
 					"focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--action)_14%,transparent)]",
 					size === "display" ? "min-h-22 rounded-[20px]" : "min-h-tap-primary",
 					problem ? "border-danger" : "border-hairline-strong",
+					// A field that is showing a value set somewhere else is dimmed
+					// rather than styled as broken: it is not wrong, it is not here.
+					rest.readOnly && "opacity-50",
 					className,
 				)}
 			>

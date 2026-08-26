@@ -1,14 +1,35 @@
 import type { TeamRole } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
+import { ColorPicker, EmojiPicker } from "@zero-lag/ui/components/picker";
+import {
+	SegmentedControl,
+	type SegmentOption,
+} from "@zero-lag/ui/components/segmented-control";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { TeamBadge } from "@zero-lag/ui/components/team-badge";
-import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import { useLobbyActions } from "./actions";
 import type { LobbyTeamView } from "./model";
 import { sideWord } from "./model";
-import { suggestIdentity, TEAM_COLORS, TEAM_EMOJI } from "./palette";
+import {
+	COLOR_OPTIONS,
+	EMOJI_OPTIONS,
+	suggestIdentity,
+	withTaken,
+} from "./palette";
+
+/**
+ * The empty string is a real state, not a missing default: a new team has no
+ * side until somebody gives it one, and it is not in `SIDES`, so the control
+ * renders with no segment lit rather than quietly claiming "hiding". m1-spec §9.
+ */
+type SideChoice = TeamRole | "";
+
+const SIDES: readonly SegmentOption<SideChoice>[] = [
+	{ value: "hider", label: "🦊 Hiding" },
+	{ value: "seeker", label: "🦉 Seeking" },
+];
 
 /**
  * A team is a name, a side and a face. One sheet does both jobs, because
@@ -49,6 +70,21 @@ export function TeamDrawer({
 }: TeamDrawerProps) {
 	const { createTeam, updateTeam, deleteTeam, assignRoles } = useLobbyActions();
 	const suggestion = suggestIdentity(teams);
+	/**
+	 * Who already holds each colour and face, so a square says so instead of
+	 * quietly refusing. Derived here rather than stored: the lobby is live, and
+	 * a team can take a colour while this sheet is open.
+	 */
+	const takenColors = new Map(
+		teams
+			.filter((other) => other.id !== team?.id)
+			.map((o) => [o.color, o.name]),
+	);
+	const takenEmoji = new Map(
+		teams
+			.filter((other) => other.id !== team?.id)
+			.map((o) => [o.emoji, o.name]),
+	);
 
 	const [draft, setDraft] = useState<{
 		name: string;
@@ -212,70 +248,35 @@ export function TeamDrawer({
 				value={value.name}
 			/>
 
-			<div className="grid grid-cols-2 gap-2">
-				{(["hider", "seeker"] as const).map((role) => (
-					<button
-						className={cn(
-							"flex min-h-tap items-center justify-center gap-2 rounded-control text-sm",
-							"font-semibold transition-transform duration-[--dur-press] ease-[--ease-pop]",
-							value.role === role
-								? "bg-action text-action-ink"
-								: "bg-surface-raised text-ink",
-							!amHost && "pointer-events-none opacity-45",
-						)}
-						data-testid={`side-${role}`}
-						disabled={!amHost}
-						key={role}
-						onClick={() => patch({ role })}
-						type="button"
-					>
-						{role === "hider" ? "🦊 Hiding" : "🦉 Seeking"}
-					</button>
-				))}
+			<div className="flex flex-col gap-1.5">
+				<span className="eyebrow">Side</span>
+				<SegmentedControl
+					className={amHost ? undefined : "pointer-events-none opacity-45"}
+					label="Which side this team plays"
+					onChange={(role) => {
+						if (role) patch({ role });
+					}}
+					options={SIDES}
+					testId="side"
+					value={value.role ?? ""}
+				/>
 			</div>
 
-			<div className="grid grid-cols-4 gap-2.5">
-				{TEAM_EMOJI.map((emoji) => (
-					<button
-						className={cn(
-							"grid aspect-square place-items-center rounded-tile border-2 bg-surface text-2xl",
-							"transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:-translate-y-0.5",
-							!editable && "pointer-events-none opacity-45",
-							value.emoji === emoji
-								? "zl-pop border-action bg-action/10"
-								: "border-transparent",
-						)}
-						data-testid={`emoji-${emoji}`}
-						disabled={!editable}
-						key={emoji}
-						onClick={() => patch({ emoji })}
-						type="button"
-					>
-						{emoji}
-					</button>
-				))}
-			</div>
+			<EmojiPicker
+				disabled={!editable}
+				label="Face"
+				onChange={(emoji) => patch({ emoji })}
+				options={withTaken(EMOJI_OPTIONS, takenEmoji)}
+				value={value.emoji}
+			/>
 
-			<div className="grid grid-cols-8 gap-1.5">
-				{TEAM_COLORS.map((color) => (
-					<button
-						aria-label={color}
-						className={cn(
-							"aspect-square rounded-[11px] shadow-[inset_0_0_0_2px_rgb(255_255_255/0.14)]",
-							"transition-transform duration-[--dur-tap]",
-							!editable && "pointer-events-none opacity-45",
-							value.color === color &&
-								"zl-pop -translate-y-0.5 shadow-[0_0_0_3px_var(--ground),0_0_0_6px_var(--action)]",
-						)}
-						data-testid={`color-${color}`}
-						disabled={!editable}
-						key={color}
-						onClick={() => patch({ color })}
-						style={{ background: color }}
-						type="button"
-					/>
-				))}
-			</div>
+			<ColorPicker
+				disabled={!editable}
+				label="Colour"
+				onChange={(color) => patch({ color })}
+				options={withTaken(COLOR_OPTIONS, takenColors)}
+				value={value.color}
+			/>
 		</Sheet>
 	);
 }

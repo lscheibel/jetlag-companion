@@ -25,21 +25,14 @@ export function HiderChip({ hiders, selectedId, onOpen }: HiderChipProps) {
 
 	return (
 		<button
-			className={cn(
-				"flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-tile border border-hairline border-l-[5px] bg-surface px-3 py-2 text-left",
-				"transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:translate-x-0.5",
-			)}
+			className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
 			data-testid="hider-selector"
 			onClick={onOpen}
-			style={{ borderLeftColor: selected.color }}
 			type="button"
 		>
-			<TeamBadge size="sm" team={selected} variant="mark" />
-			<span className="min-w-0 flex-1 truncate font-display font-extrabold text-[0.95rem] tracking-tight">
+			<TeamBadge size="lg" team={selected} variant="mark" />
+			<span className="min-w-0 truncate font-display font-extrabold text-[0.95rem] tracking-tight [text-shadow:0_1px_2px_rgb(0_0_0/0.55)]">
 				{selected.name}
-			</span>
-			<span aria-hidden className="text-ink-faint text-sm">
-				›
 			</span>
 		</button>
 	);

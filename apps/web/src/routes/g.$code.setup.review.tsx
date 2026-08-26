@@ -134,7 +134,7 @@ function Row({ label, value, detail, onChange }: RowProps) {
 				)}
 			</div>
 			<button
-				className="grid min-h-9 shrink-0 place-items-center rounded-control border border-hairline px-3 font-mono text-[0.6rem] text-ink-dim uppercase tracking-[0.08em]"
+				className="grid min-h-tap shrink-0 place-items-center rounded-control border border-hairline px-3 font-mono text-[0.6rem] text-ink-dim uppercase tracking-[0.08em]"
 				data-testid={`change-${label.toLowerCase()}`}
 				onClick={onChange}
 				type="button"

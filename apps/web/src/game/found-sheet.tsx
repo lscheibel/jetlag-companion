@@ -5,25 +5,30 @@ import { Sheet } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { useState } from "react";
 import { uploadPhoto } from "../api";
+import { COMPACT_SECONDARY } from "../map/map-bar";
 import type { MyRole } from "./use-role";
 
 interface SeekerActionsSheetProps {
 	readonly open: boolean;
 	readonly found: boolean;
+	readonly canAsk?: boolean;
 	readonly canMarkFound?: boolean;
 	readonly onClose: () => void;
 	readonly onFoundThem: () => void;
 	readonly onUndoFound: () => void;
+	readonly onNarrowDown: () => void;
 }
 
-/** Ask, or say you found them. Ask is still a stub. */
+/** Ask, cut the map down, or say you found them. Ask is still a stub. */
 export function SeekerActionsSheet({
 	open,
 	found,
+	canAsk = true,
 	canMarkFound = true,
 	onClose,
 	onFoundThem,
 	onUndoFound,
+	onNarrowDown,
 }: SeekerActionsSheetProps) {
 	return (
 		<Sheet
@@ -32,8 +37,19 @@ export function SeekerActionsSheet({
 			testId="seeker-actions"
 			title="What now?"
 		>
-			<ActionButton data-testid="ask-question" onClick={() => {}}>
+			<ActionButton
+				data-testid="ask-question"
+				disabled={!canAsk}
+				onClick={() => {}}
+			>
 				Ask a question
+			</ActionButton>
+			<ActionButton
+				data-testid="narrow-it-down"
+				onClick={onNarrowDown}
+				tone="secondary"
+			>
+				Narrow it down
 			</ActionButton>
 			{canMarkFound &&
 				(found ? (
@@ -112,7 +128,7 @@ export function FoundCard({
 
 	return (
 		<Surface
-			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
+			className="pointer-events-auto w-full px-3 py-2.5"
 			data-testid="found-sheet"
 			raised
 		>
@@ -139,13 +155,13 @@ export function FoundCard({
 					{error}
 				</p>
 			)}
-			<div className="mt-2 flex items-center gap-2">
+			<div className="mt-2 flex items-stretch gap-2">
 				<ActionButton
-					className="min-h-9 shrink-0 gap-0 overflow-visible px-2.5 py-0 text-sm"
+					className={COMPACT_SECONDARY}
 					data-testid="found-cancel"
 					inline
 					onClick={onCancel}
-					size="compact"
+					size="comfortable"
 					tone="secondary"
 					type="button"
 				>
@@ -156,6 +172,7 @@ export function FoundCard({
 					data-testid="mark-found"
 					disabled={!canConfirm}
 					onClick={() => void confirm()}
+					size="comfortable"
 				>
 					{uploading ? "Saving…" : "Confirm"}
 				</ActionButton>

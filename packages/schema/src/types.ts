@@ -161,6 +161,7 @@ export const EVENT_TYPES = [
 	"round.seekingStarted",
 	"round.ended",
 	"round.zoneCommitted",
+	"round.zoneUncommitted",
 	"rules.updated",
 	"round.paused",
 	"round.resumed",

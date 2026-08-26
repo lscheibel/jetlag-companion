@@ -1,4 +1,5 @@
 import { Chip } from "@zero-lag/ui/components/chip";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { Surface } from "@zero-lag/ui/components/surface";
 import type { GamePreview } from "../api";
 
@@ -25,9 +26,9 @@ export function GamePreviewCard({ preview }: GamePreviewCardProps) {
 		>
 			<span
 				aria-hidden
-				className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-surface-raised text-lg"
+				className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-surface-raised"
 			>
-				◈
+				<Icon name="flag-banner" size="md" />
 			</span>
 			<div className="min-w-0 flex-1">
 				<div className="num font-semibold text-[0.95rem] tracking-[0.14em]">

@@ -1,6 +1,7 @@
 import { multiPolygonBBox } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Door } from "@zero-lag/ui/components/door";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { useNavigate } from "react-router";
 import { useGameShell } from "../game/shell";
 import { EditorMap } from "../setup/area/editor-map";
@@ -76,7 +77,7 @@ export default function SetupArea() {
 							</p>
 						</div>
 						<ActionButton
-							className="w-auto shrink-0 px-5"
+							className="w-auto shrink-0"
 							data-testid="setup-area-edit"
 							inline
 							onClick={openEditor}
@@ -95,7 +96,7 @@ export default function SetupArea() {
 					<Door
 						chevron
 						data-testid="setup-area-district"
-						glyph="▨"
+						glyph={<Icon name="squares-four" size="lg" />}
 						hint="A Land, a district, or an Ortsteil anywhere in Germany"
 						onClick={() => edit("districts")}
 					>
@@ -104,7 +105,7 @@ export default function SetupArea() {
 					<Door
 						chevron
 						data-testid="setup-area-draw"
-						glyph="✎"
+						glyph={<Icon name="pencil-simple" size="lg" />}
 						hint="Trace the edge on the map"
 						onClick={() => edit("draw")}
 					>
@@ -113,7 +114,7 @@ export default function SetupArea() {
 					<Door
 						chevron
 						data-testid="setup-area-file"
-						glyph="⇪"
+						glyph={<Icon name="upload-simple" size="lg" />}
 						hint="Files from Google My Maps, Komoot and the like"
 						onClick={() => edit("file")}
 					>

@@ -12,10 +12,8 @@ import {
 import { listContainer } from "@zero-lag/ui/lib/motion";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { GameTabs } from "../game/game-tabs";
 import { useGameShell } from "../game/shell";
 import {
 	LobbyProvider,
@@ -28,9 +26,11 @@ import { HostBanner } from "../lobby/host-banner";
 import { InviteSheet } from "../lobby/invite-sheet";
 import { LobbyHeader } from "../lobby/lobby-header";
 import { LobbyMenu } from "../lobby/lobby-menu";
-import type { Blocker, LobbyPerson, LobbyTeamView } from "../lobby/model";
 import {
+	type Blocker,
 	canStart,
+	type LobbyPerson,
+	type LobbyTeamView,
 	readyCount,
 	startBlockers,
 	startRemarks,
@@ -38,8 +38,10 @@ import {
 import { HiderResult } from "../lobby/outcome-list";
 import { PersonRow } from "../lobby/person-row";
 import { PickTeamSheet } from "../lobby/pick-team-sheet";
+import { EndRoundAction, PlayMapAction } from "../lobby/play-map-cta";
 import { PlayerSheet } from "../lobby/player-sheet";
 import { RoundControls } from "../lobby/round-controls";
+import { StartSeekingAction } from "../lobby/start-seeking";
 import { TeamDrawer } from "../lobby/team-drawer";
 import { TeamRow } from "../lobby/team-row";
 import { useLobby } from "../lobby/use-lobby";
@@ -92,7 +94,7 @@ function Lobby() {
 	const [leaving, setLeaving] = useState(false);
 
 	const blockers = startBlockers(lobby.teams, lobby.people);
-	const remarks = startRemarks(lobby.teams, lobby.offline);
+	const remarks = startRemarks(lobby.teams);
 	const host = lobby.people.find((person) => person.isHost) ?? null;
 	const roundPending = lobby.round?.status === "pending";
 	const seenBriefing = hasSeenBriefing(session.gameId, session.playerId);
@@ -157,6 +159,7 @@ function Lobby() {
 			loose={loose}
 			onOpen={() => setOverlay({ kind: "player", person: value })}
 			person={value}
+			showReady={roundPending}
 		/>
 	);
 
@@ -180,10 +183,8 @@ function Lobby() {
 		<Screen data-testid="lobby">
 			<LobbyHeader
 				onInvite={() => setOverlay({ kind: "invite" })}
+				onMap={() => void navigate(`/g/${session.code}/map`)}
 				onMenu={() => setOverlay({ kind: "menu" })}
-				players={lobby.people.length}
-				teams={lobby.teams.length}
-				title={lobby.gameName}
 			/>
 
 			<ScreenBody className="gap-2">
@@ -217,27 +218,23 @@ function Lobby() {
 						</section>
 					)}
 
-					<SectionHead
-						action={
-							lobby.amHost && roundPending ? (
-								<button
-									aria-label="New team"
-									className={cn(
-										"grid size-7 place-items-center rounded-control border border-hairline-strong",
-										"font-semibold text-ink text-sm",
-										"transition-transform duration-[--dur-press] ease-[--ease-pop] hover:-translate-y-0.5 active:scale-90",
-									)}
-									data-testid="create-team"
-									onClick={() => setOverlay({ kind: "team", team: null })}
-									type="button"
-								>
-									+
-								</button>
-							) : null
-						}
-						label="Teams"
-						tally={`${lobby.teams.length}`}
-					/>
+					{lobby.amHost && roundPending && (
+						<div className="flex justify-end pt-1.5">
+							<button
+								aria-label="New team"
+								className={cn(
+									"grid size-7 place-items-center rounded-control border border-hairline-strong",
+									"font-semibold text-ink text-sm",
+									"transition-transform duration-[--dur-press] ease-[--ease-pop] hover:-translate-y-0.5 active:scale-90",
+								)}
+								data-testid="create-team"
+								onClick={() => setOverlay({ kind: "team", team: null })}
+								type="button"
+							>
+								+
+							</button>
+						</div>
+					)}
 
 					{sides.map(({ role, label }) => {
 						const group = lobby.teams.filter((team) => team.role === role);
@@ -304,7 +301,7 @@ function Lobby() {
 			</ScreenBody>
 
 			{roundPending && (
-				<ScreenActions className="pb-3" note={waitingNote(lobby, host)}>
+				<ScreenActions note={waitingNote(lobby, host)}>
 					{blockers.length > 0 && (
 						<BlockerCards
 							actionable={lobby.amHost}
@@ -362,7 +359,9 @@ function Lobby() {
 				</ScreenActions>
 			)}
 
-			<GameTabs code={session.code} />
+			<StartSeekingAction />
+			<EndRoundAction />
+			<PlayMapAction />
 
 			<LobbyMenu
 				amHost={lobby.amHost}
@@ -422,6 +421,7 @@ function Lobby() {
 				open={overlay.kind === "player"}
 				person={overlay.kind === "player" ? selectedPerson : null}
 				removed={selectedRemoved}
+				showReady={roundPending}
 			/>
 
 			<PickTeamSheet
@@ -475,7 +475,6 @@ interface SectionHeadProps {
 	warn?: boolean;
 	/** A sub-heading inside a section that already has one. */
 	thin?: boolean;
-	action?: ReactNode;
 }
 
 function SectionHead({
@@ -483,7 +482,6 @@ function SectionHead({
 	tally,
 	warn = false,
 	thin = false,
-	action = null,
 }: SectionHeadProps) {
 	return (
 		<div className={cn("flex items-center gap-2.5", thin ? "pt-1" : "pt-1.5")}>
@@ -504,7 +502,6 @@ function SectionHead({
 			</span>
 			<span className="h-px flex-1 bg-hairline" />
 			{tally && <span className="eyebrow">{tally}</span>}
-			{action}
 		</div>
 	);
 }

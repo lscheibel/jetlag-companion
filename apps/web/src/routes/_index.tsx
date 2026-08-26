@@ -1,5 +1,6 @@
 import { Chip } from "@zero-lag/ui/components/chip";
 import { Door } from "@zero-lag/ui/components/door";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { Screen, ScreenBody } from "@zero-lag/ui/components/screen";
 import { ThemeToggle } from "@zero-lag/ui/components/theme";
 import { cn } from "@zero-lag/ui/lib/utils";
@@ -49,9 +50,9 @@ export default function Start() {
 				<div className="flex-1" />
 
 				<Door
-					className="zl-sheen"
+					beacon
 					data-testid="create-game"
-					glyph="✦"
+					glyph={<Icon name="flag-banner" size="lg" />}
 					hint="Set up the area and invite everyone"
 					onClick={() => void navigate("/new")}
 					tone="primary"
@@ -61,7 +62,7 @@ export default function Start() {
 
 				<Door
 					data-testid="join-by-code"
-					glyph="⌨"
+					glyph={<Icon name="qr-code" size="lg" />}
 					hint="If nobody sent you a link"
 					onClick={() => void navigate("/join")}
 				>
@@ -82,9 +83,9 @@ export default function Start() {
 					>
 						<span
 							aria-hidden
-							className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-surface-raised text-lg"
+							className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-surface-raised"
 						>
-							◈
+							<Icon name="timer" size="md" />
 						</span>
 						<span className="min-w-0 flex-1 text-left">
 							<span className="num block font-semibold text-[0.95rem] tracking-[0.14em]">

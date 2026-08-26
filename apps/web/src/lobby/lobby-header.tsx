@@ -1,103 +1,156 @@
+import { useQuery } from "@rocicorp/zero/react";
+import { queries } from "@zero-lag/schema";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Icon, type IconName } from "@zero-lag/ui/components/icon";
+import { IconButton } from "@zero-lag/ui/components/icon-button";
 import { ScreenHeader } from "@zero-lag/ui/components/screen";
-import { cn } from "@zero-lag/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**
- * Who is here, what this game is called, and the two controls that belong to
- * the game rather than to anything on the screen: a way to hand it to somebody
- * standing next to you, and everything else.
+ * Which round this is, and which phase it is in. The other place in the game
+ * sits on the leading edge; invite and menu on the trailing.
  *
  * The join code is **not** in the header. It is something you give away once,
  * not a badge to wear for four hours — so it lives behind the share control,
  * with the QR first because that is how it actually gets used.
  */
 
+/** Square icon ActionButton: the press edge, not a drop shadow. */
+const SQUARE_ACTION =
+	"shrink-0 [&_.zl-press-face]:size-tap [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
+
 interface LobbyHeaderProps {
-	title: string;
-	players: number;
-	teams: number;
 	onInvite?: () => void;
 	onMenu?: () => void;
-	/** Clock, readout — sits with the invite and menu controls. */
+	/** The map, from the lobby. */
+	onMap?: () => void;
+	/** The lobby, from the map. */
+	onLobby?: () => void;
+	/** Clock — map only, on the trailing edge. */
 	status?: ReactNode;
 }
 
 export function LobbyHeader({
-	title,
-	players,
-	teams,
 	onInvite,
 	onMenu,
+	onMap,
+	onLobby,
 	status,
 }: LobbyHeaderProps) {
+	const [rounds] = useQuery(queries.rounds());
+	const [pauses] = useQuery(queries.roundPauses());
+	const round =
+		[...rounds].reverse().find((candidate) => candidate.status !== "ended") ??
+		rounds.at(-1);
+	const phase = round?.status ?? "pending";
+	const paused =
+		round !== undefined &&
+		pauses.some(
+			(pause) => pause.roundId === round.id && pause.endedAt === null,
+		);
+	const place = onMap
+		? {
+				label: "Map",
+				icon: "map-trifold" as const,
+				onClick: onMap,
+				testId: "open-map",
+			}
+		: onLobby
+			? {
+					label: "Lobby",
+					icon: "users-three" as const,
+					onClick: onLobby,
+					testId: "open-lobby",
+				}
+			: null;
+
 	return (
 		<ScreenHeader
-			eyebrow={`${count(players, "player")} · ${count(teams, "team")}`}
-			title={title}
+			eyebrow={round ? `Round ${round.ordinal}` : "Round"}
+			leading={
+				place ? (
+					<PlaceAction
+						icon={place.icon}
+						label={place.label}
+						onClick={place.onClick}
+						testId={place.testId}
+					/>
+				) : undefined
+			}
+			title={
+				<>
+					<span aria-hidden="true" className="font-extrabold">
+						{phaseLabel(phase)}
+					</span>
+					<span className="sr-only" data-testid="lobby-round-phase">
+						{paused ? `${phase} paused` : phase}
+					</span>
+				</>
+			}
 			trailing={
-				<div className="flex shrink-0 items-center gap-1.5">
-					{status}
-					{onInvite && (
-						<HeaderButton
-							label="Ask people in"
-							onClick={onInvite}
-							testId="show-qr"
-						>
-							<svg
-								aria-hidden="true"
-								fill="none"
-								height="19"
-								stroke="currentColor"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth="2"
-								viewBox="0 0 24 24"
-								width="19"
+				(status || onInvite || onMenu) && (
+					<div className="flex shrink-0 items-center gap-1.5">
+						{status}
+						{onInvite && (
+							<IconButton
+								aria-label="Ask people in"
+								onClick={onInvite}
+								testId="show-qr"
 							>
-								<title>Ask people in</title>
-								<path d="M12 16V4" />
-								<path d="M8 8l4-4 4 4" />
-								<path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
-							</svg>
-						</HeaderButton>
-					)}
-					{onMenu && (
-						<HeaderButton label="More" onClick={onMenu} testId="lobby-menu">
-							<span aria-hidden className="pb-1 text-lg leading-none">
-								⋯
-							</span>
-						</HeaderButton>
-					)}
-				</div>
+								<Icon name="share-network" size="sm" />
+							</IconButton>
+						)}
+						{onMenu && (
+							<IconButton
+								aria-label="More"
+								onClick={onMenu}
+								testId="lobby-menu"
+							>
+								<Icon name="dots-three" size="md" />
+							</IconButton>
+						)}
+					</div>
+				)
 			}
 		/>
 	);
 }
 
-interface HeaderButtonProps {
-	children: ReactNode;
+function PlaceAction({
+	label,
+	icon,
+	onClick,
+	testId,
+}: {
 	label: string;
+	icon: IconName;
 	onClick: () => void;
 	testId: string;
-}
-
-function HeaderButton({ children, label, onClick, testId }: HeaderButtonProps) {
+}) {
 	return (
-		<button
+		<ActionButton
 			aria-label={label}
-			className={cn(
-				"grid size-tap shrink-0 place-items-center rounded-control border border-hairline bg-surface",
-				"transition-transform duration-[--dur-press] ease-[--ease-pop] hover:-translate-y-0.5 active:scale-90",
-			)}
+			className={SQUARE_ACTION}
 			data-testid={testId}
+			inline
 			onClick={onClick}
-			type="button"
+			size="compact"
+			tone="secondary"
 		>
-			{children}
-		</button>
+			<Icon name={icon} size="sm" />
+		</ActionButton>
 	);
 }
 
-function count(value: number, noun: string): string {
-	return `${value} ${noun}${value === 1 ? "" : "s"}`;
+function phaseLabel(status: string): string {
+	switch (status) {
+		case "hiding":
+			return "Hiding";
+		case "seeking":
+			return "Seeking";
+		case "ended":
+			return "Ended";
+		default:
+			return "Lobby";
+	}
 }

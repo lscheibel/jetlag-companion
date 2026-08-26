@@ -1,16 +1,13 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { glide } from "../lib/motion";
 import { cn } from "../lib/utils";
 
 /**
- * The three places a game has: the lobby, the rules, the map.
+ * A place switcher for the bottom of a screen.
  *
- * A bar rather than a menu because all three are used mid-game with one hand on
- * a handrail, and because "where am I" should be answerable without opening
- * anything. Steps in a flow — the setup wizard, the briefing, the ready check —
- * deliberately do not show it: they are one question deep and their way out is
- * the back control, not a change of place.
+ * A bar rather than a menu because the destinations are used mid-game with one
+ * hand on a handrail, and because "where am I" should be answerable without
+ * opening anything.
  */
 
 export interface TabItem {
@@ -18,7 +15,8 @@ export interface TabItem {
 	label: string;
 	/** A glyph, never load-bearing on its own — the label is always there. */
 	icon: ReactNode;
-	badge?: ReactNode;
+	/** Something happened here since you last looked. A dot, not a count. */
+	alert?: boolean;
 }
 
 interface TabBarProps {
@@ -47,7 +45,7 @@ export function TabBar({ items, current, onSelect, className }: TabBarProps) {
 					<button
 						aria-current={active ? "page" : undefined}
 						className={cn(
-							"relative grid min-h-tap place-items-center gap-1 rounded-control px-2 py-1.5",
+							"relative grid min-h-tap place-items-center gap-0.5 rounded-control px-2 py-1.5",
 							"transition-colors duration-[--dur-tap]",
 							active ? "text-action" : "text-ink-dim",
 						)}
@@ -59,23 +57,34 @@ export function TabBar({ items, current, onSelect, className }: TabBarProps) {
 						{active && (
 							<motion.span
 								aria-hidden
-								className="absolute inset-0 rounded-control bg-action/10"
+								className="absolute inset-0 rounded-control bg-[color-mix(in_oklab,var(--action)_12%,transparent)]"
 								layoutId="tab-highlight"
-								transition={reduced ? { duration: 0 } : glide}
+								// The highlight travels between tabs — one shared element,
+								// not three separate fades — and travels without overshoot.
+								transition={
+									reduced
+										? { duration: 0 }
+										: { duration: 0.26, ease: [0.32, 0.72, 0.28, 1] }
+								}
 							/>
 						)}
 						<span
 							className={cn(
-								"relative text-lg leading-none transition-transform duration-[--dur-tap] ease-[--ease-pop]",
+								"relative flex leading-none transition-transform duration-[--dur-tap] ease-[--ease-pop]",
 								active && "-translate-y-px scale-110",
 							)}
 						>
 							{item.icon}
 						</span>
-						<span className="relative font-mono text-[0.55rem] uppercase leading-none tracking-[0.08em]">
+						<span className="relative font-mono text-[0.56rem] uppercase leading-none tracking-[0.07em]">
 							{item.label}
 						</span>
-						{item.badge}
+						{item.alert && (
+							<span
+								aria-hidden
+								className="absolute top-1.5 right-3 size-[7px] rounded-full bg-offline"
+							/>
+						)}
 					</button>
 				);
 			})}

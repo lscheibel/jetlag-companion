@@ -1,3 +1,5 @@
+import type { PickerOption } from "@zero-lag/ui/components/picker";
+
 /**
  * Team identity: a name, a colour and an emoji, always all three at once.
  * m1-spec §4.
@@ -50,4 +52,53 @@ export function suggestIdentity(
 		color: TEAM_COLORS.find((color) => !colors.has(color)) ?? TEAM_COLORS[0],
 		emoji: TEAM_EMOJI.find((value) => !emoji.has(value)) ?? TEAM_EMOJI[0],
 	};
+}
+
+/**
+ * The same eight, each with the name a screen reader reads out.
+ *
+ * A picker announcing "#0072B2" is a picker nobody can use without sight, and
+ * "taken by the Owls" is the fact a host needs before wondering why a square
+ * will not take. The names are the palette's own — the ones the comments above
+ * already carry — so there is one vocabulary rather than two.
+ */
+export const COLOR_NAMES: Readonly<Record<string, string>> = {
+	"#D55E00": "Vermillion",
+	"#0072B2": "Cobalt",
+	"#009E73": "Jade",
+	"#CC79A7": "Orchid",
+	"#E69F00": "Amber",
+	"#56B4E9": "Sky",
+	"#F0E442": "Citron",
+	"#4B4B4B": "Slate",
+};
+
+export const EMOJI_NAMES: Readonly<Record<string, string>> = {
+	"🦊": "Fox",
+	"🐙": "Octopus",
+	"🦉": "Owl",
+	"🐝": "Bee",
+	"🦈": "Shark",
+	"🐢": "Turtle",
+	"🦩": "Flamingo",
+	"🐉": "Dragon",
+};
+
+export const COLOR_OPTIONS: readonly PickerOption[] = TEAM_COLORS.map(
+	(value) => ({ value, label: COLOR_NAMES[value] ?? value }),
+);
+
+export const EMOJI_OPTIONS: readonly PickerOption[] = TEAM_EMOJI.map(
+	(value) => ({ value, label: EMOJI_NAMES[value] ?? value }),
+);
+
+/** The same lists, with whoever already holds a colour or a face marked. */
+export function withTaken(
+	options: readonly PickerOption[],
+	takenBy: ReadonlyMap<string, string>,
+): readonly PickerOption[] {
+	return options.map((option) => ({
+		...option,
+		takenBy: takenBy.get(option.value) ?? null,
+	}));
 }

@@ -27,6 +27,7 @@ import {
 	type Phone,
 	setSide,
 	startHiding,
+	startSeekingPhase,
 	waitForSync,
 } from "./harness";
 
@@ -105,7 +106,7 @@ async function commitZone(hider: Phone, code: string): Promise<void> {
 	await waitForSync(hider);
 	await expect(hider.page.getByTestId("hiding-sheet")).toBeVisible();
 	await hider.page.getByTestId("commit-zone").click();
-	await expect(hider.page.getByTestId("committed-stop")).toBeVisible();
+	await expect(hider.page.getByTestId("uncommit-zone")).toBeVisible();
 }
 
 async function pickHider(
@@ -152,6 +153,11 @@ async function pauseRound(phone: Phone, reason: string): Promise<void> {
 }
 
 async function endRound(phone: Phone): Promise<void> {
+	const lobbyCta = phone.page.getByTestId("end-round");
+	if (await lobbyCta.isVisible()) {
+		await lobbyCta.click();
+		return;
+	}
 	await phone.page.getByTestId("lobby-menu").click();
 	await phone.page.getByTestId("end-round").click();
 }
@@ -204,16 +210,16 @@ test("1. a full round, end to end", async ({ browser }) => {
 	await setSide(ana, "Sharks", "seeker");
 	await setSide(ana, "Turtles", "seeker");
 
-	// House rules are a place of their own now, on the tab bar beside the lobby
-	// and the map — the moment you need one is never a moment to go looking.
-	await ana.page.getByTestId("tab-rules").click();
+	// House rules are written on the briefing, by the host, and read there by
+	// everybody else — the screen that says them is the screen that takes them.
+	await ana.page.goto(`/g/${code}/briefing`);
 	await ana.page.getByTestId("rules-input").fill("no image searching stations");
 	await ana.page.getByTestId("save-rules").click();
 	const gameId = await gameIdForCode(code);
 	await expect
 		.poll(() => houseRulesText(gameId))
 		.toBe("no image searching stations");
-	await ben.page.getByTestId("tab-rules").click();
+	await ben.page.goto(`/g/${code}/briefing`);
 	await expect(ben.page.getByTestId("rules-text")).toContainText(
 		"no image searching stations",
 	);
@@ -228,7 +234,7 @@ test("1. a full round, end to end", async ({ browser }) => {
 	await commitZone(ana, code);
 
 	await openLobby(ana, code);
-	await ana.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(ana);
 	await expectPhase(phones, "seeking");
 
 	await openLobby(cara, code);
@@ -263,7 +269,7 @@ test("2. the recorded duration matches a stopwatch", async ({ browser }) => {
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
 		"seeking",
 	);
@@ -299,7 +305,7 @@ test("3. a pause stops every clock and no positions", async ({ browser }) => {
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 
 	await pauseRound(host, "food");
 	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
@@ -401,7 +407,7 @@ test("5. leaving your zone tells you and transmits nothing", async ({
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 	await expect(other.page.getByTestId("round-phase")).toHaveText("seeking");
 
 	const gameId = await gameIdForCode(code);
@@ -441,17 +447,18 @@ test("6. the countdown reaching zero changes nothing by itself", async ({
 	await startHiding([ana, ben], code, "0.05");
 
 	await openMap(ben, code);
-	await expect(ana.page.getByTestId("start-seeking")).toContainText(
+	await expect(ben.page.getByTestId("round-clock")).toHaveText(
 		"Hiding time is up",
 		{ timeout: 20_000 },
 	);
-	await expect(ben.page.getByTestId("round-clock")).toHaveText(
-		"Hiding time is up",
-	);
+	await expect(ana.page.getByTestId("start-seeking")).toBeVisible();
 	const gameId = await gameIdForCode(code);
 	expect(await roundStatuses(gameId)).toEqual(["hiding"]);
 
 	await ana.page.getByTestId("start-seeking").click();
+	await expect(ana.page.getByTestId("start-seeking-sheet")).toBeVisible();
+	await expect(ana.page.getByTestId("hiding-time-remaining")).toHaveCount(0);
+	await ana.page.getByTestId("confirm-start-seeking").click();
 	await expect(ben.page.getByTestId("round-phase")).toHaveText("seeking");
 	expect(await roundStatuses(gameId)).toEqual(["seeking"]);
 
@@ -466,7 +473,7 @@ test("7. a found is markable by anyone and correctable", async ({
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 
 	await markFound(host, code);
 	await openLobby(host, code);
@@ -522,7 +529,7 @@ test("8. a round that ends with a hider unfound records that", async ({
 	await commitZone(ben, code);
 	await commitZone(cara, code);
 	await openLobby(ana, code);
-	await ana.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(ana);
 
 	await markFound(ana, code, "Foxes");
 
@@ -562,7 +569,7 @@ test("9. a photo survives the round and loses its coordinates", async ({
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 	await openMap(host, code);
 	await waitForSync(host);
 	await host.page.getByTestId("map-ask").click();
@@ -613,7 +620,7 @@ test("10. the suite makes no third-party request, including /photos", async ({
 	await startHiding(phones, code, "30");
 	await commitZone(other, code);
 	await openLobby(host, code);
-	await host.page.getByTestId("start-seeking").click();
+	await startSeekingPhase(host);
 	await openMap(host, code);
 	await host.page.getByTestId("map-ask").click();
 	await host.page.getByTestId("found-them").click();

@@ -1,15 +1,26 @@
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { NumberStepper } from "@zero-lag/ui/components/number-stepper";
 import { Surface } from "@zero-lag/ui/components/surface";
+import {
+	ToggleButton,
+	ToggleModePair,
+} from "@zero-lag/ui/components/toggle-button";
 import { useState } from "react";
 import { HiderChip, type HiderOption } from "../game/hider-selector";
-import { ToolModePair } from "../setup/area/tool-strip";
 import { formatZone, stepZoneMeters } from "../setup/game-size";
 import type { MapTool } from "./toolkit";
 
-export const COMPACT_SECONDARY =
-	"min-h-9 shrink-0 gap-0 overflow-visible px-2.5 py-0 text-sm";
+/**
+ * The quieter half of a two-button row on the map.
+ *
+ * It keeps the touch floor — a control that shrinks to 36px because it is the
+ * less important of two is a control that is harder to hit for being less
+ * important, which is backwards. What it gives up is width, not height, so the
+ * pair reads as one row rather than as two sizes of button.
+ */
+export const COMPACT_SECONDARY = "shrink-0";
 
 interface MapBarProps {
 	readonly tool: MapTool;
@@ -18,7 +29,6 @@ interface MapBarProps {
 	readonly selectedHiderId: string | null;
 	readonly onOpenHiderSheet: () => void;
 	readonly onActions: () => void;
-	readonly actionsOpen?: boolean;
 	readonly onCancel: () => void;
 	readonly onUndoPolygonVertex: () => void;
 	readonly onRadiusStep: (direction: 1 | -1) => void;
@@ -40,7 +50,6 @@ export function MapBar({
 	selectedHiderId,
 	onOpenHiderSheet,
 	onActions,
-	actionsOpen = false,
 	onCancel,
 	onUndoPolygonVertex,
 	onRadiusStep,
@@ -74,7 +83,7 @@ export function MapBar({
 
 	return (
 		<Surface
-			className="pointer-events-auto w-full max-w-sm"
+			className="pointer-events-auto w-full"
 			data-testid="map-bar"
 			raised
 		>
@@ -86,14 +95,13 @@ export function MapBar({
 				/>
 				<ActionButton
 					aria-label="Actions"
-					className="size-11 shrink-0 px-0 text-lg"
+					className="shrink-0 [&_.zl-press-face]:size-tap [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0"
 					data-testid="map-ask"
 					inline
 					onClick={onActions}
 					size="compact"
-					tone={actionsOpen ? "primary" : "secondary"}
 				>
-					!
+					<span className="text-lg leading-none">!</span>
 				</ActionButton>
 			</div>
 		</Surface>
@@ -145,34 +153,39 @@ function ConstraintDraft({
 			: null;
 
 	return (
-		<Surface className="pointer-events-auto w-full max-w-sm" raised>
+		<Surface className="pointer-events-auto w-full" raised>
 			<div className="flex flex-col gap-2">
-				<div className="flex items-center gap-2">
-					<div className="min-w-0 flex-1">
-						<ToolModePair
-							left={{
-								label: "+ Inside",
-								on: !cut,
-								onClick: () => onCutChange(false),
-								testId: "constraint-mode-include",
-								tone: "add",
-							}}
-							right={{
-								label: "⊖ Outside",
-								on: cut,
-								onClick: () => onCutChange(true),
-								testId: "constraint-mode-exclude",
-								tone: "cut",
-							}}
-						/>
-					</div>
+				<div className="flex items-stretch gap-2">
+					<ToggleModePair className="min-w-0 flex-1">
+						<ToggleButton
+							icon={<Icon name="plus" size="xs" />}
+							onClick={() => onCutChange(false)}
+							pressed={!cut}
+							shape="bar"
+							testId="constraint-mode-include"
+							tone="add"
+						>
+							Inside
+						</ToggleButton>
+						<ToggleButton
+							icon={<Icon name="scissors" size="xs" />}
+							onClick={() => onCutChange(true)}
+							pressed={cut}
+							shape="bar"
+							testId="constraint-mode-exclude"
+							tone="cut"
+						>
+							Outside
+						</ToggleButton>
+					</ToggleModePair>
 					{tool.kind === "drawingPolygonConstraint" && (
 						<ActionButton
 							className={COMPACT_SECONDARY}
 							disabled={tool.ring.length === 0}
 							inline
 							onClick={onUndoPolygonVertex}
-							size="compact"
+							// Comfortable, so it stands level with the mode pair beside it.
+							size="comfortable"
 							tone="secondary"
 						>
 							Undo
@@ -208,12 +221,14 @@ function ConstraintDraft({
 						value={name}
 					/>
 				)}
-				<div className="flex items-center gap-2">
+				{/* One height across the row: the quieter button is narrower, never
+				    shorter. */}
+				<div className="flex items-stretch gap-2">
 					<ActionButton
 						className={COMPACT_SECONDARY}
 						inline
 						onClick={pickAnother ?? onCancel}
-						size="compact"
+						size="comfortable"
 						tone="secondary"
 					>
 						{pickAnother ? "Pick another" : "Cancel"}
@@ -224,6 +239,7 @@ function ConstraintDraft({
 						data-testid={cut ? "they-are-outside" : "they-are-inside"}
 						disabled={!ready}
 						onClick={() => onCommitConstraint(name)}
+						size="comfortable"
 					>
 						{cut ? "They are outside this" : "They are inside this"}
 					</ActionButton>

@@ -4,7 +4,9 @@ import {
 	formatCoordinates,
 	formatDistance,
 	nearestStopPx,
+	type ParsedCoordinates,
 	parseCoordinates,
+	parsePastedCoordinates,
 	type SearchableStop,
 	searchStops,
 } from "./toolkit";
@@ -57,6 +59,47 @@ describe("coordinates", () => {
 	it("rejects out-of-range pairs", () => {
 		expect(parseCoordinates("52, 181")).toBeNull();
 		expect(parseCoordinates("181, 92")).toBeNull();
+	});
+});
+
+describe("pasted coordinates", () => {
+	const berlin: ParsedCoordinates = {
+		point: [13.405, 52.52],
+		swapped: false,
+	};
+
+	it("reads a semicolon pair", () => {
+		expect(parsePastedCoordinates("52.52; 13.405")).toEqual(berlin);
+	});
+
+	it("reads a JSON array lat-first", () => {
+		expect(parsePastedCoordinates("[52.52, 13.405]")).toEqual(berlin);
+	});
+
+	it("reads named JSON keys, including lon and latitude", () => {
+		expect(
+			parsePastedCoordinates('{"latitude": 52.52, "longitude": 13.405}'),
+		).toEqual(berlin);
+		expect(parsePastedCoordinates('{"lat": 52.52, "lon": 13.405}')).toEqual(
+			berlin,
+		);
+	});
+
+	it("reads GeoJSON coordinates as lng-lat", () => {
+		expect(
+			parsePastedCoordinates('{"type":"Point","coordinates":[13.405, 52.52]}'),
+		).toEqual({ point: [13.405, 52.52], swapped: true });
+	});
+
+	it("reads lat: lng: prose", () => {
+		expect(parsePastedCoordinates("lat: 52.52, lng: 13.405")).toEqual(berlin);
+	});
+
+	it("reads a LatLng() call", () => {
+		expect(parsePastedCoordinates("LatLng(52.52, 13.405)")).toEqual({
+			point: [13.405, 52.52],
+			swapped: false,
+		});
 	});
 });
 

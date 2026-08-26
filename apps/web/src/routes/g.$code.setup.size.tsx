@@ -1,6 +1,7 @@
 import { useZero } from "@rocicorp/zero/react";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Chip } from "@zero-lag/ui/components/chip";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { NumberStepper } from "@zero-lag/ui/components/number-stepper";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { cn } from "@zero-lag/ui/lib/utils";
@@ -117,12 +118,13 @@ export default function SetupSize() {
 			<div className="flex items-center justify-between gap-3 px-1">
 				<span className="text-ink-dim text-xs">{setup.band.blurb}</span>
 				<button
-					className="font-mono text-[0.6rem] text-action uppercase tracking-[0.07em]"
+					className="flex shrink-0 items-center gap-1 font-mono text-[0.6rem] text-action uppercase tracking-[0.07em]"
 					data-testid="size-explain"
 					onClick={() => setDetail(setup.size)}
 					type="button"
 				>
-					What this means ›
+					What this means
+					<Icon name="caret-right" size="xs" />
 				</button>
 			</div>
 

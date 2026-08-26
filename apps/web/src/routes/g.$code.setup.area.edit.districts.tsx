@@ -6,8 +6,13 @@ import {
 	regionArea,
 } from "@zero-lag/geo";
 import type { AreaPieceSource } from "@zero-lag/schema";
+import { Chip } from "@zero-lag/ui/components/chip";
 import { Field } from "@zero-lag/ui/components/field";
 import { Surface } from "@zero-lag/ui/components/surface";
+import {
+	ToggleButton,
+	ToggleStrip,
+} from "@zero-lag/ui/components/toggle-button";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { formatArea } from "../builder/use-builder";
@@ -133,30 +138,20 @@ export default function SetupAreaDistricts() {
 					value={query}
 				/>
 			</div>
-			<div
-				className="grid shrink-0 grid-cols-3 gap-1 rounded-[15px] border border-hairline bg-surface p-1"
-				data-testid="area-boundary-tabs"
-			>
-				{FILTER_IDS.map((id) => {
-					const item = FILTERS[id];
-					const on = filters[id];
-					return (
-						<button
-							aria-pressed={on}
-							className={cn(
-								"rounded-[11px] py-2 font-mono text-[0.6rem] uppercase tracking-[0.08em]",
-								on ? "bg-action font-bold text-action-ink" : "text-ink-dim",
-							)}
-							data-testid={`area-boundary-tab-${id}`}
-							key={id}
-							onClick={() => toggle(id)}
-							type="button"
-						>
-							{item.label}
-						</button>
-					);
-				})}
-			</div>
+			{/* Many at once: this is a filter over the catalogue, not a tool. */}
+			<ToggleStrip className="shrink-0" testId="area-boundary-tabs">
+				{FILTER_IDS.map((id) => (
+					<ToggleButton
+						key={id}
+						onClick={() => toggle(id)}
+						pressed={filters[id]}
+						shape="bar"
+						testId={`area-boundary-tab-${id}`}
+					>
+						{FILTERS[id].label}
+					</ToggleButton>
+				))}
+			</ToggleStrip>
 			{search.truncated && search.rows.length > 0 && (
 				<p className="eyebrow shrink-0 px-1 text-ink-dim">
 					Showing {search.rows.length} of {search.total.toLocaleString("en")}.
@@ -196,11 +191,11 @@ export default function SetupAreaDistricts() {
 								</span>
 							</span>
 							{on ? (
-								<span className="rounded-full bg-live/15 px-2 py-1 font-mono text-[0.6rem] text-live uppercase">
+								<Chip tone={editor.cut ? "offline" : "live"}>
 									{editor.cut ? "Taking out" : "Adding"}
-								</span>
+								</Chip>
 							) : (
-								<span className="eyebrow text-ink-dim">
+								<span className="eyebrow shrink-0 text-ink-dim">
 									{editor.cut ? "Take out" : "Add"}
 								</span>
 							)}

@@ -28,6 +28,7 @@ interface PlayerSheetProps {
 	amHost: boolean;
 	isMe: boolean;
 	removed?: boolean;
+	showReady?: boolean;
 }
 
 export function PlayerSheet({
@@ -38,6 +39,7 @@ export function PlayerSheet({
 	amHost,
 	isMe,
 	removed = false,
+	showReady = true,
 }: PlayerSheetProps) {
 	const { ephemeral } = useGameShell();
 	const { renamePlayer, removePlayer, readmitPlayer } = useLobbyActions();
@@ -123,7 +125,7 @@ export function PlayerSheet({
 							{lastSeenText(person, ephemeral.entriesArrivedAt, now)}
 						</Chip>
 						{person.isHost && <Chip>Host</Chip>}
-						{person.readyAt !== null && !removed && (
+						{showReady && person.readyAt !== null && !removed && (
 							<Chip tone="live">Ready</Chip>
 						)}
 					</div>

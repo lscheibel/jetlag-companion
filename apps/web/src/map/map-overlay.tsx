@@ -3,21 +3,23 @@ import type { LocationIssue } from "@zero-lag/platform";
 import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
+import { Icon, type IconName } from "@zero-lag/ui/components/icon";
+import { IconButton } from "@zero-lag/ui/components/icon-button";
+import { ColorPicker } from "@zero-lag/ui/components/picker";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { Switch } from "@zero-lag/ui/components/switch";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useRef, useState } from "react";
-import { TEAM_COLORS } from "../lobby/palette";
+import { COLOR_OPTIONS } from "../lobby/palette";
 import { COMPACT_SECONDARY } from "./map-bar";
 import type { MapPin } from "./pin-layer";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
-	formatCoordinates,
 	formatDistance,
 	type MapTool,
-	parseCoordinates,
+	parsePastedCoordinates,
 	pathSegments,
 } from "./toolkit";
 
@@ -86,7 +88,7 @@ export function MeasureCard({
 	const emptyPath = measure.kind === "path" && measure.points.length === 0;
 	return (
 		<Surface
-			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
+			className="pointer-events-auto w-full px-3 py-2.5"
 			data-testid="measure-card"
 			raised
 		>
@@ -136,6 +138,7 @@ interface PinCardProps {
 	readonly draftPoint: LngLat | null;
 	readonly teamColor: string;
 	readonly onDraftPoint: (point: LngLat) => void;
+	readonly onLook?: (look: { color: string; label: string }) => void;
 	readonly onCancel: () => void;
 	readonly onSave: (input: {
 		label: string;
@@ -154,6 +157,7 @@ export function PinCard({
 	draftPoint,
 	teamColor,
 	onDraftPoint,
+	onLook,
 	onCancel,
 	onSave,
 	onDelete,
@@ -161,11 +165,24 @@ export function PinCard({
 	const [label, setLabel] = useState(pin?.label ?? "");
 	const [note, setNote] = useState(pin?.note ?? "");
 	const [color, setColor] = useState(pin?.color ?? teamColor);
+
+	function changeLabel(next: string) {
+		setLabel(next);
+		onLook?.({ color, label: next });
+	}
+
+	function changeColor(next: string) {
+		setColor(next);
+		onLook?.({ color: next, label });
+	}
 	const lastEmitted = useRef<LngLat | null>(draftPoint);
-	const [coords, setCoords] = useState(
-		draftPoint ? formatCoordinates(draftPoint) : "",
+	const [latText, setLatText] = useState(
+		draftPoint ? formatLat(draftPoint) : "",
 	);
-	const parsed = parseCoordinates(coords);
+	const [lngText, setLngText] = useState(
+		draftPoint ? formatLng(draftPoint) : "",
+	);
+	const typedPoint = pointFromFields(latText, lngText);
 	const fromMap =
 		draftPoint != null &&
 		(lastEmitted.current == null ||
@@ -173,37 +190,54 @@ export function PinCard({
 			lastEmitted.current[1] !== draftPoint[1]);
 	if (fromMap) {
 		lastEmitted.current = draftPoint;
-		const next = formatCoordinates(draftPoint);
-		if (coords !== next) setCoords(next);
+		const nextLat = formatLat(draftPoint);
+		const nextLng = formatLng(draftPoint);
+		if (latText !== nextLat) setLatText(nextLat);
+		if (lngText !== nextLng) setLngText(nextLng);
 	} else if (!draftPoint && lastEmitted.current) {
 		lastEmitted.current = null;
-		if (coords) setCoords("");
+		if (latText) setLatText("");
+		if (lngText) setLngText("");
 	}
 
-	const applyPoint = (point: LngLat, text: string) => {
+	const applyPoint = (point: LngLat) => {
 		lastEmitted.current = point;
-		setCoords(text);
+		setLatText(formatLat(point));
+		setLngText(formatLng(point));
 		onDraftPoint(point);
 	};
 
 	const paste = () => {
 		void webPlatform.clipboard.read().then((text) => {
 			if (!text) return;
-			const found = parseCoordinates(text);
-			if (!found) {
-				setCoords(text.trim());
-				return;
-			}
-			applyPoint(found.point, formatCoordinates(found.point));
+			const found = parsePastedCoordinates(text);
+			if (!found) return;
+			applyPoint(found.point);
 		});
 	};
 
-	const canPlace = Boolean(draftPoint ?? parsed?.point);
+	const onLatChange = (next: string) => {
+		setLatText(next);
+		const point = pointFromFields(next, lngText);
+		if (!point) return;
+		lastEmitted.current = point;
+		onDraftPoint(point);
+	};
+
+	const onLngChange = (next: string) => {
+		setLngText(next);
+		const point = pointFromFields(latText, next);
+		if (!point) return;
+		lastEmitted.current = point;
+		onDraftPoint(point);
+	};
+
+	const canPlace = Boolean(draftPoint ?? typedPoint);
 	const editing = pin !== null;
 
 	return (
 		<Surface
-			className="pointer-events-auto flex max-h-[45%] w-full max-w-sm flex-col gap-2 overflow-y-auto px-3 py-2.5"
+			className="pointer-events-auto flex max-h-[45%] w-full flex-col gap-2 overflow-y-auto px-3 py-2.5"
 			data-testid="pin-card"
 			raised
 		>
@@ -211,7 +245,7 @@ export function PinCard({
 				className="flex flex-col gap-2"
 				onSubmit={(event) => {
 					event.preventDefault();
-					const point = draftPoint ?? parsed?.point;
+					const point = draftPoint ?? typedPoint;
 					if (!point) return;
 					onSave({
 						label,
@@ -223,36 +257,42 @@ export function PinCard({
 					});
 				}}
 			>
-				<Field
-					data-testid="pin-coordinates"
-					label="Coordinates"
-					onChange={(event) => {
-						const next = event.target.value;
-						setCoords(next);
-						const found = parseCoordinates(next);
-						if (!found) return;
-						lastEmitted.current = found.point;
-						onDraftPoint(found.point);
-					}}
-					placeholder="52.52000, 13.40500"
-					trailing={
-						webPlatform.clipboard.capability().available ? (
-							<button
-								className="shrink-0 font-mono text-[0.65rem] text-ink-dim uppercase tracking-[0.06em]"
-								data-testid="pin-paste"
-								onClick={paste}
-								type="button"
-							>
-								Paste
-							</button>
-						) : null
-					}
-					value={coords}
-				/>
+				<div className="flex items-center gap-2" data-testid="pin-coordinates">
+					<div className="min-w-0 flex-1">
+						<Field
+							data-testid="pin-lat"
+							inputMode="decimal"
+							label="Latitude"
+							onChange={(event) => onLatChange(event.target.value)}
+							placeholder="52.52000"
+							value={latText}
+						/>
+					</div>
+					<div className="min-w-0 flex-1">
+						<Field
+							data-testid="pin-lng"
+							inputMode="decimal"
+							label="Longitude"
+							onChange={(event) => onLngChange(event.target.value)}
+							placeholder="13.40500"
+							value={lngText}
+						/>
+					</div>
+					{webPlatform.clipboard.capability().available ? (
+						<IconButton
+							aria-label="Paste coordinates"
+							className="rounded-[8px]"
+							onClick={paste}
+							testId="pin-paste"
+						>
+							<Icon name="clipboard" size="sm" />
+						</IconButton>
+					) : null}
+				</div>
 				<Field
 					label="What is it"
 					maxLength={80}
-					onChange={(event) => setLabel(event.target.value)}
+					onChange={(event) => changeLabel(event.target.value)}
 					placeholder="Optional"
 					value={label}
 				/>
@@ -265,25 +305,22 @@ export function PinCard({
 						value={note}
 					/>
 				</label>
-				<div className="flex gap-2">
-					{TEAM_COLORS.map((choice) => (
-						<button
-							aria-label={`Use ${choice}`}
-							className={`size-10 rounded-[10px] ${choice === color ? "ring-2 ring-action ring-offset-2 ring-offset-surface" : ""}`}
-							key={choice}
-							onClick={() => setColor(choice)}
-							style={{ backgroundColor: choice }}
-							type="button"
-						/>
-					))}
-				</div>
-				<div className="flex items-center gap-2">
+				{/* A grid, not a row: eight 40px squares plus their gaps were wider
+				    than the card they sat in, so the last two fell off the edge. */}
+				<ColorPicker
+					label="Pin colour"
+					onChange={changeColor}
+					options={COLOR_OPTIONS}
+					testIdPrefix="pin-color"
+					value={color}
+				/>
+				<div className="flex items-stretch gap-2">
 					<ActionButton
 						className={COMPACT_SECONDARY}
 						data-testid="pin-cancel"
 						inline
 						onClick={onCancel}
-						size="compact"
+						size="comfortable"
 						tone="secondary"
 						type="button"
 					>
@@ -293,13 +330,19 @@ export function PinCard({
 						className="w-auto min-w-0 flex-1"
 						data-testid="pin-place"
 						disabled={!canPlace}
+						size="comfortable"
 						type="submit"
 					>
 						{editing ? "Save pin" : "Place pin"}
 					</ActionButton>
 				</div>
 				{onDelete && (
-					<ActionButton onClick={onDelete} tone="danger" type="button">
+					<ActionButton
+						onClick={onDelete}
+						size="comfortable"
+						tone="danger"
+						type="button"
+					>
 						Delete
 					</ActionButton>
 				)}
@@ -317,35 +360,35 @@ interface ConstraintsPickerSheetProps {
 }
 
 const CONSTRAINT_TYPES: readonly {
-	readonly glyph: string;
+	readonly icon: IconName;
 	readonly label: string;
 	readonly hint: string;
 	readonly testId: string;
 	readonly kind: MapTool["kind"];
 }[] = [
 	{
-		glyph: "▦",
+		icon: "squares-four",
 		label: "Place",
 		hint: "A Bezirk or Ortsteil",
 		testId: "add-bezirk-constraint",
 		kind: "pickingBoundaryConstraint",
 	},
 	{
-		glyph: "✎",
+		icon: "pencil-simple",
 		label: "Draw",
 		hint: "A polygon on the map",
 		testId: "add-polygon-constraint",
 		kind: "drawingPolygonConstraint",
 	},
 	{
-		glyph: "◎",
+		icon: "circle-dashed",
 		label: "Circle",
 		hint: "A radius around a point",
 		testId: "add-radius-constraint",
 		kind: "drawingRadiusConstraint",
 	},
 	{
-		glyph: "☰",
+		icon: "list-bullets",
 		label: "Cuts",
 		hint: "The ones already placed",
 		testId: "constraint-list",
@@ -381,11 +424,8 @@ export function ConstraintsPickerSheet({
 						}
 						type="button"
 					>
-						<span
-							aria-hidden
-							className="grid size-9 place-items-center text-lg"
-						>
-							{row.glyph}
+						<span className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-surface-raised">
+							<Icon name={row.icon} size="md" />
 						</span>
 						<span className="min-w-0 flex-1">
 							<b className="block text-[0.85rem] leading-tight">{row.label}</b>
@@ -439,7 +479,7 @@ export function CutsCard({
 }: CutsCardProps) {
 	return (
 		<Surface
-			className="pointer-events-auto flex max-h-[33%] w-full max-w-sm flex-col gap-2 overflow-hidden px-3 py-2.5"
+			className="pointer-events-auto flex max-h-[33%] w-full flex-col gap-2 overflow-hidden px-3 py-2.5"
 			data-testid="constraint-list-sheet"
 			raised
 		>
@@ -495,7 +535,7 @@ function ConstraintRow({
 					minus ? "bg-danger/20 text-danger" : "bg-live/20 text-live",
 				)}
 			>
-				{minus ? "−" : "+"}
+				<Icon name={minus ? "minus" : "plus"} size="xs" />
 			</span>
 			<label className="min-w-0 flex-1">
 				<span className="sr-only">Constraint name</span>
@@ -529,9 +569,25 @@ function ConstraintRow({
 					onClick={onRemove}
 					type="button"
 				>
-					×
+					<Icon name="x" size="sm" />
 				</button>
 			)}
 		</div>
 	);
+}
+
+function formatLat(point: LngLat): string {
+	return point[1].toFixed(5);
+}
+
+function formatLng(point: LngLat): string {
+	return point[0].toFixed(5);
+}
+
+function pointFromFields(latText: string, lngText: string): LngLat | null {
+	const lat = Number(latText);
+	const lng = Number(lngText);
+	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+	if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+	return [lng, lat];
 }

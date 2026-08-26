@@ -46,7 +46,7 @@ export default function SetupAreaDraw() {
 				title={editor.cut ? "Draw what to take out" : "Trace the edge"}
 				trailing={
 					<ActionButton
-						className="min-h-9 gap-0 overflow-visible px-2.5 py-0 text-sm"
+						className="shrink-0"
 						data-testid="area-draw-undo"
 						disabled={ring.length === 0}
 						inline

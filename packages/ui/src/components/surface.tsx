@@ -17,12 +17,15 @@ interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
 	accent?: string;
 	/** Highlight it as the viewer's own: their team, their turn, their card. */
 	mine?: boolean;
+	/** The card is the target: lifts on hover, sinks on press. */
+	interactive?: boolean;
 }
 
 export function Surface({
 	raised = false,
 	accent,
 	mine = false,
+	interactive = false,
 	className,
 	style,
 	children,
@@ -32,9 +35,13 @@ export function Surface({
 		<div
 			className={cn(
 				"rounded-tile border border-hairline p-3",
-				raised ? "bg-surface-raised shadow-black/20 shadow-lg" : "bg-surface",
+				raised
+					? "bg-surface-raised shadow-[0_18px_30px_-18px_rgb(0_0_0/0.5)]"
+					: "bg-surface",
 				accent && "border-l-[5px]",
 				mine && "border-action/40 bg-action/[0.07]",
+				interactive &&
+					"cursor-pointer transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:-translate-y-0.5 active:translate-y-0.5",
 				className,
 			)}
 			style={accent ? { borderLeftColor: accent, ...style } : style}

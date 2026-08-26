@@ -1,6 +1,7 @@
 import type { BBox, LngLat } from "@zero-lag/geo";
-import { cn } from "@zero-lag/ui/lib/utils";
-import { type ReactNode, useEffect, useRef } from "react";
+import { Icon } from "@zero-lag/ui/components/icon";
+import { IconButton } from "@zero-lag/ui/components/icon-button";
+import { useEffect, useRef } from "react";
 import type { RadiusDraft, RingDraft } from "./draw-gestures";
 import { useMapInstance } from "./map-canvas";
 import {
@@ -116,51 +117,12 @@ export function MapPointerHandler({
 	return null;
 }
 
-/** The floating control the area editor puts on the map: one glyph, same chrome. */
-export function MapHudButton({
-	ariaLabel,
-	testId,
-	onClick,
-	disabled = false,
-	pressed = false,
-	cameraMode,
-	children,
-}: {
-	readonly ariaLabel: string;
-	readonly testId: string;
-	readonly onClick: () => void;
-	readonly disabled?: boolean;
-	readonly pressed?: boolean;
-	readonly cameraMode?: string;
-	readonly children: ReactNode;
-}) {
-	return (
-		<button
-			aria-label={ariaLabel}
-			aria-pressed={pressed}
-			className={cn(
-				"grid size-11 place-items-center rounded-[14px] border bg-surface/90 text-ink shadow-sm backdrop-blur disabled:opacity-45",
-				pressed
-					? "border-action bg-action font-bold text-action-ink"
-					: "border-hairline",
-			)}
-			data-camera-mode={cameraMode}
-			data-testid={testId}
-			disabled={disabled}
-			onClick={onClick}
-			type="button"
-		>
-			{children}
-		</button>
-	);
-}
-
 export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
 	const map = useMapInstance();
 
 	return (
-		<MapHudButton
-			ariaLabel="Show the whole area"
+		<IconButton
+			aria-label="Show the whole area"
 			disabled={!bounds || !map}
 			onClick={() => {
 				if (!map || !bounds) return;
@@ -174,24 +136,8 @@ export function MapFitSelection({ bounds }: { readonly bounds: BBox | null }) {
 			}}
 			testId="area-fit-selection"
 		>
-			<svg
-				aria-hidden="true"
-				fill="none"
-				height="20"
-				stroke="currentColor"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				strokeWidth="2"
-				viewBox="0 0 24 24"
-				width="20"
-			>
-				<title>Fit</title>
-				<path d="M8 3H5a2 2 0 0 0-2 2v3" />
-				<path d="M16 3h3a2 2 0 0 1 2 2v3" />
-				<path d="M8 21H5a2 2 0 0 1-2-2v-3" />
-				<path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-			</svg>
-		</MapHudButton>
+			<Icon name="corners-out" size="sm" />
+		</IconButton>
 	);
 }
 

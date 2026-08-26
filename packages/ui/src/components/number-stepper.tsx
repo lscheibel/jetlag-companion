@@ -1,22 +1,23 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 /**
  * A number with a target either side of it.
  *
- * Not a text field: there is no keyboard to raise, no unit to type and no way
- * to enter something the setting cannot mean. The value stays readable while it
- * changes, which is the whole reason a host taps twice instead of typing.
+ * Not a text field by default: there is no keyboard to raise, no unit to type
+ * and no way to enter something the setting cannot mean. The value stays
+ * readable while it changes, which is the whole reason a host taps twice
+ * instead of typing.
  *
  * `suggested` is what something else proposed — a game size, a scale preset.
  * When the value has moved off it the control says so and offers the way back,
  * so experimenting with a number never costs the number you started from.
  */
 
-interface NumberStepperProps {
+interface BaseProps {
 	label: ReactNode;
-	/** The value, already formatted with its unit. */
-	value: ReactNode;
 	onStep: (direction: 1 | -1) => void;
 	canIncrease?: boolean;
 	canDecrease?: boolean;
@@ -25,6 +26,23 @@ interface NumberStepperProps {
 	testId?: string;
 }
 
+/**
+ * The typed variant is a separate shape rather than a flag, because a value
+ * that can be typed is a string the caller has to parse and a value that
+ * cannot is anything at all. Reach for it only where a number is genuinely
+ * typed — a big one, or one a host arrives with in their head.
+ */
+type NumberStepperProps = BaseProps &
+	(
+		| { value: ReactNode; onCommit?: undefined; unit?: undefined }
+		| {
+				value: string;
+				onCommit: (raw: string) => void;
+				/** Sits after the field: "per team", "min". */
+				unit?: ReactNode;
+		  }
+	);
+
 export function NumberStepper({
 	label,
 	value,
@@ -32,24 +50,65 @@ export function NumberStepper({
 	canIncrease = true,
 	canDecrease = true,
 	suggested,
+	onCommit,
+	unit,
 	testId,
 }: NumberStepperProps) {
+	/** Which way the figure last moved, so it can roll in from that side. */
+	const [roll, setRoll] = useState<{ direction: 1 | -1; nonce: number } | null>(
+		null,
+	);
+
+	function step(direction: 1 | -1) {
+		setRoll((previous) => ({
+			direction,
+			nonce: (previous?.nonce ?? 0) + 1,
+		}));
+		onStep(direction);
+	}
+
 	return (
 		<div
 			className={cn(
-				"flex min-h-[4.4rem] items-center gap-2.5 rounded-control border bg-surface py-2 pr-2 pl-3.5",
-				suggested ? "border-action bg-action/[0.07]" : "border-hairline",
+				"flex min-h-[70px] items-center gap-2.5 rounded-control border py-2 pr-2 pl-3.5",
+				suggested
+					? "border-action bg-[color-mix(in_oklab,var(--action)_7%,transparent)]"
+					: "border-hairline bg-surface",
 			)}
 			data-testid={testId}
 		>
 			<div className="min-w-0 flex-1">
 				<div className="eyebrow">{label}</div>
-				<div
-					className="num mt-0.5 font-medium text-xl"
-					data-testid={testId && `${testId}-value`}
-				>
-					{value}
-				</div>
+				{onCommit ? (
+					<div className="flex items-center gap-1.5">
+						<input
+							className="num w-full min-w-0 bg-transparent font-medium text-ink text-xl outline-none"
+							data-testid={testId && `${testId}-value`}
+							inputMode="numeric"
+							onChange={(event) => onCommit(event.target.value)}
+							value={value}
+						/>
+						{unit && (
+							<span className="shrink-0 font-mono text-ink-faint text-xs">
+								{unit}
+							</span>
+						)}
+					</div>
+				) : (
+					<div
+						className={cn(
+							"num mt-0.5 select-none font-medium text-xl",
+							roll?.direction === 1 && "zl-roll-up",
+							roll?.direction === -1 && "zl-roll-down",
+						)}
+						data-testid={testId && `${testId}-value`}
+						// Restarting the animation is what makes a second tap in the same
+						// direction roll again rather than sit still.
+						key={roll?.nonce ?? 0}
+					>
+						{value}
+					</div>
+				)}
 				{suggested && (
 					<button
 						className="mt-0.5 block font-mono text-[0.55rem] text-action uppercase tracking-[0.06em]"
@@ -64,18 +123,18 @@ export function NumberStepper({
 			<StepButton
 				disabled={!canDecrease}
 				label={`Less ${typeof label === "string" ? label.toLowerCase() : ""}`}
-				onClick={() => onStep(-1)}
+				onClick={() => step(-1)}
 				testId={testId && `${testId}-down`}
 			>
-				−
+				<Icon name="minus" size="md" />
 			</StepButton>
 			<StepButton
 				disabled={!canIncrease}
 				label={`More ${typeof label === "string" ? label.toLowerCase() : ""}`}
-				onClick={() => onStep(1)}
+				onClick={() => step(1)}
 				testId={testId && `${testId}-up`}
 			>
-				+
+				<Icon name="plus" size="md" />
 			</StepButton>
 		</div>
 	);
@@ -100,9 +159,10 @@ function StepButton({
 		<button
 			aria-label={label}
 			className={cn(
-				"grid size-12 shrink-0 place-items-center rounded-control bg-surface-raised",
-				"font-semibold text-ink text-xl",
-				"transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90",
+				"grid size-12 shrink-0 select-none place-items-center rounded-control bg-surface-raised",
+				"font-semibold text-ink",
+				"transition-[scale,background-color] duration-[--dur-press] ease-[--ease-pop]",
+				"active:scale-90",
 				"hover:bg-hairline-strong disabled:pointer-events-none disabled:opacity-35",
 			)}
 			data-testid={testId}

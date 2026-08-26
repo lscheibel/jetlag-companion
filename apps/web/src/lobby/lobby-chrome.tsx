@@ -41,11 +41,14 @@ export function LobbyChrome({
 		<>
 			<LobbyHeader
 				onInvite={controls ? () => setOverlay("invite") : undefined}
+				onLobby={
+					controls ? undefined : () => void navigate(`/g/${session.code}`)
+				}
+				onMap={
+					controls ? () => void navigate(`/g/${session.code}/map`) : undefined
+				}
 				onMenu={controls ? () => setOverlay("menu") : undefined}
-				players={lobby.people.length}
 				status={status}
-				teams={lobby.teams.length}
-				title={lobby.gameName}
 			/>
 			{controls && (
 				<>

@@ -137,13 +137,111 @@ export function parseCoordinates(input: string): ParsedCoordinates | null {
 	if (!match) return null;
 	const first = Number(match[1]);
 	const second = Number(match[2]);
-	if (!Number.isFinite(first) || !Number.isFinite(second)) return null;
+	return pairAsPoint(first, second);
+}
 
+/**
+ * Clipboard paste: comma/space/semicolon pairs, JSON arrays, and objects
+ * keyed with lat/lng, lon, latitude, longitude, or GeoJSON `coordinates`.
+ */
+export function parsePastedCoordinates(
+	input: string,
+): ParsedCoordinates | null {
+	const text = input.trim();
+	if (!text) return null;
+
+	if (text.startsWith("{") || text.startsWith("[")) {
+		try {
+			const fromJson = pointFromUnknown(JSON.parse(text) as unknown);
+			if (fromJson) return fromJson;
+		} catch {
+			// Unquoted keys still go through the named-pair scan below.
+		}
+	}
+
+	const named = namedPair(text);
+	if (named) return named;
+
+	const latLngCall = text.match(
+		/latlng\s*\(\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*\)/i,
+	);
+	if (latLngCall) {
+		return pairAsPoint(Number(latLngCall[1]), Number(latLngCall[2]));
+	}
+
+	const normalised = text
+		.replace(/[°º]/g, "")
+		.replace(/\s*[NSEW]\b/gi, "")
+		.replace(/[;|/\t()]/g, " ");
+	return parseCoordinates(normalised.replace(/\s+/g, " ").trim());
+}
+
+function pairAsPoint(first: number, second: number): ParsedCoordinates | null {
+	if (!Number.isFinite(first) || !Number.isFinite(second)) return null;
 	const swapped = Math.abs(first) > 90;
 	const lat = swapped ? second : first;
 	const lng = swapped ? first : second;
 	if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
 	return { point: [lng, lat], swapped };
+}
+
+function namedNumber(
+	record: Record<string, unknown>,
+	keys: readonly string[],
+): number | null {
+	for (const key of keys) {
+		const value = record[key];
+		if (typeof value === "number" && Number.isFinite(value)) return value;
+		if (typeof value === "string") {
+			const parsed = Number(value);
+			if (Number.isFinite(parsed)) return parsed;
+		}
+	}
+	return null;
+}
+
+function pointFromUnknown(value: unknown): ParsedCoordinates | null {
+	if (Array.isArray(value)) {
+		if (value.length < 2) return null;
+		const first = Number(value[0]);
+		const second = Number(value[1]);
+		return pairAsPoint(first, second);
+	}
+	if (value === null || typeof value !== "object") return null;
+	const record = value as Record<string, unknown>;
+	if (Array.isArray(record.coordinates)) {
+		const first = Number(record.coordinates[0]);
+		const second = Number(record.coordinates[1]);
+		if (Number.isFinite(first) && Number.isFinite(second)) {
+			if (Math.abs(first) <= 180 && Math.abs(second) <= 90) {
+				return { point: [first, second], swapped: true };
+			}
+			return pairAsPoint(first, second);
+		}
+	}
+	if ("geometry" in record) return pointFromUnknown(record.geometry);
+	if ("location" in record) return pointFromUnknown(record.location);
+
+	const lat = namedNumber(record, ["lat", "latitude", "y"]);
+	const lng = namedNumber(record, ["lng", "lon", "long", "longitude", "x"]);
+	if (lat === null || lng === null) return null;
+	if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+	return { point: [lng, lat], swapped: false };
+}
+
+function namedPair(text: string): ParsedCoordinates | null {
+	const lat = text.match(
+		/\b(?:lat(?:itude)?)\s*[:=]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))/i,
+	);
+	const lng = text.match(
+		/\b(?:lng|lon|long|longitude)\s*[:=]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))/i,
+	);
+	if (!lat || !lng) return null;
+	const latN = Number(lat[1]);
+	const lngN = Number(lng[1]);
+	if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return null;
+	if (Math.abs(latN) > 90 || Math.abs(lngN) > 180) return null;
+	return { point: [lngN, latN], swapped: false };
 }
 
 /**

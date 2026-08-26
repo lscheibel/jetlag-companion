@@ -4,6 +4,8 @@ import {
 	useTheme,
 } from "../hooks/use-theme";
 import { cn } from "../lib/utils";
+import { Icon, type IconName } from "./icon";
+import { SegmentedControl, type SegmentOption } from "./segmented-control";
 
 /**
  * Applies the stored theme before the first paint.
@@ -19,62 +21,40 @@ export function ThemeScript() {
 	return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
-const OPTIONS: readonly {
-	value: ThemePreference;
-	label: string;
-	glyph: string;
-}[] = [
-	{ value: "light", label: "Light", glyph: "☀" },
-	{ value: "system", label: "Auto", glyph: "◐" },
-	{ value: "dark", label: "Dark", glyph: "☾" },
-];
+const GLYPHS: Record<ThemePreference, IconName> = {
+	light: "sun",
+	system: "circle-half",
+	dark: "moon",
+};
+
+const OPTIONS: readonly SegmentOption<ThemePreference>[] = (
+	["light", "system", "dark"] as const
+).map((value) => ({
+	value,
+	label: <Icon name={GLYPHS[value]} size="sm" />,
+	srLabel: value === "system" ? "Follow the system" : value,
+}));
 
 interface ThemeToggleProps {
 	className?: string;
 }
 
 /**
- * Three targets, no menu. A theme switch that costs two taps and a menu is one
- * people give up on with one hand on a handrail.
+ * Three targets, no menu — the one shipped instance of `SegmentedControl`.
+ * A theme switch that costs two taps and a menu is one people give up on with
+ * one hand on a handrail.
  */
 export function ThemeToggle({ className }: ThemeToggleProps) {
 	const { preference, setPreference } = useTheme();
 
 	return (
-		<fieldset
-			className={cn(
-				"flex gap-1 rounded-chip border border-hairline bg-surface p-1",
-				className,
-			)}
-			data-testid="theme-toggle"
-		>
-			<legend className="sr-only">Appearance</legend>
-			{OPTIONS.map((option) => {
-				const selected = option.value === preference;
-				return (
-					<label
-						className={cn(
-							"grid size-9 cursor-pointer place-items-center rounded-chip text-base",
-							"transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90",
-							"has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus",
-							selected ? "bg-action text-action-ink" : "text-ink-dim",
-						)}
-						data-testid={`theme-${option.value}`}
-						key={option.value}
-					>
-						<input
-							checked={selected}
-							className="sr-only"
-							name="appearance"
-							onChange={() => setPreference(option.value)}
-							type="radio"
-							value={option.value}
-						/>
-						<span aria-hidden>{option.glyph}</span>
-						<span className="sr-only">{option.label}</span>
-					</label>
-				);
-			})}
-		</fieldset>
+		<SegmentedControl
+			className={cn("max-w-44", className)}
+			label="Appearance"
+			onChange={setPreference}
+			options={OPTIONS}
+			testId="theme-toggle"
+			value={preference}
+		/>
 	);
 }

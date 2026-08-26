@@ -88,11 +88,22 @@ export function HidingSheet({
 		);
 	}
 
+	function uncommit() {
+		if (!role.roundId || !role.teamId || !mine) return;
+		void zero.mutate(
+			mutators.round.uncommitZone({
+				eventId: crypto.randomUUID(),
+				roundId: role.roundId,
+				hiderTeamId: role.teamId,
+			}),
+		);
+	}
+
 	const committedHere = mine?.stopId === selectedStop?.stopId;
 
 	return (
 		<Surface
-			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
+			className="pointer-events-auto w-full px-3 py-2.5"
 			data-testid="hiding-sheet"
 			raised
 		>
@@ -112,22 +123,27 @@ export function HidingSheet({
 							className="text-amber-700 text-sm"
 							data-testid="hiding-outside-area"
 						>
-							{selectedStop.name} is outside the game area. You can still hide
-							here — this is a reminder, not a rule.
+							{selectedStop.name} is outside the game area.
 						</p>
 					)}
-					<ActionButton
-						data-testid="commit-zone"
-						disabled={!selectedStop || !role.roundId}
-						onClick={commit}
-						size="compact"
-					>
-						{mine && !committedHere ? "Change" : "Hide here"}
-					</ActionButton>
-					{mine && (
-						<p className="text-ink-dim text-sm" data-testid="committed-stop">
-							Zone committed.
-						</p>
+					{committedHere ? (
+						<ActionButton
+							data-testid="uncommit-zone"
+							onClick={uncommit}
+							size="compact"
+							tone="secondary"
+						>
+							Leave this zone
+						</ActionButton>
+					) : (
+						<ActionButton
+							data-testid="commit-zone"
+							disabled={!role.roundId}
+							onClick={commit}
+							size="compact"
+						>
+							{mine ? "Change" : "Hide here"}
+						</ActionButton>
 					)}
 				</div>
 			) : (

@@ -1,3 +1,4 @@
+import { Icon } from "@zero-lag/ui/components/icon";
 import { TeamBadge } from "@zero-lag/ui/components/team-badge";
 import { fadeOnly, listItem } from "@zero-lag/ui/lib/motion";
 import { cn } from "@zero-lag/ui/lib/utils";
@@ -60,8 +61,8 @@ export function TeamRow({
 				<span className="min-w-0 flex-1 font-display font-extrabold text-[0.95rem] tracking-tight">
 					{team.name}
 				</span>
-				<span aria-hidden className="text-ink-faint text-sm">
-					›
+				<span className="text-ink-faint">
+					<Icon name="caret-right" size="sm" />
 				</span>
 			</button>
 

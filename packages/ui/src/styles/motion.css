@@ -13,8 +13,24 @@
  */
 
 :root {
-	/* Overshoot. The house curve — presses, pops, cards landing. */
+	/**
+	 * Overshoot. The house curve — presses, pops, cards landing.
+	 *
+	 * It peaks at 1.03, not 1.08: at the harder value a chosen tile lurches
+	 * rather than acknowledges. The old curve is kept as --ease-pop-hard for the
+	 * one or two places that want a real snap.
+	 */
 	--ease-pop: linear(
+		0 0%,
+		0.24 5%,
+		0.88 16%,
+		1.02 23%,
+		1.03 29%,
+		1 40%,
+		0.999 52%,
+		1 100%
+	);
+	--ease-pop-hard: linear(
 		0 0%,
 		0.22 4.5%,
 		0.86 15.5%,
@@ -27,6 +43,12 @@
 	/* Decisive entrances and exits, no bounce. */
 	--ease-out-soft: cubic-bezier(0.2, 0.9, 0.25, 1);
 	--ease-in-soft: cubic-bezier(0.6, 0, 0.9, 0.3);
+	/**
+	 * Things that travel rather than land: a segmented thumb, a tab highlight, a
+	 * sheet. No overshoot at all — a thumb that bounces past its segment reads
+	 * as a mis-tap.
+	 */
+	--ease-travel: cubic-bezier(0.32, 0.72, 0.28, 1);
 	/* Continuous loops. */
 	--ease-breathe: cubic-bezier(0.45, 0, 0.55, 1);
 
@@ -117,10 +139,67 @@
 		transform: scale(1);
 	}
 	45% {
-		transform: scale(1.14);
+		transform: scale(1.06);
 	}
 	100% {
 		transform: scale(1);
+	}
+}
+
+/**
+ * A small control with something to say. Long pauses between shakes, so it
+ * reads as the control clearing its throat rather than as a stuck animation.
+ */
+@keyframes zl-jiggle {
+	0%,
+	68%,
+	100% {
+		transform: rotate(0);
+	}
+	73% {
+		transform: rotate(-8deg);
+	}
+	79% {
+		transform: rotate(6deg);
+	}
+	85% {
+		transform: rotate(-4deg);
+	}
+	92% {
+		transform: rotate(2deg);
+	}
+}
+
+/**
+ * A figure arriving from the side it came from — up on more, down on less. A
+ * number that pops in place says *something happened*; one that rolls says
+ * *which way*.
+ */
+@keyframes zl-roll-up {
+	from {
+		transform: translateY(11px);
+		opacity: 0;
+	}
+	35% {
+		opacity: 1;
+	}
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+
+@keyframes zl-roll-down {
+	from {
+		transform: translateY(-11px);
+		opacity: 0;
+	}
+	35% {
+		opacity: 1;
+	}
+	to {
+		transform: none;
+		opacity: 1;
 	}
 }
 
@@ -162,9 +241,17 @@
  * one that appears fully formed reads as a page reload rather than as a move.
  * Short, and on the body only — the header and the pinned action are the frame,
  * and a frame that slides is a frame that draws attention to itself.
+ *
+ * `backwards`, never `both`. A forwards-filling transform animation keeps the
+ * element "animating" for ever, which makes it a containing block for
+ * `position: fixed` and a stacking context of its own — so every Sheet opened
+ * from a screen body landed inside the body's box instead of over the viewport,
+ * and sat *under* the pinned action rather than over it. `backwards` only
+ * applies the from-state before the animation starts, which is all an entrance
+ * needs.
  */
 @utility zl-enter {
-	animation: zl-enter var(--dur-enter) var(--ease-out-soft) both;
+	animation: zl-enter var(--dur-enter) var(--ease-out-soft) backwards;
 }
 
 /** Something the finger just chose, acknowledging the tap. */
@@ -174,6 +261,25 @@
 
 @utility zl-march {
 	animation: zl-march 1.4s linear infinite;
+}
+
+@utility zl-roll-up {
+	animation: zl-roll-up 380ms var(--ease-out-soft);
+}
+
+@utility zl-roll-down {
+	animation: zl-roll-down 380ms var(--ease-out-soft);
+}
+
+@utility zl-jiggle {
+	animation: zl-jiggle 3.8s var(--ease-out-soft) infinite;
+	transform-origin: center;
+}
+
+/** A deadline running out, for a bar that is not driven by a real value. */
+@utility zl-drain {
+	animation: zl-drain var(--drain-duration, 2.4s) linear both;
+	transform-origin: left;
 }
 
 /**

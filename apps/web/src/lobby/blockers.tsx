@@ -1,3 +1,4 @@
+import { Icon } from "@zero-lag/ui/components/icon";
 import { fadeOnly, listContainer, listItem } from "@zero-lag/ui/lib/motion";
 import { motion, useReducedMotion } from "motion/react";
 import { type Blocker, blockerText } from "./model";
@@ -44,7 +45,10 @@ export function BlockerCards({
 						/>
 						<span className="min-w-0 flex-1">{text}</span>
 						{actionable && (
-							<span className="eyebrow shrink-0 text-stale">Fix ›</span>
+							<span className="eyebrow flex shrink-0 items-center gap-1 text-stale">
+								Fix
+								<Icon name="caret-right" size="xs" />
+							</span>
 						)}
 					</>
 				);

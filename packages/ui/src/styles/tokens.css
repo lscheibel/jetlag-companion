@@ -28,6 +28,17 @@
 	--curse-magenta-deep: #c13f94;
 
 	/**
+	 * Press edges. Every action is lifted on its own darker edge rather than on
+	 * translucent black — over a dark ground a black shadow is no shadow at all,
+	 * and a flat red button beside a raised yellow one reads as disabled rather
+	 * than as dangerous. Identical in both themes: the edge is the same paint
+	 * seen from the side, not a role that re-reads the ground.
+	 */
+	--edge-danger: #a62a15;
+	--edge-curse: #8e2c68;
+	--edge-live: #11784b;
+
+	/**
 	 * Team identity, mirrored from apps/web/src/lobby/palette.ts. Okabe–Ito, so
 	 * the eight stay distinguishable under all three common colour vision
 	 * deficiencies. Colour never carries meaning alone: a team is always its
@@ -218,6 +229,10 @@
 	--color-offline: var(--offline);
 	--color-danger: var(--danger);
 	--color-curse: var(--curse);
+
+	--color-edge-danger: var(--edge-danger);
+	--color-edge-curse: var(--edge-curse);
+	--color-edge-live: var(--edge-live);
 
 	--color-transit-u: var(--transit-u);
 	--color-transit-s: var(--transit-s);

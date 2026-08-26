@@ -21,7 +21,7 @@ interface TeamBadgeProps {
 	team: TeamIdentity;
 	/** `mark` is the emoji tile alone, for map markers and dense rows. */
 	variant?: "full" | "mark";
-	size?: "sm" | "md";
+	size?: "sm" | "md" | "lg";
 	className?: string;
 }
 
@@ -36,7 +36,11 @@ export function TeamBadge({
 			<span
 				className={cn(
 					"grid shrink-0 place-items-center rounded-[11px] shadow-[inset_0_0_0_2px_rgb(255_255_255/0.18)]",
-					size === "sm" ? "size-7 text-sm" : "size-9 text-lg",
+					size === "sm"
+						? "size-7 text-sm"
+						: size === "lg"
+							? "size-11 text-xl"
+							: "size-9 text-lg",
 					className,
 				)}
 				data-team-color={team.color}

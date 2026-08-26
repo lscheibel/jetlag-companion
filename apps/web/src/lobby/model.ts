@@ -9,9 +9,9 @@ import type { TeamRole } from "@zero-lag/schema";
  * The four conditions below are not rules anybody agreed to: they are the
  * difference between a game and a broken one.
  *
- * Everything else is a remark. Lopsided teams, somebody temporarily offline,
- * one seeker team against three hiders: said out loud, and none of it in the
- * way. Deciding a five-against-one is a bad idea is the group's job.
+ * Everything else is a remark. Lopsided teams, one seeker team against
+ * three hiders: said out loud, and none of it in the way. Deciding a
+ * five-against-one is a bad idea is the group's job.
  */
 
 export interface LobbyPerson {
@@ -111,7 +111,6 @@ export function canStart(
  */
 export function startRemarks(
 	teams: readonly LobbyTeamView[],
-	offline: readonly LobbyPerson[],
 ): readonly string[] {
 	const remarks: string[] = [];
 
@@ -127,13 +126,33 @@ export function startRemarks(
 		}
 	}
 
-	if (offline.length === 1) {
-		remarks.push(`${offline[0]?.displayName} is offline right now.`);
-	} else if (offline.length > 1) {
-		remarks.push(`${offline.length} people are offline right now.`);
-	}
-
 	return remarks;
+}
+
+/**
+ * Every hider team has been marked found. One outcome per hider, stamped by
+ * whichever seeker found them.
+ */
+export function hidersAllFound(
+	hiderTeamIds: readonly string[],
+	outcomes: readonly {
+		readonly roundId: string;
+		readonly hiderTeamId: string;
+		readonly foundAt?: number | null;
+	}[],
+	roundId: string,
+): boolean {
+	return (
+		hiderTeamIds.length > 0 &&
+		hiderTeamIds.every((teamId) =>
+			outcomes.some(
+				(outcome) =>
+					outcome.roundId === roundId &&
+					outcome.hiderTeamId === teamId &&
+					outcome.foundAt != null,
+			),
+		)
+	);
 }
 
 /** Ready is per person, and the host's start waits for the last of them. */

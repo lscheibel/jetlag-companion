@@ -364,6 +364,14 @@ export async function openLobby(phone: Phone, code: string): Promise<void> {
 	await expectInLobby(phone, code);
 }
 
+/** Host-only. Opens the confirmation sheet, then starts the seeking clock. */
+export async function startSeekingPhase(phone: Phone): Promise<void> {
+	await expect(phone.page.getByTestId("start-seeking")).toBeVisible();
+	await phone.page.getByTestId("start-seeking").click();
+	await expect(phone.page.getByTestId("confirm-start-seeking")).toBeVisible();
+	await phone.page.getByTestId("confirm-start-seeking").click();
+}
+
 /** The map. m2-spec §12. */
 export async function openMap(phone: Phone, code: string): Promise<void> {
 	await phone.page.goto(`/g/${code}/map`);

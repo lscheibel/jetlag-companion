@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { fadeOnly, riseFromBottom, scrimFade } from "../lib/motion";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 /**
  * Keep the last value while `active` is false, so a sheet can animate out
@@ -106,7 +107,7 @@ export function Sheet({
 					>
 						<div
 							aria-hidden
-							className="mx-auto h-1.5 w-11 shrink-0 rounded-full bg-surface-raised"
+							className="mx-auto h-[5px] w-11 shrink-0 rounded-full bg-hairline-strong"
 						/>
 						{title && (
 							<div className="flex items-start gap-3">
@@ -117,32 +118,22 @@ export function Sheet({
 								{closable && (
 									<button
 										aria-label="Close"
-										className="-mr-1 flex size-tap shrink-0 items-center justify-center rounded-control text-ink-dim transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90"
+										className="-mr-1 grid size-tap shrink-0 place-items-center rounded-control text-ink-dim transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-90"
 										data-testid={`${testId}-close`}
 										onClick={onClose}
 										type="button"
 									>
-										<svg
-											aria-hidden="true"
-											fill="none"
-											height="20"
-											stroke="currentColor"
-											strokeLinecap="round"
-											strokeWidth="2.5"
-											viewBox="0 0 24 24"
-											width="20"
-										>
-											<title>Close</title>
-											<path d="M6 6l12 12M18 6L6 18" />
-										</svg>
+										<Icon name="x" size="md" />
 									</button>
 								)}
 							</div>
 						)}
-						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [&>*]:shrink-0">
 							{children}
 						</div>
-						{actions && <div className="flex flex-col gap-2">{actions}</div>}
+						{actions && (
+							<div className="flex shrink-0 flex-col gap-2">{actions}</div>
+						)}
 					</motion.div>
 				</motion.div>
 			)}

@@ -1,4 +1,5 @@
 import { Chip } from "@zero-lag/ui/components/chip";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { fadeOnly, listItem } from "@zero-lag/ui/lib/motion";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { motion, useReducedMotion } from "motion/react";
@@ -21,6 +22,8 @@ interface PersonRowProps {
 	/** Not on a team, which is the one thing here that holds up a start. */
 	loose?: boolean;
 	removed?: boolean;
+	/** Ready ticks belong to the lobby before the whistle, not once a round is on. */
+	showReady?: boolean;
 	onOpen: () => void;
 }
 
@@ -29,6 +32,7 @@ export function PersonRow({
 	isMe,
 	loose = false,
 	removed = false,
+	showReady = true,
 	onOpen,
 }: PersonRowProps) {
 	const reduced = useReducedMotion();
@@ -67,12 +71,12 @@ export function PersonRow({
 			{person.isHost && (
 				<Chip data-testid={`host-badge-${person.displayName}`}>Host</Chip>
 			)}
-			{person.readyAt !== null && !removed && (
+			{showReady && person.readyAt !== null && !removed && (
 				<span
-					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live font-bold text-[#04180e] text-[0.65rem]"
+					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live text-white"
 					data-testid={`ready-${person.displayName}`}
 				>
-					✓
+					<Icon name="check" size="xs" />
 				</span>
 			)}
 			<span
@@ -86,8 +90,8 @@ export function PersonRow({
 					Removed
 				</span>
 			)}
-			<span aria-hidden className="text-ink-faint text-sm">
-				›
+			<span className="shrink-0 text-ink-faint">
+				<Icon name="caret-right" size="sm" />
 			</span>
 		</motion.button>
 	);

@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 /**
  * A way into a flow: a glyph, what it is, and what happens if you go through.
@@ -17,12 +18,14 @@ import { cn } from "../lib/utils";
 
 interface DoorProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	tone?: "primary" | "secondary";
-	/** A single character or icon, never load-bearing on its own. */
+	/** A single icon or character, never load-bearing on its own. */
 	glyph: ReactNode;
 	/** The second line: the consequence, in the player's terms. */
 	hint?: ReactNode;
 	/** Say that this returns to where it was opened from. */
 	chevron?: boolean;
+	/** The slow highlight, for the one door a screen is really offering. */
+	beacon?: boolean;
 	children: ReactNode;
 }
 
@@ -31,6 +34,7 @@ export function Door({
 	glyph,
 	hint,
 	chevron = false,
+	beacon = false,
 	className,
 	children,
 	...rest
@@ -40,42 +44,58 @@ export function Door({
 	return (
 		<button
 			className={cn(
-				"flex w-full items-center gap-3.5 rounded-[22px] p-4 text-left",
-				"transition-[transform,box-shadow] duration-[--dur-tap] ease-[--ease-pop]",
-				"hover:-translate-y-0.5 active:translate-y-1",
+				"zl-press group w-full rounded-[22px]",
+				"hover:-translate-y-0.5",
 				"disabled:pointer-events-none disabled:opacity-45",
+				/*
+				 * The depth is set on exactly one branch, never on both: two
+				 * arbitrary-property utilities for the same custom property are
+				 * resolved by their order in the generated stylesheet, not by the
+				 * order they appear in the class string. A door's edge is deeper than
+				 * a button's — the same 5px under an object this size would read as a
+				 * printing misregistration — and a secondary door has none at all.
+				 */
 				primary
-					? "bg-action text-action-ink shadow-[0_6px_0_var(--action-press)] hover:shadow-[0_9px_0_var(--action-press)] active:shadow-[0_2px_0_var(--action-press)]"
-					: "border-2 border-hairline-strong bg-surface text-ink",
+					? "[--press-depth:6px] [--press-edge:var(--action-press)]"
+					: "[--press-depth:0px]",
 				className,
 			)}
 			type="button"
 			{...rest}
 		>
 			<span
-				aria-hidden
 				className={cn(
-					"grid size-13 shrink-0 place-items-center rounded-[17px] text-2xl",
-					primary ? "bg-black/15" : "bg-surface-raised",
+					"zl-press-face items-center gap-3.5 p-4 text-left",
+					"group-active:translate-y-[3px]",
+					primary
+						? "bg-action text-action-ink"
+						: "border-2 border-hairline-strong bg-surface text-ink",
+					beacon && "zl-sheen",
 				)}
 			>
-				{glyph}
-			</span>
-			<span className="min-w-0 flex-1">
-				<span className="block font-display font-extrabold text-[1.2rem] leading-tight tracking-tight">
-					{children}
+				<span
+					aria-hidden
+					className={cn(
+						"grid size-13 shrink-0 place-items-center rounded-[17px] text-2xl",
+						primary ? "bg-black/15" : "bg-surface-raised",
+					)}
+				>
+					{glyph}
 				</span>
-				{hint && (
-					<span className="mt-0.5 block text-[0.78rem] leading-snug opacity-75">
-						{hint}
+				<span className="min-w-0 flex-1">
+					<span className="block font-display font-extrabold text-[1.2rem] leading-tight tracking-tight">
+						{children}
 					</span>
+					{hint && (
+						<span className="mt-0.5 block text-[0.78rem] leading-snug opacity-75">
+							{hint}
+						</span>
+					)}
+				</span>
+				{chevron && (
+					<Icon className="opacity-50" name="caret-right" size="sm" />
 				)}
 			</span>
-			{chevron && (
-				<span aria-hidden className="text-ink-faint text-lg">
-					›
-				</span>
-			)}
 		</button>
 	);
 }

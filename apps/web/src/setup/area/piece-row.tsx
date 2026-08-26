@@ -1,5 +1,6 @@
 import { multiPolygonToRegion, regionArea } from "@zero-lag/geo";
 import type { AreaPiece } from "@zero-lag/schema";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { formatArea } from "../../builder/use-builder";
 import { sourceLabel } from "./labels";
@@ -43,7 +44,7 @@ export function PieceRow({
 					onClick={onToggleOp}
 					type="button"
 				>
-					{minus ? "−" : "+"}
+					<Icon name={minus ? "minus" : "plus"} size="xs" />
 				</button>
 			) : (
 				<span
@@ -53,7 +54,7 @@ export function PieceRow({
 						minus ? "bg-danger/20 text-danger" : "bg-live/20 text-live",
 					)}
 				>
-					{minus ? "−" : "+"}
+					<Icon name={minus ? "minus" : "plus"} size="xs" />
 				</span>
 			)}
 			<div className="min-w-0 flex-1">
@@ -72,7 +73,7 @@ export function PieceRow({
 					onClick={onMoveUp}
 					type="button"
 				>
-					↑
+					<Icon name="caret-up" size="sm" />
 				</button>
 			)}
 			{onMoveDown && (
@@ -82,7 +83,7 @@ export function PieceRow({
 					onClick={onMoveDown}
 					type="button"
 				>
-					↓
+					<Icon name="caret-down" size="sm" />
 				</button>
 			)}
 			{onRemove && (
@@ -93,7 +94,7 @@ export function PieceRow({
 					onClick={onRemove}
 					type="button"
 				>
-					×
+					<Icon name="x" size="sm" />
 				</button>
 			)}
 		</div>

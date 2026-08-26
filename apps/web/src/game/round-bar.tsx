@@ -38,7 +38,7 @@ export function RoundBar({ clockOffsetMs = 0 }: RoundBarProps) {
 				{round.status}
 			</span>
 			<span
-				className="shrink-0 rounded-[14px] bg-action px-2.5 py-1 text-right font-bold font-mono text-[0.6rem] text-action-ink uppercase tracking-[0.06em]"
+				className="shrink-0 rounded-[14px] bg-action px-2.5 py-1 text-center font-bold font-mono text-[0.6rem] text-action-ink uppercase tracking-[0.06em]"
 				data-testid="round-clock"
 			>
 				{readout}

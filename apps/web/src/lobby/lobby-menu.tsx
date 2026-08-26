@@ -3,6 +3,7 @@ import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
+import { hidersAllFound } from "./model";
 import { PauseSheet } from "./pause-sheet";
 
 /**
@@ -63,17 +64,8 @@ export function LobbyMenu({
 				.filter((role) => role.role === "hider")
 				.map((role) => role.teamId)
 		: [];
-	const allHidersFound =
-		hiderIds.length > 0 &&
-		hiderIds.every((teamId) =>
-			outcomes.some(
-				(outcome) =>
-					round !== undefined &&
-					outcome.roundId === round.id &&
-					outcome.hiderTeamId === teamId &&
-					outcome.foundAt !== null,
-			),
-		);
+	const allFound =
+		round !== undefined && hidersAllFound(hiderIds, outcomes, round.id);
 
 	return (
 		<>
@@ -109,7 +101,7 @@ export function LobbyMenu({
 					</ActionButton>
 				)}
 
-				{amHost && seeking && round && (
+				{amHost && seeking && round && !allFound && (
 					<ActionButton
 						data-testid="end-round"
 						onClick={() => {
@@ -121,9 +113,9 @@ export function LobbyMenu({
 							);
 							onClose();
 						}}
-						tone={allHidersFound ? "primary" : "secondary"}
+						tone="secondary"
 					>
-						{allHidersFound ? "All hiders found — end round" : "End round"}
+						End round
 					</ActionButton>
 				)}
 
