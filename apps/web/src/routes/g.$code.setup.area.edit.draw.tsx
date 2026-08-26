@@ -16,6 +16,7 @@ import { MapPointerHandler } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
 import { FoldLayer, PreviewLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
+import { AddCutToggle } from "../setup/area/tool-strip";
 import { useAreaEditor } from "../setup/area/use-editor";
 import { WouldBecome } from "../setup/area/would-become";
 
@@ -80,6 +81,7 @@ export default function SetupAreaDraw() {
 					geometry ? <WouldBecome geometry={geometry} op={op} /> : undefined
 				}
 			>
+				<AddCutToggle />
 				<ActionButton
 					beacon
 					data-testid="area-draw-add"

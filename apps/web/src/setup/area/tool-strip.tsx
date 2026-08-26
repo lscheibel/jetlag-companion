@@ -18,55 +18,66 @@ const TOOLS: readonly { id: AreaTool; icon: IconName; label: string }[] = [
 ];
 
 interface ToolStripProps {
-	current?: AreaTool | "cut" | null;
+	current?: AreaTool | null;
 }
 
 /**
- * Which way the next drawing counts, then what draws it. Two controls rather
- * than eight: add-vs-take-out is a mode that outlives the tool in hand.
+ * What draws the next piece. Add-vs-take-out lives on the tool itself, above
+ * the commit, so choosing a tool is not also choosing a direction.
  */
 export function ToolStrip({ current = null }: ToolStripProps) {
 	const navigate = useNavigate();
 	const editor = useAreaEditor();
-	const cutting = editor.cut || current === "cut";
 
 	return (
-		<div className="flex flex-col gap-1.5" data-testid="area-tool-strip">
-			<ToggleModePair>
+		<ToggleStrip testId="area-tool-strip">
+			{TOOLS.map((tool) => (
 				<ToggleButton
-					icon={<Icon name="plus" size="xs" />}
-					onClick={() => editor.setCut(false)}
-					pressed={!cutting}
-					shape="bar"
-					testId="area-tool-add"
-					tone="add"
+					icon={<Icon name={tool.icon} size="sm" />}
+					key={tool.id}
+					onClick={() => void navigate(editorToolPath(editor.code, tool.id))}
+					pressed={current === tool.id}
+					testId={`area-tool-${tool.id}`}
 				>
-					Add
+					{tool.label}
 				</ToggleButton>
-				<ToggleButton
-					icon={<Icon name="scissors" size="xs" />}
-					onClick={() => editor.setCut(true)}
-					pressed={cutting}
-					shape="bar"
-					testId="area-tool-cut"
-					tone="cut"
-				>
-					Take out
-				</ToggleButton>
-			</ToggleModePair>
-			<ToggleStrip>
-				{TOOLS.map((tool) => (
-					<ToggleButton
-						icon={<Icon name={tool.icon} size="sm" />}
-						key={tool.id}
-						onClick={() => void navigate(editorToolPath(editor.code, tool.id))}
-						pressed={current === tool.id}
-						testId={`area-tool-${tool.id}`}
-					>
-						{tool.label}
-					</ToggleButton>
-				))}
-			</ToggleStrip>
-		</div>
+			))}
+		</ToggleStrip>
+	);
+}
+
+/**
+ * Which way this tool's commit counts. Sits directly above the add/take-out
+ * action so the decision is on the piece, not on the editor home.
+ * Hidden until there is something to take out of — the first piece is always
+ * an add.
+ */
+export function AddCutToggle() {
+	const editor = useAreaEditor();
+	if (editor.pieces.length === 0) return null;
+
+	return (
+		<ToggleModePair>
+			<ToggleButton
+				icon={<Icon name="plus" size="xs" />}
+				onClick={() => editor.setCut(false)}
+				pressed={!editor.cut}
+				shape="bar"
+				testId="area-tool-add"
+				tone="add"
+			>
+				Add
+			</ToggleButton>
+			<ToggleButton
+				icon={<Icon name="scissors" size="xs" />}
+				onClick={() => editor.setCut(true)}
+				pressed={editor.cut}
+				shape="bar"
+				testId="area-tool-cut"
+				tone="cut"
+			>
+				Take out
+			</ToggleButton>
+		</ToggleModePair>
 	);
 }

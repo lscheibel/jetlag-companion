@@ -114,6 +114,7 @@ export default function SetupAreaDistricts() {
 			actionTestId="area-district-add"
 			bodyClassName="overflow-hidden"
 			onAction={commit}
+			showAddCut
 			title={editor.cut ? "Take out a place" : "Add a place"}
 		>
 			<EditorMap

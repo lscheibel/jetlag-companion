@@ -89,6 +89,7 @@ export default function SetupAreaFile() {
 					: undefined
 			}
 			secondaryFirst={Boolean(draft)}
+			showAddCut
 			title={editor.cut ? "Take out from a file" : "A saved map"}
 		>
 			<EditorMap

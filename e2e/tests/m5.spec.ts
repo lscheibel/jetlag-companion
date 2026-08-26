@@ -457,7 +457,7 @@ test("6. the countdown reaching zero changes nothing by itself", async ({
 	await ana.page.getByTestId("start-seeking").click();
 	await expect(ana.page.getByTestId("start-seeking-sheet")).toBeVisible();
 	await expect(ana.page.getByTestId("hiding-time-remaining")).toHaveCount(0);
-	await ana.page.getByTestId("confirm-start-seeking").click();
+	await ana.page.getByTestId("confirm-start-seeking").click({ delay: 1_000 });
 	await expect(ben.page.getByTestId("round-phase")).toHaveText("seeking");
 	expect(await roundStatuses(gameId)).toEqual(["seeking"]);
 

@@ -2,6 +2,7 @@ import { useQuery, useZero } from "@rocicorp/zero/react";
 import { elapsed } from "@zero-lag/rules";
 import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { HoldButton } from "@zero-lag/ui/components/hold-button";
 import { InlineNotice } from "@zero-lag/ui/components/notice";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
@@ -11,9 +12,8 @@ import { LobbyScreenActions } from "./lobby-actions";
 import { useLobby } from "./use-lobby";
 
 /**
- * The host's whistle out of hiding. Confirmation sits in a sheet so starting
- * the seeking clock is a choice, not a slip, and so leftover hiding time is
- * named before it is cut short.
+ * The host's whistle out of hiding. The sheet names leftover hiding time
+ * before it is cut short; the hold is the confirmation, so a tap cannot slip.
  */
 export function StartSeekingAction() {
 	const lobby = useLobby();
@@ -65,13 +65,13 @@ export function StartSeekingAction() {
 			after={
 				<Sheet
 					actions={
-						<ActionButton
-							data-testid="confirm-start-seeking"
-							onClick={confirm}
-							tone={timeLeft ? "secondary" : "primary"}
+						<HoldButton
+							onConfirm={confirm}
+							testId="confirm-start-seeking"
+							tone={timeLeft ? "primary" : "live"}
 						>
-							Start seeking
-						</ActionButton>
+							Hold to start seeking
+						</HoldButton>
 					}
 					onClose={() => setOpen(false)}
 					open={open}

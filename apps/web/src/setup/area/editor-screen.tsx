@@ -7,6 +7,7 @@ import {
 } from "@zero-lag/ui/components/screen";
 import type { ReactNode } from "react";
 import { useAreaToolNav } from "./tool-nav";
+import { AddCutToggle } from "./tool-strip";
 import { useAreaEditor } from "./use-editor";
 
 interface EditorScreenProps {
@@ -26,6 +27,8 @@ interface EditorScreenProps {
 	};
 	/** Put the gray action above the primary (file picker: pick, then add). */
 	secondaryFirst?: boolean;
+	/** Add vs take out, directly above the commit. Pieces has no commit of that kind. */
+	showAddCut?: boolean;
 }
 
 /**
@@ -44,6 +47,7 @@ export function EditorScreen({
 	bodyClassName,
 	secondary,
 	secondaryFirst = false,
+	showAddCut = false,
 }: EditorScreenProps) {
 	const editor = useAreaEditor();
 	const nav = useAreaToolNav();
@@ -67,6 +71,7 @@ export function EditorScreen({
 			<ScreenBody className={bodyClassName}>{children}</ScreenBody>
 			<ScreenActions note={note}>
 				{secondaryFirst && secondaryButton}
+				{showAddCut && <AddCutToggle />}
 				<ActionButton
 					beacon
 					data-testid={actionTestId}

@@ -119,6 +119,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 	}, [config, pieces]);
 
 	const list = pieces ?? [];
+	const cutting = cut && list.length > 0;
 	const fold = useMemo(() => foldPieces(list), [list]);
 	const foldMulti = useMemo(() => regionToMultiPolygon(fold), [fold]);
 	const squareMeters = useMemo(() => regionArea(fold), [fold]);
@@ -165,7 +166,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 	const value = useMemo<AreaEditor>(() => {
 		return {
 			pieces: list,
-			cut,
+			cut: cutting,
 			fold,
 			foldMulti,
 			squareMeters,
@@ -187,7 +188,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 								...current,
 								{
 									id: crypto.randomUUID(),
-									op: cut ? "subtract" : "add",
+									op: cutting ? "subtract" : "add",
 									source: input.source,
 									name: input.name.slice(0, 80),
 									geometry: input.geometry,
@@ -264,7 +265,7 @@ export function AreaEditorProvider({ children }: { children: ReactNode }) {
 		list,
 		pieces,
 		ready,
-		cut,
+		cutting,
 		fold,
 		foldMulti,
 		squareMeters,

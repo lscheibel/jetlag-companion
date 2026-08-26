@@ -5,7 +5,7 @@ import { Icon } from "@zero-lag/ui/components/icon";
 import { useNavigate } from "react-router";
 import { useGameShell } from "../game/shell";
 import { EditorMap } from "../setup/area/editor-map";
-import { FoldLayer, FoldStopsLayer } from "../setup/area/layers";
+import { FoldLayer } from "../setup/area/layers";
 import { editorHomePath, pickerToolPath } from "../setup/area/tool-nav";
 import { useAreaEditor } from "../setup/area/use-editor";
 import { formatGround } from "../setup/game-size";
@@ -61,10 +61,6 @@ export default function SetupArea() {
 							rememberView={false}
 						>
 							<FoldLayer area={editor.foldMulti} />
-							<FoldStopsLayer
-								inPlayModeIds={editor.inPlayModeIds}
-								stops={editor.insideStops}
-							/>
 						</EditorMap>
 					</button>
 					<div className="flex shrink-0 items-end justify-between gap-3 px-0.5">

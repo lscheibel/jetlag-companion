@@ -7,6 +7,7 @@ import {
 	useMapInstance,
 } from "../../map/map-canvas";
 import { BERLIN_CENTER } from "./labels";
+import { FoldStopsLayer } from "./layers";
 import { useAreaEditor } from "./use-editor";
 
 interface EditorMapProps {
@@ -46,6 +47,7 @@ export function EditorMap({
 					initialCenter={center}
 					onStatusChange={setStatus}
 				>
+					<EditorStops />
 					{children}
 					{rememberView && <ViewMemory />}
 				</MapCanvas>
@@ -59,6 +61,19 @@ export function EditorMap({
 				</p>
 			)}
 		</div>
+	);
+}
+
+/** Catalog stops, painted the way the play map paints them. */
+function EditorStops() {
+	const editor = useAreaEditor();
+	return (
+		<FoldStopsLayer
+			area={editor.empty ? null : editor.foldMulti}
+			fold={editor.fold}
+			inPlayModeIds={editor.inPlayModeIds}
+			stops={editor.catalogStops}
+		/>
 	);
 }
 

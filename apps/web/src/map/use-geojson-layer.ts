@@ -17,7 +17,6 @@ const LAYER_ORDER = [
 	"setup-fold-mask",
 	"setup-fold-outline-case",
 	"setup-fold-outline",
-	"setup-fold-stops",
 	"area-fill",
 	"piece-preview-fill",
 	"piece-preview-outline",

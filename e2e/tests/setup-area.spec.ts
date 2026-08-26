@@ -25,6 +25,7 @@ test("backing out of a tool returns to Where are you playing", async ({
 
 	await host.page.getByTestId("setup-area-district").click();
 	await host.page.getByTestId("area-boundary-tabs").waitFor();
+	await expect(host.page.getByTestId("area-tool-cut")).toHaveCount(0);
 	await host.page.getByTestId("screen-back").click();
 	await expect(host.page.getByTestId("setup-area-district")).toBeVisible();
 	await expect(host.page.getByTestId("area-editor")).toHaveCount(0);
@@ -46,8 +47,8 @@ test("a district folds into the area and hands it back to the wizard", async ({
 	await host.page.getByTestId("area-district-add").click();
 	await expect(host.page.getByTestId("area-editor")).toBeVisible();
 
-	await host.page.getByTestId("area-tool-cut").click();
 	await host.page.getByTestId("area-tool-districts").click();
+	await host.page.getByTestId("area-tool-cut").click();
 	await host.page.getByTestId("area-place-search").fill("Tempelhof-Schöneberg");
 	await host.page.getByTestId("area-district-Tempelhof-Schöneberg").click();
 	await host.page.getByTestId("area-district-add").click();

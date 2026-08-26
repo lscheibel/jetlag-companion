@@ -1,5 +1,6 @@
 import { multiPolygonBBox } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Chip } from "@zero-lag/ui/components/chip";
 import {
 	Screen,
 	ScreenActions,
@@ -10,7 +11,7 @@ import { formatArea } from "../builder/use-builder";
 import { MapFitSelection } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
 import { GERMANY_BOUNDS } from "../setup/area/labels";
-import { FoldLayer, FoldStopsLayer } from "../setup/area/layers";
+import { FoldLayer } from "../setup/area/layers";
 import { ToolStrip } from "../setup/area/tool-strip";
 import { useAreaEditor } from "../setup/area/use-editor";
 
@@ -42,23 +43,17 @@ export default function SetupAreaEditor() {
 				onBack={leave}
 				title="Set up the area"
 				trailing={
-					<span
-						className="shrink-0 rounded-[14px] bg-action px-2.5 py-1 text-right font-bold font-mono text-[0.6rem] text-action-ink uppercase tracking-[0.06em]"
-						data-testid="area-editor-readout"
-					>
-						<span className="block">{formatArea(editor.squareMeters)}</span>
-						<span className="block opacity-80">
-							{editor.stopsInside} {editor.stopsInside === 1 ? "stop" : "stops"}
+					<Chip className="shrink-0 gap-3" data-testid="area-editor-readout">
+						{formatArea(editor.squareMeters)}
+						<span>
+							{editor.stopsInside.toLocaleString("en")}{" "}
+							{editor.stopsInside === 1 ? "stop" : "stops"}
 						</span>
-					</span>
+					</Chip>
 				}
 			/>
 			<EditorMap bounds={bounds} className="mx-[-1rem] min-h-0 flex-1">
 				<FoldLayer area={editor.foldMulti} />
-				<FoldStopsLayer
-					inPlayModeIds={editor.inPlayModeIds}
-					stops={editor.insideStops}
-				/>
 				<div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-end px-7">
 					<div className="pointer-events-auto">
 						<MapFitSelection bounds={editor.empty ? null : bounds} />

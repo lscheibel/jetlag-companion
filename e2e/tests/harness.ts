@@ -375,7 +375,8 @@ export async function startSeekingPhase(phone: Phone): Promise<void> {
 	await expect(phone.page.getByTestId("start-seeking")).toBeVisible();
 	await phone.page.getByTestId("start-seeking").click();
 	await expect(phone.page.getByTestId("confirm-start-seeking")).toBeVisible();
-	await phone.page.getByTestId("confirm-start-seeking").click();
+	// A hold, not a tap: the fill is the confirmation.
+	await phone.page.getByTestId("confirm-start-seeking").click({ delay: 1_000 });
 }
 
 /** The map. m2-spec §12. */

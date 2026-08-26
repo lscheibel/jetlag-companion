@@ -1,12 +1,9 @@
-import type { MultiPolygon } from "@zero-lag/geo";
+import { type MultiPolygon, type Region, regionContains } from "@zero-lag/geo";
 import { useMemo } from "react";
 import type { CatalogStopRow } from "../../builder/api";
-import {
-	EMPTY_FEATURES,
-	type FeatureData,
-	multiPolygonFeature,
-	multiPolygonOutlines,
-} from "../../map/geojson";
+import { BuilderStopsLayer } from "../../map/builder-stops-layer";
+import { multiPolygonFeature, multiPolygonOutlines } from "../../map/geojson";
+import type { SearchableStop } from "../../map/toolkit";
 import { useGeoJsonLayer } from "../../map/use-geojson-layer";
 import { outsideViewport, usePaddedView } from "../../map/viewport-outside";
 
@@ -68,71 +65,44 @@ export function FoldLayer({ area }: FoldLayerProps) {
 	return null;
 }
 
-const STOP_DOTS = [
-	{
-		id: "setup-fold-stops",
-		type: "circle" as const,
-		paint: {
-			"circle-radius": 3.5,
-			"circle-color": [
-				"case",
-				["==", ["get", "inPlay"], 1],
-				"#08111c",
-				"#8b919c",
-			] as unknown as string,
-			"circle-stroke-color": "#ffffff",
-			"circle-stroke-width": [
-				"case",
-				["==", ["get", "inPlay"], 1],
-				2.5,
-				1.5,
-			] as unknown as number,
-			"circle-opacity": [
-				"case",
-				["==", ["get", "inPlay"], 1],
-				1,
-				0.33,
-			] as unknown as number,
-			"circle-stroke-opacity": [
-				"case",
-				["==", ["get", "inPlay"], 1],
-				1,
-				0.33,
-			] as unknown as number,
-		},
-	},
-];
-
 interface FoldStopsLayerProps {
 	readonly stops: readonly CatalogStopRow[];
+	readonly fold: Region;
+	/** Setup fence. Stops outside it fade with distance, as on the play map. */
+	readonly area: MultiPolygon | null;
 	/** Null while every mode in the area counts. */
 	readonly inPlayModeIds?: readonly string[] | null;
 }
 
+/**
+ * Station dots with the play map's paint: theme-aware cores, a hard edge
+ * inside the fold, and a fade past it. Modes that do not count are left off,
+ * the same way the play catalog withholds them.
+ */
 export function FoldStopsLayer({
 	stops,
+	fold,
+	area,
 	inPlayModeIds = null,
 }: FoldStopsLayerProps) {
 	const modeKey = inPlayModeIds?.slice().sort().join(",") ?? "";
-	const data = useMemo<FeatureData>(() => {
-		if (stops.length === 0) return EMPTY_FEATURES;
+	const searchable = useMemo<readonly SearchableStop[]>(() => {
 		const wanted = modeKey ? new Set(modeKey.split(",")) : null;
-		return {
-			type: "FeatureCollection",
-			features: stops.map((stop) => ({
-				type: "Feature",
-				properties: {
-					inPlay:
-						!wanted || stop.modeIds.some((modeId) => wanted.has(modeId))
-							? 1
-							: 0,
-				},
-				geometry: { type: "Point", coordinates: [stop.lng, stop.lat] },
-			})),
-		};
-	}, [stops, modeKey]);
-	useGeoJsonLayer("setup-fold-stops", data, STOP_DOTS);
-	return null;
+		return stops
+			.filter(
+				(stop) => !wanted || stop.modeIds.some((modeId) => wanted.has(modeId)),
+			)
+			.map((stop) => ({
+				stopId: stop.id,
+				name: stop.name,
+				lng: stop.lng,
+				lat: stop.lat,
+				modeIds: stop.modeIds,
+				lines: stop.lines ?? [],
+				insideArea: regionContains(fold, [stop.lng, stop.lat]),
+			}));
+	}, [stops, fold, modeKey]);
+	return <BuilderStopsLayer area={area} stops={searchable} />;
 }
 
 const ADD_FILL = [
