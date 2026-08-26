@@ -17,6 +17,8 @@ interface MapBarProps {
 	readonly hiders: readonly HiderOption[];
 	readonly selectedHiderId: string | null;
 	readonly onOpenHiderSheet: () => void;
+	readonly onActions: () => void;
+	readonly actionsOpen?: boolean;
 	readonly onCancel: () => void;
 	readonly onUndoPolygonVertex: () => void;
 	readonly onRadiusStep: (direction: 1 | -1) => void;
@@ -37,6 +39,8 @@ export function MapBar({
 	hiders,
 	selectedHiderId,
 	onOpenHiderSheet,
+	onActions,
+	actionsOpen = false,
 	onCancel,
 	onUndoPolygonVertex,
 	onRadiusStep,
@@ -81,13 +85,15 @@ export function MapBar({
 					selectedId={selectedHiderId}
 				/>
 				<ActionButton
-					className="shrink-0"
+					aria-label="Actions"
+					className="size-11 shrink-0 px-0 text-lg"
 					data-testid="map-ask"
 					inline
-					onClick={() => {}}
+					onClick={onActions}
 					size="compact"
+					tone={actionsOpen ? "primary" : "secondary"}
 				>
-					Ask
+					!
 				</ActionButton>
 			</div>
 		</Surface>

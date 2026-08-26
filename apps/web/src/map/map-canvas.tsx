@@ -1,4 +1,5 @@
 import type { BBox, LngLat } from "@zero-lag/geo";
+import { useTheme } from "@zero-lag/ui/hooks/use-theme";
 import { MapLibreMap, Marker } from "maplibre-gl";
 import {
 	createContext,
@@ -24,12 +25,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
  * OpenFreeMap's public instance. m2-spec §3.
  *
  * No key, no registration, no request ceiling, and nothing of ours to host.
- * Positron because the map is context and the players are the content — Bright
- * and Liberty would bury a 24px marker in café pins. Dark and Fiord 3D live on
- * the same provider, which is what makes a night mode a URL and M3's buildings
- * a style swap rather than a second map stack.
+ * Positron in the light, Dark at night. Same provider, so a theme change is a
+ * style URL rather than a second map stack. Bright and Liberty would bury a
+ * 24px marker in café pins.
  */
-export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+export const MAP_STYLE_URLS = {
+	light: "https://tiles.openfreemap.org/styles/positron",
+	dark: "https://tiles.openfreemap.org/styles/dark",
+} as const;
 
 /**
  * Required by OpenFreeMap, required by OpenStreetMap's licence, and pointed at
@@ -79,6 +82,8 @@ export function MapCanvas({
 	onStatusChange,
 	children,
 }: MapCanvasProps) {
+	const { resolved } = useTheme();
+	const styleUrl = MAP_STYLE_URLS[resolved];
 	const container = useRef<HTMLDivElement | null>(null);
 	const [map, setMap] = useState<MapLibreMap | null>(null);
 
@@ -97,15 +102,21 @@ export function MapCanvas({
 	});
 	const report = useRef(onStatusChange);
 	report.current = onStatusChange;
+	/**
+	 * Theme swaps rebuild the map so overlay layers remount against the new
+	 * style. The view the thumb was looking at is not an opening camera, and
+	 * re-fitting bounds would yank it.
+	 */
+	const restoredCamera = useRef<MapCamera | null>(null);
 
 	useEffect(() => {
 		const node = container.current;
 		if (!node) return;
 
-		const camera = opening.current.initialCamera;
+		const camera = restoredCamera.current ?? opening.current.initialCamera;
 		const created = new MapLibreMap({
 			container: node,
-			style: MAP_STYLE_URL,
+			style: styleUrl,
 			center: camera
 				? [camera.center[0], camera.center[1]]
 				: [opening.current.initialCenter[0], opening.current.initialCenter[1]],
@@ -162,11 +173,17 @@ export function MapCanvas({
 		});
 
 		return () => {
+			restoredCamera.current = {
+				center: [created.getCenter().lng, created.getCenter().lat],
+				zoom: created.getZoom(),
+				bearing: created.getBearing(),
+				pitch: created.getPitch(),
+			};
 			observer.disconnect();
 			setMap(null);
 			created.remove();
 		};
-	}, []);
+	}, [styleUrl]);
 
 	/**
 	 * Two elements rather than one: MapLibre's own stylesheet sets

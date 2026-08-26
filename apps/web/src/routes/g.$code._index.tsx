@@ -15,10 +15,8 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { FoundSheet } from "../game/found-sheet";
 import { GameTabs } from "../game/game-tabs";
 import { useGameShell } from "../game/shell";
-import { useMyRole } from "../game/use-role";
 import {
 	LobbyProvider,
 	useLobbyActions,
@@ -37,7 +35,7 @@ import {
 	startBlockers,
 	startRemarks,
 } from "../lobby/model";
-import { OutcomeList } from "../lobby/outcome-list";
+import { HiderResult } from "../lobby/outcome-list";
 import { PersonRow } from "../lobby/person-row";
 import { PickTeamSheet } from "../lobby/pick-team-sheet";
 import { PlayerSheet } from "../lobby/player-sheet";
@@ -93,7 +91,6 @@ function Lobby() {
 	const [overlay, setOverlay] = useState<Overlay>({ kind: "none" });
 	const [leaving, setLeaving] = useState(false);
 
-	const role = useMyRole(session.playerId);
 	const blockers = startBlockers(lobby.teams, lobby.people);
 	const remarks = startRemarks(lobby.teams, lobby.offline);
 	const host = lobby.people.find((person) => person.isHost) ?? null;
@@ -199,13 +196,7 @@ function Lobby() {
 				/>
 				<HostBanner />
 
-				{!roundPending && (
-					<>
-						<RoundControls amHost={lobby.amHost} />
-						<FoundSheet role={role} token={session.token} />
-						<OutcomeList token={session.token} />
-					</>
-				)}
+				{!roundPending && <RoundControls amHost={lobby.amHost} />}
 
 				<motion.div
 					animate="shown"
@@ -267,6 +258,13 @@ function Lobby() {
 										key={team.id}
 										mine={team.id === lobby.myTeam?.id}
 										onOpen={() => setOverlay({ kind: "team", team })}
+										result={
+											<HiderResult
+												teamId={team.id}
+												teamName={team.name}
+												token={session.token}
+											/>
+										}
 										team={team}
 									>
 										{team.members.map((value) => personRow(value))}

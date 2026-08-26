@@ -1,164 +1,165 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
 import { mutators, queries } from "@zero-lag/schema";
+import { ActionButton } from "@zero-lag/ui/components/action-button";
+import { Sheet } from "@zero-lag/ui/components/sheet";
+import { Surface } from "@zero-lag/ui/components/surface";
 import { useState } from "react";
 import { uploadPhoto } from "../api";
 import type { MyRole } from "./use-role";
 
-interface FoundSheetProps {
-	role: MyRole;
-	token: string;
+interface SeekerActionsSheetProps {
+	readonly open: boolean;
+	readonly found: boolean;
+	readonly canMarkFound?: boolean;
+	readonly onClose: () => void;
+	readonly onFoundThem: () => void;
+	readonly onUndoFound: () => void;
 }
 
-export function FoundSheet({ role, token }: FoundSheetProps) {
+/** Ask, or say you found them. Ask is still a stub. */
+export function SeekerActionsSheet({
+	open,
+	found,
+	canMarkFound = true,
+	onClose,
+	onFoundThem,
+	onUndoFound,
+}: SeekerActionsSheetProps) {
+	return (
+		<Sheet
+			onClose={onClose}
+			open={open}
+			testId="seeker-actions"
+			title="What now?"
+		>
+			<ActionButton data-testid="ask-question" onClick={() => {}}>
+				Ask a question
+			</ActionButton>
+			{canMarkFound &&
+				(found ? (
+					<ActionButton
+						data-testid="unmark-found"
+						onClick={onUndoFound}
+						tone="secondary"
+					>
+						Undo found
+					</ActionButton>
+				) : (
+					<ActionButton
+						data-testid="found-them"
+						onClick={onFoundThem}
+						tone="secondary"
+					>
+						Found them!
+					</ActionButton>
+				))}
+		</Sheet>
+	);
+}
+
+interface FoundCardProps {
+	readonly role: MyRole;
+	readonly token: string;
+	readonly hiderTeamId: string | null;
+	readonly onCancel: () => void;
+}
+
+/** Confirm a find, with an optional photo. */
+export function FoundCard({
+	role,
+	token,
+	hiderTeamId,
+	onCancel,
+}: FoundCardProps) {
 	const zero = useZero();
 	const [rounds] = useQuery(queries.rounds());
-	const [teams] = useQuery(queries.teams());
-	const [outcomes] = useQuery(queries.hiderOutcomes());
-	const [hiderId, setHiderId] = useState("");
-	const [seekerId, setSeekerId] = useState("");
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [file, setFile] = useState<File | null>(null);
 
 	const round = rounds.find((candidate) => candidate.id === role.roundId);
-	if (round?.status !== "seeking") return null;
+	const seekerTeamId = role.teamId;
+	const canConfirm =
+		round?.status === "seeking" &&
+		hiderTeamId !== null &&
+		seekerTeamId !== null &&
+		!uploading;
 
-	const hiderRoles = round.roles.filter(
-		(assignment) => assignment.role === "hider",
-	);
-	const seekerRoles = round.roles.filter(
-		(assignment) => assignment.role === "seeker",
-	);
-	const selectedHiderId = hiderId || (hiderRoles[0]?.teamId ?? "");
-	const ownSeeker = seekerRoles.find(
-		(assignment) => assignment.teamId === role.teamId,
-	);
-	const selectedSeekerId =
-		seekerId || ownSeeker?.teamId || (seekerRoles[0]?.teamId ?? "");
-	const outcome = outcomes.find(
-		(value) =>
-			value.roundId === round.id && value.hiderTeamId === selectedHiderId,
-	);
-
-	const mark = (photoId?: string) => {
-		if (!selectedHiderId || !selectedSeekerId) return;
+	async function confirm() {
+		if (!round || !hiderTeamId || !seekerTeamId) return;
+		setUploading(true);
+		setError(null);
+		let photoId: string | undefined;
+		if (file) {
+			try {
+				photoId = (await uploadPhoto(file, token)).id;
+			} catch {
+				setError("The photo could not be uploaded. The found mark is saved.");
+			}
+		}
 		void zero.mutate(
 			mutators.round.markFound({
 				eventId: crypto.randomUUID(),
 				roundId: round.id,
-				hiderTeamId: selectedHiderId,
-				seekerTeamId: selectedSeekerId,
+				hiderTeamId,
+				seekerTeamId,
 				...(photoId ? { photoId } : {}),
 			}),
 		);
-	};
-
-	async function attach(file: File) {
-		setUploading(true);
-		setError(null);
-		try {
-			const uploaded = await uploadPhoto(file, token);
-			mark(uploaded.id);
-		} catch {
-			setError("The photo could not be uploaded. The found mark is saved.");
-		} finally {
-			setUploading(false);
-		}
+		setUploading(false);
+		onCancel();
 	}
 
 	return (
-		<section
-			className="space-y-2 rounded-xl border bg-surface/95 p-3 shadow-lg"
+		<Surface
+			className="pointer-events-auto w-full max-w-sm px-3 py-2.5"
 			data-testid="found-sheet"
+			raised
 		>
-			<h2 className="font-medium">Found a hider</h2>
-			<div className="pointer-events-auto grid grid-cols-2 gap-2">
-				<label className="text-sm">
-					Hider team
-					<select
-						className="mt-1 min-h-11 w-full rounded border bg-surface px-2"
-						data-testid="found-hider-team"
-						onChange={(event) => setHiderId(event.target.value)}
-						value={selectedHiderId}
-					>
-						{hiderRoles.map((assignment) => (
-							<option key={assignment.teamId} value={assignment.teamId}>
-								{teams.find((team) => team.id === assignment.teamId)?.name ??
-									"Hider"}
-							</option>
-						))}
-					</select>
-				</label>
-				<label className="text-sm">
-					Seeker team
-					<select
-						className="mt-1 min-h-11 w-full rounded border bg-surface px-2"
-						data-testid="found-seeker-team"
-						onChange={(event) => setSeekerId(event.target.value)}
-						value={selectedSeekerId}
-					>
-						{seekerRoles.map((assignment) => (
-							<option key={assignment.teamId} value={assignment.teamId}>
-								{teams.find((team) => team.id === assignment.teamId)?.name ??
-									"Seeker"}
-							</option>
-						))}
-					</select>
-				</label>
-			</div>
-			{outcome?.foundAt ? (
-				<div className="pointer-events-auto flex flex-wrap gap-2">
-					<label className="flex min-h-11 cursor-pointer items-center rounded border px-3 text-sm">
-						{uploading
-							? "Uploading…"
-							: outcome.photoId
-								? "Replace photo"
-								: "Add optional photo"}
-						<input
-							accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-							capture="environment"
-							className="sr-only"
-							data-testid="found-photo"
-							disabled={uploading}
-							onChange={(event) => {
-								const file = event.target.files?.[0];
-								if (file) void attach(file);
-							}}
-							type="file"
-						/>
-					</label>
-					<button
-						className="min-h-11 rounded border px-3 text-sm"
-						data-testid="unmark-found"
-						onClick={() =>
-							void zero.mutate(
-								mutators.round.unmarkFound({
-									eventId: crypto.randomUUID(),
-									roundId: round.id,
-									hiderTeamId: selectedHiderId,
-								}),
-							)
-						}
-						type="button"
-					>
-						Undo found
-					</button>
-				</div>
-			) : (
-				<button
-					className="pointer-events-auto min-h-11 w-full rounded border px-4 font-semibold"
-					data-testid="mark-found"
-					disabled={!selectedHiderId || !selectedSeekerId}
-					onClick={() => mark()}
-					type="button"
-				>
-					Mark found now
-				</button>
-			)}
+			<span className="eyebrow block">Found them</span>
+			<p className="font-medium text-sm leading-snug">
+				Optionally attach a photo. Coordinates are stripped before it is stored.
+			</p>
+			<label className="mt-2 flex min-h-11 cursor-pointer items-center justify-center rounded-control border-2 border-hairline-strong border-dashed px-3 text-sm">
+				{file ? file.name : "Attach a photo (optional)"}
+				<input
+					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+					capture="environment"
+					className="sr-only"
+					data-testid="found-photo"
+					disabled={uploading}
+					onChange={(event) => {
+						setFile(event.target.files?.[0] ?? null);
+					}}
+					type="file"
+				/>
+			</label>
 			{error && (
-				<p className="text-danger text-sm" role="alert">
+				<p className="mt-2 text-danger text-sm" role="alert">
 					{error}
 				</p>
 			)}
-		</section>
+			<div className="mt-2 flex items-center gap-2">
+				<ActionButton
+					className="min-h-9 shrink-0 gap-0 overflow-visible px-2.5 py-0 text-sm"
+					data-testid="found-cancel"
+					inline
+					onClick={onCancel}
+					size="compact"
+					tone="secondary"
+					type="button"
+				>
+					Cancel
+				</ActionButton>
+				<ActionButton
+					className="w-auto min-w-0 flex-1"
+					data-testid="mark-found"
+					disabled={!canConfirm}
+					onClick={() => void confirm()}
+				>
+					{uploading ? "Saving…" : "Confirm"}
+				</ActionButton>
+			</div>
+		</Surface>
 	);
 }

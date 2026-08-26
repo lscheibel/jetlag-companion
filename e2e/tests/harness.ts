@@ -200,6 +200,8 @@ export type PhoneOptions = {
 	 * in and the reason m0-spec §10 made capabilities first-class. m2-spec §7.
 	 */
 	noBattery?: boolean;
+	/** Defaults to the host. Tests that name a style pin this. */
+	colorScheme?: "light" | "dark";
 };
 
 export async function openPhone(
@@ -214,6 +216,7 @@ export async function openPhone(
 			longitude: 13.4132,
 			latitude: 52.5219,
 		},
+		...(options.colorScheme ? { colorScheme: options.colorScheme } : {}),
 	});
 	const page = await context.newPage();
 

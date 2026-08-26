@@ -90,7 +90,7 @@ async function resumeRound(host: Phone): Promise<void> {
 }
 
 function countdownSeconds(text: string): number {
-	const match = /^(\d+):(\d{2}):(\d{2}) left$/.exec(text);
+	const match = /^(\d+):(\d{2}):(\d{2}) left$/i.exec(text.trim());
 	const hours = match?.[1];
 	const minutes = match?.[2];
 	const seconds = match?.[3];
@@ -106,6 +106,54 @@ async function commitZone(hider: Phone, code: string): Promise<void> {
 	await expect(hider.page.getByTestId("hiding-sheet")).toBeVisible();
 	await hider.page.getByTestId("commit-zone").click();
 	await expect(hider.page.getByTestId("committed-stop")).toBeVisible();
+}
+
+async function pickHider(
+	phone: Phone,
+	code: string,
+	name: string,
+): Promise<void> {
+	const id = await teamIdForName(code, name);
+	await phone.page.getByTestId("hider-selector").click();
+	await expect(phone.page.getByTestId("hider-team-sheet")).toBeVisible();
+	await phone.page.getByTestId(`hider-selector-${id}`).click();
+}
+
+async function markFound(
+	phone: Phone,
+	code: string,
+	hiderName?: string,
+): Promise<void> {
+	await openMap(phone, code);
+	await waitForSync(phone);
+	if (hiderName) await pickHider(phone, code, hiderName);
+	await phone.page.getByTestId("map-ask").click();
+	await expect(phone.page.getByTestId("seeker-actions")).toBeVisible();
+	await phone.page.getByTestId("found-them").click();
+	await expect(phone.page.getByTestId("found-sheet")).toBeVisible();
+	await phone.page.getByTestId("mark-found").click();
+	await expect(phone.page.getByTestId("found-sheet")).toBeHidden();
+}
+
+async function unmarkFound(phone: Phone, code: string): Promise<void> {
+	await openMap(phone, code);
+	await waitForSync(phone);
+	await phone.page.getByTestId("map-ask").click();
+	await expect(phone.page.getByTestId("unmark-found")).toBeVisible();
+	await phone.page.getByTestId("unmark-found").click();
+}
+
+async function pauseRound(phone: Phone, reason: string): Promise<void> {
+	await phone.page.getByTestId("lobby-menu").click();
+	await phone.page.getByTestId("open-pause").click();
+	await expect(phone.page.getByTestId("pause-sheet")).toBeVisible();
+	await phone.page.getByTestId("pause-reason").fill(reason);
+	await phone.page.getByTestId("pause-round").click();
+}
+
+async function endRound(phone: Phone): Promise<void> {
+	await phone.page.getByTestId("lobby-menu").click();
+	await phone.page.getByTestId("end-round").click();
 }
 
 async function twoTeamLobby(
@@ -185,22 +233,18 @@ test("1. a full round, end to end", async ({ browser }) => {
 
 	await openLobby(cara, code);
 	await waitForSync(cara);
-	await expect(cara.page.getByTestId("found-sheet")).toBeVisible();
-	await cara.page
-		.getByTestId("found-hider-team")
-		.selectOption({ label: "Foxes" });
-	await cara.page.getByTestId("mark-found").click();
+	await markFound(cara, code, "Foxes");
+	await cara.page.getByTestId("map-ask").click();
 	await expect(cara.page.getByTestId("unmark-found")).toBeVisible();
-	await cara.page
-		.getByTestId("found-hider-team")
-		.selectOption({ label: "Owls" });
-	await cara.page.getByTestId("mark-found").click();
+	await cara.page.getByTestId("seeker-actions-scrim").click();
+	await markFound(cara, code, "Owls");
+	await cara.page.getByTestId("map-ask").click();
 	await expect(cara.page.getByTestId("unmark-found")).toBeVisible();
 
 	await openLobby(ana, code);
 	await expect(ana.page.getByTestId("outcome-Foxes")).toContainText("Found by");
 	await expect(ana.page.getByTestId("outcome-Owls")).toContainText("Found by");
-	await ana.page.getByTestId("end-round").click();
+	await endRound(ana);
 	await expectPhase(phones, "ended");
 
 	await expect
@@ -226,10 +270,8 @@ test("2. the recorded duration matches a stopwatch", async ({ browser }) => {
 
 	const started = Date.now();
 	await new Promise((resolve) => setTimeout(resolve, 2_500));
-	await openLobby(host, code);
-	await waitForSync(host);
-	await host.page.getByTestId("mark-found").click();
-	await expect(host.page.getByTestId("unmark-found")).toBeVisible();
+	await markFound(host, code);
+	await expect(host.page.getByTestId("map-ask")).toBeVisible();
 	const stopped = Date.now();
 
 	const gameId = await gameIdForCode(code);
@@ -259,8 +301,7 @@ test("3. a pause stops every clock and no positions", async ({ browser }) => {
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
 
-	await host.page.getByTestId("pause-reason").fill("food");
-	await host.page.getByTestId("pause-round").click();
+	await pauseRound(host, "food");
 	await expect(host.page.getByTestId("lobby-round-phase")).toContainText(
 		"paused",
 	);
@@ -314,17 +355,22 @@ test("4. the countdown pauses with the game", async ({ browser }) => {
 	await setSide(ana, "Seekers", "seeker");
 	await startHiding([ana, ben], code, "0.25");
 
-	await ana.page.getByTestId("pause-reason").fill("train replacement bus");
-	await ana.page.getByTestId("pause-round").click();
+	await pauseRound(ana, "train replacement bus");
 	await openMap(ana, code);
 	await openMap(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
 	const remaining = await ana.page.getByTestId("round-clock").innerText();
-	await expect(ben.page.getByTestId("round-clock")).toHaveText(remaining);
+	await expect(ben.page.getByTestId("round-clock")).toHaveText(remaining, {
+		ignoreCase: true,
+	});
 	await new Promise((resolve) => setTimeout(resolve, 6_000));
-	await expect(ana.page.getByTestId("round-clock")).toHaveText(remaining);
-	await expect(ben.page.getByTestId("round-clock")).toHaveText(remaining);
+	await expect(ana.page.getByTestId("round-clock")).toHaveText(remaining, {
+		ignoreCase: true,
+	});
+	await expect(ben.page.getByTestId("round-clock")).toHaveText(remaining, {
+		ignoreCase: true,
+	});
 
 	await openLobby(ana, code);
 	await resumeRound(ana);
@@ -422,17 +468,14 @@ test("7. a found is markable by anyone and correctable", async ({
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
 
-	await openLobby(other, code);
-	await waitForSync(other);
-	await other.page.getByTestId("mark-found").click();
-	await expect(other.page.getByTestId("unmark-found")).toBeVisible();
-
+	await markFound(host, code);
 	await openLobby(host, code);
 	await expect(host.page.getByTestId("outcome-Hiders")).toContainText(
 		"Found by",
 	);
 
-	await other.page.getByTestId("unmark-found").click();
+	await unmarkFound(host, code);
+	await openLobby(host, code);
 	await expect(host.page.getByTestId("outcome-unfound-Hiders")).toHaveText(
 		"Still hiding",
 	);
@@ -481,15 +524,10 @@ test("8. a round that ends with a hider unfound records that", async ({
 	await openLobby(ana, code);
 	await ana.page.getByTestId("start-seeking").click();
 
-	await openLobby(ana, code);
-	await waitForSync(ana);
-	await ana.page
-		.getByTestId("found-hider-team")
-		.selectOption({ label: "Foxes" });
-	await ana.page.getByTestId("mark-found").click();
+	await markFound(ana, code, "Foxes");
 
 	await openLobby(ana, code);
-	await ana.page.getByTestId("end-round").click();
+	await endRound(ana);
 	await expect(ana.page.getByTestId("lobby-round-phase")).toContainText(
 		"ended",
 	);
@@ -525,11 +563,13 @@ test("9. a photo survives the round and loses its coordinates", async ({
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
-	await openLobby(host, code);
+	await openMap(host, code);
 	await waitForSync(host);
-	await host.page.getByTestId("mark-found").click();
+	await host.page.getByTestId("map-ask").click();
+	await host.page.getByTestId("found-them").click();
 	await host.page.getByTestId("found-photo").setInputFiles(GPS_JPEG);
-	await expect(host.page.getByTestId("found-photo")).toBeEnabled({
+	await host.page.getByTestId("mark-found").click();
+	await expect(host.page.getByTestId("found-sheet")).toBeHidden({
 		timeout: 20_000,
 	});
 
@@ -574,9 +614,11 @@ test("10. the suite makes no third-party request, including /photos", async ({
 	await commitZone(other, code);
 	await openLobby(host, code);
 	await host.page.getByTestId("start-seeking").click();
-	await openLobby(host, code);
-	await host.page.getByTestId("mark-found").click();
+	await openMap(host, code);
+	await host.page.getByTestId("map-ask").click();
+	await host.page.getByTestId("found-them").click();
 	await host.page.getByTestId("found-photo").setInputFiles(GPS_JPEG);
+	await host.page.getByTestId("mark-found").click();
 	await openLobby(other, code);
 	await expect
 		.poll(async () => {

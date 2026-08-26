@@ -24,11 +24,19 @@ interface TeamRowProps {
 	/** The viewer is on this team. */
 	mine: boolean;
 	onOpen: () => void;
+	/** Found / still hiding, above the people. */
+	result?: ReactNode;
 	/** The people on it, rendered by the lobby so it owns the person controls. */
 	children?: ReactNode;
 }
 
-export function TeamRow({ team, mine, onOpen, children }: TeamRowProps) {
+export function TeamRow({
+	team,
+	mine,
+	onOpen,
+	result,
+	children,
+}: TeamRowProps) {
 	const reduced = useReducedMotion();
 	const empty = team.members.length === 0;
 
@@ -56,6 +64,8 @@ export function TeamRow({ team, mine, onOpen, children }: TeamRowProps) {
 					›
 				</span>
 			</button>
+
+			{result}
 
 			<div className="flex flex-col gap-1" data-testid={`members-${team.name}`}>
 				{empty ? (

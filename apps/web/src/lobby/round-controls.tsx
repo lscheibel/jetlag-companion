@@ -13,9 +13,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 	const zero = useZero();
 	const [rounds] = useQuery(queries.rounds());
 	const [pauses] = useQuery(queries.roundPauses());
-	const [outcomes] = useQuery(queries.hiderOutcomes());
 	const [minutes, setMinutes] = useState("30");
-	const [reason, setReason] = useState("");
 	const now = useNow(1_000);
 	const round =
 		[...rounds].reverse().find((candidate) => candidate.status !== "ended") ??
@@ -40,19 +38,6 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 			pauses.filter((pause) => pause.roundId === round.id),
 			now,
 		) >= round.hidingDurationMs;
-	const hiderIds = round.roles
-		.filter((role) => role.role === "hider")
-		.map((role) => role.teamId);
-	const allHidersFound =
-		hiderIds.length > 0 &&
-		hiderIds.every((teamId) =>
-			outcomes.some(
-				(outcome) =>
-					outcome.roundId === round.id &&
-					outcome.hiderTeamId === teamId &&
-					outcome.foundAt !== null,
-			),
-		);
 
 	const event = () => ({ eventId: crypto.randomUUID() });
 	const startHiding = () => {
@@ -129,7 +114,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 			)}
 			{amHost &&
 				(round.status === "hiding" || round.status === "seeking") &&
-				(openPause ? (
+				openPause && (
 					<button
 						className="min-h-11 w-full rounded border px-4 font-semibold"
 						data-testid="resume-round"
@@ -145,52 +130,7 @@ export function RoundControls({ amHost }: RoundControlsProps) {
 					>
 						Resume
 					</button>
-				) : (
-					<div className="flex gap-2">
-						<input
-							className="min-h-11 min-w-0 flex-1 rounded border px-3"
-							data-testid="pause-reason"
-							onChange={(event) => setReason(event.target.value)}
-							placeholder="Why pause?"
-							value={reason}
-						/>
-						<button
-							className="min-h-11 rounded border px-4"
-							data-testid="pause-round"
-							disabled={reason.trim().length === 0}
-							onClick={() => {
-								void zero.mutate(
-									mutators.round.pause({
-										...event(),
-										pauseId: crypto.randomUUID(),
-										roundId: round.id,
-										reason: reason.trim(),
-									}),
-								);
-								setReason("");
-							}}
-							type="button"
-						>
-							Pause
-						</button>
-					</div>
-				))}
-			{amHost && round.status === "seeking" && !openPause && (
-				<button
-					className={`min-h-11 w-full rounded border px-4 font-semibold ${
-						allHidersFound ? "bg-action text-action-ink" : ""
-					}`}
-					data-testid="end-round"
-					onClick={() =>
-						void zero.mutate(
-							mutators.round.end({ ...event(), roundId: round.id }),
-						)
-					}
-					type="button"
-				>
-					{allHidersFound ? "All hiders found — end round" : "End round"}
-				</button>
-			)}
+				)}
 		</Panel>
 	);
 }

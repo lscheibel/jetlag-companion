@@ -11,6 +11,7 @@ import { mutators, queries } from "@zero-lag/schema";
 import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { useEffect, useMemo, useState } from "react";
+import { FoundCard, SeekerActionsSheet } from "../game/found-sheet";
 import { GameTabs } from "../game/game-tabs";
 import { HiderTeamSheet } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
@@ -148,6 +149,7 @@ function MapScreen() {
 	const [rounds] = useQuery(queries.rounds());
 	const [constraints] = useQuery(queries.constraints());
 	const [commitments] = useQuery(queries.commitments());
+	const [outcomes] = useQuery(queries.hiderOutcomes());
 
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
@@ -177,6 +179,9 @@ function MapScreen() {
 	const [cut, setCut] = useState(false);
 	const [gpsHelpOpen, setGpsHelpOpen] = useState(false);
 	const [constraintPickerOpen, setConstraintPickerOpen] = useState(false);
+	const [seekerOverlay, setSeekerOverlay] = useState<
+		"none" | "actions" | "found"
+	>("none");
 	const [hidingPick, setHidingPick] = useState<{
 		readonly roundId: string;
 		readonly stopId: string;
@@ -293,6 +298,12 @@ function MapScreen() {
 	);
 	const canEditConstraints =
 		role.role === "seeker" && role.teamId !== null && role.roundId !== null;
+	const selectedHiderFound = outcomes.some(
+		(outcome) =>
+			outcome.roundId === role.roundId &&
+			outcome.hiderTeamId === hiderTeamId &&
+			outcome.foundAt !== null,
+	);
 	const isHidingHider = role.role === "hider" && role.roundStatus === "hiding";
 	const defaultRadiusMeters = games[0]?.mapConfig?.hidingRadiusMeters ?? 800;
 	const hidingCommitment = commitments.find(
@@ -335,6 +346,7 @@ function MapScreen() {
 		setDraftPoint(null);
 		setDraftRadius(null);
 		setConstraintPickerOpen(false);
+		setSeekerOverlay("none");
 	};
 
 	const changeTool = (next: MapTool) => {
@@ -353,6 +365,7 @@ function MapScreen() {
 		}
 		if (next.kind !== "none") {
 			setSelectedStopId(null);
+			setSeekerOverlay("none");
 		}
 		setTool(next);
 	};
@@ -904,11 +917,25 @@ function MapScreen() {
 								selectedStop={hidingStop}
 							/>
 						)}
-						{canEditConstraints && (
+						{seekerOverlay === "found" && (
+							<FoundCard
+								hiderTeamId={hiderTeamId}
+								onCancel={() => setSeekerOverlay("none")}
+								role={role}
+								token={session.token}
+							/>
+						)}
+						{canEditConstraints && seekerOverlay !== "found" && (
 							<MapBar
+								actionsOpen={seekerOverlay === "actions"}
 								canEditConstraints={canEditConstraints}
 								cut={cut}
 								hiders={hiderTeams}
+								onActions={() =>
+									setSeekerOverlay((current) =>
+										current === "actions" ? "none" : "actions",
+									)
+								}
 								onCancel={cancelTool}
 								onCommitConstraint={commitConstraint}
 								onCutChange={setCut}
@@ -939,6 +966,26 @@ function MapScreen() {
 				</div>
 			</div>
 
+			{canEditConstraints && (
+				<SeekerActionsSheet
+					canMarkFound={role.roundStatus === "seeking"}
+					found={selectedHiderFound}
+					onClose={() => setSeekerOverlay("none")}
+					onFoundThem={() => setSeekerOverlay("found")}
+					onUndoFound={() => {
+						if (!role.roundId || !hiderTeamId) return;
+						void zero.mutate(
+							mutators.round.unmarkFound({
+								eventId: crypto.randomUUID(),
+								roundId: role.roundId,
+								hiderTeamId,
+							}),
+						);
+						setSeekerOverlay("none");
+					}}
+					open={seekerOverlay === "actions"}
+				/>
+			)}
 			{canEditConstraints && (
 				<ConstraintsPickerSheet
 					current={tool}

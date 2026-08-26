@@ -629,17 +629,27 @@ test("11. a seeker's store holds no hider position rows while the round runs", a
 test("12. the map asks the configured provider, and its tile worker is alive", async ({
 	browser,
 }) => {
-	const ana = await openPhone(browser, "Ana");
+	const ana = await openPhone(browser, "Ana", { colorScheme: "light" });
 	const code = await createGame(ana);
 	await waitForSync(ana);
 	await openMap(ana, code);
 
-	// Positron, by name. Intercepted, never forwarded.
+	// Positron in the light, by name. Intercepted, never forwarded.
 	await expect
 		.poll(
 			() =>
 				ana.tileRequests.filter((url) => url.includes("/styles/positron"))
 					.length,
+			{ timeout: 30_000 },
+		)
+		.toBeGreaterThan(0);
+
+	await ana.page.emulateMedia({ colorScheme: "dark" });
+
+	await expect
+		.poll(
+			() =>
+				ana.tileRequests.filter((url) => url.includes("/styles/dark")).length,
 			{ timeout: 30_000 },
 		)
 		.toBeGreaterThan(0);
