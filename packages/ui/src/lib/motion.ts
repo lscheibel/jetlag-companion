@@ -86,3 +86,14 @@ export const fadeOnly: Variants = {
 	shown: { opacity: 1, transition: { duration: 0.12 } },
 	leaving: { opacity: 0, transition: { duration: 0.1 } },
 };
+
+/** A card landing on the map: measure, pin, cuts, the seeker bar. */
+export const mapCardArrive: Variants = {
+	hidden: { opacity: 0, y: 16 },
+	shown: { opacity: 1, y: 0, transition: glide },
+	leaving: {
+		opacity: 0,
+		y: 12,
+		transition: { duration: 0.16, ease: [0.6, 0, 0.9, 0.3] },
+	},
+};

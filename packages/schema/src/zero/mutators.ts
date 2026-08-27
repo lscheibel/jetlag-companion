@@ -17,6 +17,7 @@ import {
 	reject,
 	requireContext,
 	requireHost,
+	requireTeamEditor,
 	requireTeamMember,
 } from "./guards";
 import { zql } from "./schema";
@@ -442,12 +443,10 @@ export const mutators = defineMutators({
 		),
 
 		/**
-		 * A team's own members, not the host. There is no reason for four people to
-		 * queue behind one person to change an emoji.
-		 *
-		 * Duplicate colours are prevented by the picker and not here: a duplicate
-		 * is ugly rather than broken, and refusing it would be this app's first
-		 * refusal of a harmless action. m1-spec §4.
+		 * A team's own members, not the host — unless nobody is on it yet, in
+		 * which case the host who is still composing the game may finish the
+		 * name, colour and face. Duplicate colours are prevented by the picker
+		 * and not here: a duplicate is ugly rather than broken. m1-spec §4.
 		 */
 		update: defineMutator(
 			z.object({
@@ -459,7 +458,7 @@ export const mutators = defineMutators({
 			}),
 			async ({ tx, ctx, args }) => {
 				const { playerId, gameId } = requireContext(ctx);
-				await requireTeamMember(tx, playerId, args.teamId, "editing a team");
+				await requireTeamEditor(tx, playerId, args.teamId, "editing a team");
 
 				const changes: { name?: string; color?: string; emoji?: string } = {};
 				if (args.name !== undefined) changes.name = args.name;

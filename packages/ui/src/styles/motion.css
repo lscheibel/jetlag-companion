@@ -314,6 +314,11 @@
 	}
 }
 
+button:disabled .zl-sheen::after {
+	animation: none;
+	opacity: 0;
+}
+
 /**
  * One guard, at the bottom of the cascade, covering CSS animation everywhere.
  * Motion's own components read the same preference through useReducedMotion,

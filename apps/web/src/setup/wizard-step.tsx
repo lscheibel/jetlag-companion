@@ -17,13 +17,13 @@ import type { ReactNode } from "react";
  * how long the flow is.
  */
 
-/** Name, area, transit, size, review. */
-export const SETUP_STEPS = 5;
+/** Name, area, transit, size, teams, review. */
+export const SETUP_STEPS = 6;
 
 interface WizardStepProps {
 	title: ReactNode;
 	eyebrow?: ReactNode;
-	/** Zero-based: name is 0, review is 4. */
+	/** Zero-based: name is 0, review is 5. */
 	step: number;
 	onBack: () => void;
 	onContinue: () => void;

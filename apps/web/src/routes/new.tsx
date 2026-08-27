@@ -2,18 +2,20 @@ import { useNavigate } from "react-router";
 import { createGame } from "../api";
 import { saveSession } from "../session";
 import { NameStep } from "../setup/name-step";
+import { SETUP_STEPS } from "../setup/wizard-step";
 
 /**
  * Opening a game, which starts with saying who is opening it.
  *
- * The first of five: name, area, transit, size, review. The rail is full-length from
- * here so the length of what you have agreed to is visible before you start.
+ * The first of six: name, area, transit, size, teams, review. The rail is
+ * full-length from here so the length of what you have agreed to is visible
+ * before you start.
  *
  * The game is created on this screen rather than at the end, because every
  * screen after it needs a token: the stop catalog is read with one, and the
  * counts the area and transit steps are built on come off the board this
- * creation hands back. Nothing the rest of the flow decides is written until
- * the review.
+ * creation hands back. The board (transit, size) is written at review; teams
+ * are live as soon as they are made.
  */
 export default function CreateGameRoute() {
 	const navigate = useNavigate();
@@ -43,7 +45,7 @@ export default function CreateGameRoute() {
 				await navigate(`/g/${session.code}/setup/area`);
 			}}
 			pledge="I solemnly swear that I own a copy of the game."
-			steps={{ count: 5, current: 0, label: "Create game" }}
+			steps={{ count: SETUP_STEPS, current: 0, label: "Create game" }}
 			submitLabel="Continue"
 			submitTestId="create-confirm"
 			title="What should we call you?"

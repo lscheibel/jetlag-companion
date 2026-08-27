@@ -9,9 +9,9 @@ import type { TeamRole } from "@zero-lag/schema";
  * The four conditions below are not rules anybody agreed to: they are the
  * difference between a game and a broken one.
  *
- * Everything else is a remark. Lopsided teams, one seeker team against
- * three hiders: said out loud, and none of it in the way. Deciding a
- * five-against-one is a bad idea is the group's job.
+ * Everything else is allowed. Lopsided teams, one seeker team against
+ * three hiders: none of it in the way. Deciding a five-against-one is a
+ * bad idea is the group's job.
  */
 
 export interface LobbyPerson {
@@ -88,6 +88,47 @@ export function blockerText(blocker: Blocker): string {
 	}
 }
 
+function assignedSides(
+	teams: readonly { readonly role: TeamRole | null }[],
+): Set<TeamRole> {
+	return new Set(teams.flatMap((team) => (team.role ? [team.role] : [])));
+}
+
+/** A game needs somebody hiding and somebody seeking — one team of each. */
+export function hasBothSides(
+	teams: readonly { readonly role: TeamRole | null }[],
+): boolean {
+	const sides = assignedSides(teams);
+	return sides.has("hider") && sides.has("seeker");
+}
+
+/**
+ * The side a new team should start on: whichever the board still needs, and
+ * hiding when that does not decide it. The host can still tap the other.
+ */
+export function suggestSide(
+	teams: readonly { readonly role: TeamRole | null }[],
+): TeamRole {
+	const sides = assignedSides(teams);
+	if (!sides.has("hider")) return "hider";
+	if (!sides.has("seeker")) return "seeker";
+	return "hider";
+}
+
+export function teamsContinueNote(
+	teams: readonly { readonly role: TeamRole | null }[],
+): string {
+	if (hasBothSides(teams)) {
+		return "People pick which team they are on in the lobby.";
+	}
+	const sides = assignedSides(teams);
+	if (!sides.has("hider") && !sides.has("seeker")) {
+		return "Add a hiding team and a seeking team.";
+	}
+	if (!sides.has("hider")) return "Add a hiding team.";
+	return "Add a seeking team.";
+}
+
 /**
  * Everything that holds the whistle, including the two the board shows in
  * place. The ready check is the one screen that has to know all four, because
@@ -103,30 +144,6 @@ export function canStart(
 		people.every((person) => person.teamId !== null) &&
 		people.every((person) => person.readyAt !== null)
 	);
-}
-
-/**
- * Said out loud and allowed. A remark never gates anything, which is why it is
- * a separate list rather than a severity on the one above.
- */
-export function startRemarks(
-	teams: readonly LobbyTeamView[],
-): readonly string[] {
-	const remarks: string[] = [];
-
-	const sized = teams.filter((team) => team.members.length > 0);
-	if (sized.length > 1) {
-		const counts = sized.map((team) => team.members.length);
-		const smallest = Math.min(...counts);
-		const largest = Math.max(...counts);
-		if (largest - smallest >= 2) {
-			remarks.push(
-				`Teams are lopsided — ${largest} against ${smallest}. That is sometimes the point.`,
-			);
-		}
-	}
-
-	return remarks;
 }
 
 /**

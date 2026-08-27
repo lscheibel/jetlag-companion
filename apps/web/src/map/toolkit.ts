@@ -24,23 +24,39 @@ export function stopPosition(stop: SearchableStop): LngLat {
 /** Finger slop around a 4 px circle so a stop is actually tappable. */
 export const STOP_TAP_PX = 24;
 
+export function nearestAtPx<T>(
+	items: readonly T[],
+	screen: { x: number; y: number },
+	locate: (item: T) => LngLat,
+	project: (lngLat: LngLat) => { x: number; y: number },
+	maxPx: number,
+): T | null {
+	let best: T | null = null;
+	let bestDist = maxPx;
+	for (const item of items) {
+		const point = project(locate(item));
+		const dist = Math.hypot(point.x - screen.x, point.y - screen.y);
+		if (dist <= bestDist) {
+			bestDist = dist;
+			best = item;
+		}
+	}
+	return best;
+}
+
 export function nearestStopPx(
 	stops: readonly SearchableStop[],
 	screen: { x: number; y: number },
 	project: (lngLat: LngLat) => { x: number; y: number },
 	maxPx: number = STOP_TAP_PX,
 ): SearchableStop | null {
-	let best: SearchableStop | null = null;
-	let bestDist = maxPx;
-	for (const stop of stops) {
-		const point = project([stop.lng, stop.lat]);
-		const dist = Math.hypot(point.x - screen.x, point.y - screen.y);
-		if (dist <= bestDist) {
-			bestDist = dist;
-			best = stop;
-		}
-	}
-	return best;
+	return nearestAtPx(
+		stops,
+		screen,
+		(stop) => [stop.lng, stop.lat],
+		project,
+		maxPx,
+	);
 }
 
 export type Measure =

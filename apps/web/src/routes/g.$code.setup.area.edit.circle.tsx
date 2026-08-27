@@ -19,7 +19,6 @@ import { FoldLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
 import { AddCutToggle } from "../setup/area/tool-strip";
 import { useAreaEditor } from "../setup/area/use-editor";
-import { WouldBecome } from "../setup/area/would-become";
 import { formatZone } from "../setup/game-size";
 
 const RADIUS_MIN = 50;
@@ -37,7 +36,6 @@ export default function SetupAreaCircle() {
 		() => (center ? circleLngLat(center, radius) : null),
 		[center, radius],
 	);
-	const op = editor.cut ? "subtract" : "add";
 	const bounds = multiPolygonBBox(editor.foldMulti);
 	const label = stopName
 		? `${formatZone(radius)} around ${stopName}`
@@ -104,11 +102,9 @@ export default function SetupAreaCircle() {
 			</div>
 			<ScreenActions
 				note={
-					geometry ? (
-						<WouldBecome geometry={geometry} op={op} />
-					) : (
-						"Tap to place the centre, then drag the handles. The map still pans."
-					)
+					geometry
+						? undefined
+						: "Tap to place the centre, then drag the handles. The map still pans."
 				}
 			>
 				<AddCutToggle />

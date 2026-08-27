@@ -1,5 +1,6 @@
 import type { BBox, LngLat } from "@zero-lag/geo";
 import { useTheme } from "@zero-lag/ui/hooks/use-theme";
+import { cn } from "@zero-lag/ui/lib/utils";
 import { MapLibreMap, Marker } from "maplibre-gl";
 import {
 	createContext,
@@ -41,9 +42,10 @@ export const MAP_STYLE_URLS = {
 export const ATTRIBUTION = "OpenFreeMap © OpenMapTiles Data from OpenStreetMap";
 
 /**
- * `unavailable` is the honest state of a cold start with no connection: the
- * style comes from the network and m2-spec §3 caches no tiles, ever. The canvas
- * is empty and says so, rather than being a broken grey rectangle.
+ * `loading` is the style fetching and the first tiles painting. `ready` is the
+ * first idle after that — the canvas has drawn what it has, which on a phone is
+ * often a few seconds later than `load`. `unavailable` is a style that never
+ * arrived.
  */
 export type MapStatus = "loading" | "ready" | "unavailable";
 
@@ -86,6 +88,7 @@ export function MapCanvas({
 	const styleUrl = MAP_STYLE_URLS[resolved];
 	const container = useRef<HTMLDivElement | null>(null);
 	const [map, setMap] = useState<MapLibreMap | null>(null);
+	const [revealed, setRevealed] = useState(false);
 
 	/**
 	 * The opening camera is read once, at creation, rather than tracked.
@@ -154,10 +157,12 @@ export function MapCanvas({
 		const observer = new ResizeObserver(() => created.resize());
 		observer.observe(node);
 
+		setRevealed(false);
+		report.current("loading");
+
 		let settled = false;
 		created.on("load", () => {
 			settled = true;
-			report.current("ready");
 			setMap(created);
 		});
 		/**
@@ -193,7 +198,12 @@ export function MapCanvas({
 	 * outer element owns the size; the inner one is MapLibre's.
 	 */
 	return (
-		<div className="absolute inset-0">
+		<div
+			className={cn(
+				"absolute inset-0",
+				revealed ? "zl-enter" : "pointer-events-none opacity-0",
+			)}
+		>
 			<div className="h-full w-full" data-testid="map-canvas" ref={container} />
 			{/*
 			 * Ours rather than MapLibre's `AttributionControl`.
@@ -211,9 +221,50 @@ export function MapCanvas({
 			>
 				{ATTRIBUTION}
 			</p>
-			<MapContext value={map}>{children}</MapContext>
+			<MapContext value={map}>
+				{children}
+				{map && (
+					<MapIdleReady
+						onIdle={() => {
+							report.current("ready");
+							setRevealed(true);
+						}}
+					/>
+				)}
+			</MapContext>
 		</div>
 	);
+}
+
+/**
+ * `load` means the style arrived; `idle` means the current view has painted.
+ * Reveal waits for that, because a phone can sit on a grey canvas for seconds
+ * after the style JSON is in. A timeout is the escape if tiles never settle.
+ */
+function MapIdleReady({ onIdle }: { readonly onIdle: () => void }) {
+	const map = useMapInstance();
+	const onIdleRef = useRef(onIdle);
+	onIdleRef.current = onIdle;
+
+	useEffect(() => {
+		if (!map) return;
+		let done = false;
+		const finish = () => {
+			if (done) return;
+			done = true;
+			onIdleRef.current();
+		};
+		map.once("idle", finish);
+		map.triggerRepaint();
+		const fallback = window.setTimeout(finish, 8_000);
+		return () => {
+			done = true;
+			map.off("idle", finish);
+			window.clearTimeout(fallback);
+		};
+	}, [map]);
+
+	return null;
 }
 
 interface MapMarkerProps {

@@ -150,7 +150,7 @@ export function ActionButton({
 					styles.press,
 					FACES[size],
 					hint ? "gap-0.5 py-3" : "gap-2",
-					beacon && "zl-sheen",
+					beacon && !rest.disabled && "zl-sheen",
 				)}
 			>
 				<span>{children}</span>

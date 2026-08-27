@@ -11,13 +11,12 @@ import { useSetup } from "../setup/wizard";
 import { WizardStep } from "../setup/wizard-step";
 
 /**
- * One last look. The rail names this as the fifth step, every line jumps
+ * One last look. The rail names this as the last step, every line jumps
  * back to the screen that set it, and the button says what actually happens.
  *
- * This is also the only screen in the flow that writes anything, and it writes
- * only what changed: a host who pressed straight through has agreed to the
- * board the game already opened on, and rebuilding it identically would burn a
- * map application and an event to say nothing.
+ * The board (modes, size, hiding clock) is written here and only here. Teams
+ * are already live: they were created on the previous screen, the same way
+ * the area was applied when the host picked it.
  */
 export default function SetupReview() {
 	const navigate = useNavigate();
@@ -25,6 +24,8 @@ export default function SetupReview() {
 	const { session } = useGameShell();
 	const setup = useSetup();
 	const [players] = useQuery(queries.players());
+	const [teams] = useQuery(queries.teams());
+	const [rounds] = useQuery(queries.rounds());
 	const [busy, setBusy] = useState(false);
 	const [problem, setProblem] = useState<string | null>(null);
 
@@ -71,9 +72,9 @@ export default function SetupReview() {
 					"Reading the board this game opened on…"
 				)
 			}
-			onBack={() => void navigate(`/g/${session.code}/setup/size`)}
+			onBack={() => void navigate(`/g/${session.code}/setup/teams`)}
 			onContinue={open}
-			step={4}
+			step={5}
 			title="Everything set?"
 		>
 			<Surface className="px-3.5 py-0" data-testid="setup-review">
@@ -101,6 +102,12 @@ export default function SetupReview() {
 					onChange={step("size")}
 					value={`${setup.band.name} · ${setup.band.runsFor.toLowerCase()}`}
 				/>
+				<Row
+					detail={teamDetail(teams, rounds)}
+					label="Teams"
+					onChange={step("teams")}
+					value={teamSummary(teams)}
+				/>
 			</Surface>
 		</WizardStep>
 	);
@@ -110,6 +117,38 @@ function transitSummary(setup: ReturnType<typeof useSetup>): string {
 	const selected = setup.selectedModes;
 	if (!selected) return "Everything that runs here";
 	return selected.map((modeId) => modeLabel(modeId).name).join(", ");
+}
+
+function teamSummary(teams: readonly { readonly name: string }[]): string {
+	if (teams.length === 0) return "None yet";
+	return teams.map((team) => team.name).join(", ");
+}
+
+function teamDetail(
+	teams: readonly { readonly id: string }[],
+	rounds: readonly {
+		readonly status: string;
+		readonly roles: readonly {
+			readonly teamId: string;
+			readonly role: string;
+		}[];
+	}[],
+): string {
+	if (teams.length === 0) return "People pick their team in the lobby";
+	const round = [...rounds].reverse().find((value) => value.status !== "ended");
+	let hiding = 0;
+	let seeking = 0;
+	for (const role of round?.roles ?? []) {
+		if (role.role === "hider") hiding += 1;
+		else if (role.role === "seeker") seeking += 1;
+	}
+	const unset = teams.length - hiding - seeking;
+	const parts = [
+		hiding > 0 ? `${hiding} hiding` : null,
+		seeking > 0 ? `${seeking} seeking` : null,
+		unset > 0 ? `${unset} with no side yet` : null,
+	].filter((part): part is string => part !== null);
+	return parts.join(" · ");
 }
 
 interface RowProps {

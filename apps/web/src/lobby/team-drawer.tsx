@@ -10,8 +10,7 @@ import { Sheet } from "@zero-lag/ui/components/sheet";
 import { TeamBadge } from "@zero-lag/ui/components/team-badge";
 import { useState } from "react";
 import { useLobbyActions } from "./actions";
-import type { LobbyTeamView } from "./model";
-import { sideWord } from "./model";
+import { type LobbyTeamView, sideWord, suggestSide } from "./model";
 import {
 	COLOR_OPTIONS,
 	EMOJI_OPTIONS,
@@ -20,9 +19,9 @@ import {
 } from "./palette";
 
 /**
- * The empty string is a real state, not a missing default: a new team has no
- * side until somebody gives it one, and it is not in `SIDES`, so the control
- * renders with no segment lit rather than quietly claiming "hiding". m1-spec §9.
+ * The empty string is only for a team that already exists with no side — the
+ * control then has nothing lit. A **new** team starts on `suggestSide`, so
+ * Create is a name away.
  */
 type SideChoice = TeamRole | "";
 
@@ -54,7 +53,8 @@ interface TeamDrawerProps {
 	amHost: boolean;
 	/** The viewer is on this team, which is what makes it theirs to edit. */
 	mine: boolean;
-	onJoin: () => void;
+	/** Omit in setup: joining is the lobby's job, not the wizard's. */
+	onJoin?: () => void;
 	roundId: string | null;
 }
 
@@ -94,29 +94,19 @@ export function TeamDrawer({
 	} | null>(null);
 
 	/**
-	 * A new team starts with **no side**, and that is not a missing default.
-	 *
-	 * A side is what the presence filter reads: a hider receives every position
-	 * in the game. Preselecting "hiding" would make each new team a hider team
-	 * for as long as it takes the host to notice, and every phone on it would be
-	 * sent the other side's coordinates in the meantime. m1-spec §9.
-	 *
-	 * The board says so plainly instead — a team with no side sits under "No side
-	 * yet", and the lobby refuses to start until both sides exist.
+	 * How a team presents itself is the team's business once somebody is on
+	 * it. `team.update` refuses a host who is not a member of an occupied
+	 * team, so those fields stay read-only. An empty team is still being
+	 * composed, and the host who made it may finish the name. m1-spec §4.
 	 */
-	/**
-	 * How a team presents itself is the team's business. `team.update` refuses
-	 * anybody who is not on it — a host included — so the fields are read-only
-	 * rather than editable-and-then-refused, and what a stranger gets instead is
-	 * the one thing they can actually do: join. m1-spec §4.
-	 */
-	const editable = team === null || mine;
+	const empty = team !== null && team.members.length === 0;
+	const editable = team === null || mine || (amHost && empty);
 
 	const value = draft ?? {
 		name: team?.name ?? "",
 		color: team?.color ?? suggestion.color,
 		emoji: team?.emoji ?? suggestion.emoji,
-		role: team?.role ?? null,
+		role: team?.role ?? (team === null ? suggestSide(teams) : null),
 	};
 	const patch = (change: Partial<typeof value>) =>
 		setDraft({ ...value, ...change });
@@ -148,6 +138,7 @@ export function TeamDrawer({
 
 	function submit() {
 		if (editable && name.length === 0) return;
+		if (amHost && !value.role) return;
 		if (team) {
 			if (editable) {
 				updateTeam(team.id, {
@@ -160,15 +151,13 @@ export function TeamDrawer({
 				saveSide(team.id, value.role);
 			}
 		} else {
-			if (name.length === 0) return;
+			if (name.length === 0 || !value.role) return;
 			const teamId = createTeam({
 				name,
 				color: value.color,
 				emoji: value.emoji,
 			});
-			// A new team shows a side selected, so it had better have one: the
-			// picker is not a decoration that the host has to confirm elsewhere.
-			if (amHost && value.role) saveSide(teamId, value.role);
+			if (amHost) saveSide(teamId, value.role);
 		}
 		close();
 	}
@@ -190,7 +179,7 @@ export function TeamDrawer({
 							Remove
 						</ActionButton>
 					)}
-					{team && !mine && (
+					{team && !mine && onJoin && (
 						<ActionButton
 							className="flex-1"
 							data-testid={`join-${team.name}`}
@@ -206,7 +195,9 @@ export function TeamDrawer({
 						<ActionButton
 							className={team && amHost ? "flex-[2]" : "flex-1"}
 							data-testid="team-editor-done"
-							disabled={editable && name.length === 0}
+							disabled={
+								(editable && name.length === 0) || (amHost && !value.role)
+							}
 							onClick={submit}
 						>
 							{team ? "Save" : "Create team"}

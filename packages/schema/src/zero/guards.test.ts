@@ -1,7 +1,12 @@
 import type { Transaction } from "@rocicorp/zero";
 import { describe, expect, it } from "vitest";
 import type { MutationRejection } from "../types";
-import { refuse, requireHost, requireTeamMember } from "./guards";
+import {
+	refuse,
+	requireHost,
+	requireTeamEditor,
+	requireTeamMember,
+} from "./guards";
 
 /**
  * The permission guards. m1-spec §12.
@@ -134,6 +139,53 @@ describe("requireTeamMember", () => {
 				requireTeamMember(tx, "p1", "t1", "editing a team"),
 			),
 		).not.toBe(null);
+	});
+});
+
+describe("requireTeamEditor", () => {
+	it("lets a member of that team through", async () => {
+		const tx = authoritative([{ teamId: "t1", playerId: "p1" }]);
+		expect(
+			await refusalOf(() =>
+				requireTeamEditor(tx, "p1", "t1", "editing a team"),
+			),
+		).toBe(null);
+	});
+
+	it("lets a host rename a team nobody is on yet", async () => {
+		const tx = authoritative([undefined, [], { id: "p1", isHost: true }]);
+		expect(
+			await refusalOf(() =>
+				requireTeamEditor(tx, "p1", "t1", "editing a team"),
+			),
+		).toBe(null);
+	});
+
+	it("refuses a non-host who is not on an empty team", async () => {
+		const tx = authoritative([undefined, [], { id: "p1", isHost: false }]);
+		expect(
+			await refusalOf(() =>
+				requireTeamEditor(tx, "p1", "t1", "editing a team"),
+			),
+		).toContain("editing a team");
+	});
+
+	it("refuses a host who is not on an occupied team", async () => {
+		const tx = authoritative([undefined, [{ teamId: "t1", playerId: "p2" }]]);
+		expect(
+			await refusalOf(() =>
+				requireTeamEditor(tx, "p1", "t1", "editing a team"),
+			),
+		).toContain("own members");
+	});
+
+	it("says nothing when the client has not synced the team either", async () => {
+		const tx = optimistic([undefined, [], undefined]);
+		expect(
+			await refusalOf(() =>
+				requireTeamEditor(tx, "p1", "t1", "editing a team"),
+			),
+		).toBe(null);
 	});
 });
 

@@ -35,6 +35,18 @@ function stopPaint(dark: boolean) {
 	};
 }
 
+/** The stop the sheet is about: yellow-black, like every other in-hand mark. */
+function selectedStopPaint() {
+	return {
+		"circle-radius": 7,
+		"circle-color": "#ffe01f",
+		"circle-stroke-color": "#08111c",
+		"circle-stroke-width": 2.5,
+		"circle-opacity": 1,
+		"circle-stroke-opacity": 1,
+	};
+}
+
 interface StopsLayerProps {
 	readonly stops: readonly SearchableStop[];
 	readonly id?: "builder-stops" | "play-stops";
@@ -45,6 +57,8 @@ interface StopsLayerProps {
 	readonly fold?: Region | null;
 	/** Setup fence. Stops outside it fade with distance from its bbox. */
 	readonly area?: MultiPolygon | null;
+	/** The stop whose sheet is open, if any. */
+	readonly selectedId?: string | null;
 }
 
 /**
@@ -59,11 +73,20 @@ export function BuilderStopsLayer({
 	id = "builder-stops",
 	fold = null,
 	area = null,
+	selectedId = null,
 }: StopsLayerProps) {
 	const { resolved } = useTheme();
 	const dark = resolved === "dark";
 	const layers = useMemo(
-		() => [{ id, type: "circle" as const, paint: stopPaint(dark) }],
+		() => [
+			{ id, type: "circle" as const, paint: stopPaint(dark) },
+			{
+				id: `${id}-selected`,
+				type: "circle" as const,
+				filter: ["==", ["get", "selected"], true],
+				paint: selectedStopPaint(),
+			},
+		],
 		[id, dark],
 	);
 	const data = useMemo<FeatureData>(() => {
@@ -79,12 +102,13 @@ export function BuilderStopsLayer({
 					properties: {
 						insideArea: inPlay,
 						opacity: stopOpacity(stop, inPlay, bbox, fadeRange),
+						selected: stop.stopId === selectedId,
 					},
 					geometry: { type: "Point", coordinates: [stop.lng, stop.lat] },
 				};
 			}),
 		};
-	}, [stops, fold, area]);
+	}, [stops, fold, area, selectedId]);
 	useGeoJsonLayer(id, data, layers);
 	return null;
 }

@@ -29,7 +29,7 @@ export function PlayerSheet({ player, onClose }: PlayerSheetProps) {
 
 	return (
 		<section
-			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-sheet border-hairline border-t bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_40px_-20px_rgb(0_0_0/0.6)]"
+			className="absolute inset-x-0 bottom-0 z-10 space-y-2 rounded-t-sheet border-hairline border-t bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
 			data-testid={`player-sheet-${player.displayName}`}
 		>
 			<header className="flex items-center gap-3">

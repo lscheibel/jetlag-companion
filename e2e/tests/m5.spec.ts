@@ -18,14 +18,12 @@ import {
 } from "./db";
 import {
 	createGame,
-	createTeam,
 	joinGame,
 	joinTeam,
 	openLobby,
 	openMap,
 	openPhone,
 	type Phone,
-	setSide,
 	startHiding,
 	startSeekingPhase,
 	waitForSync,
@@ -170,12 +168,8 @@ async function twoTeamLobby(
 	const code = await createGame(host);
 	await joinGame(other, code);
 	for (const phone of [host, other]) await waitForSync(phone);
-	await createTeam(host, "Hiders");
-	await createTeam(host, "Seekers");
 	await joinTeam(host, "Seekers");
 	await joinTeam(other, "Hiders");
-	await setSide(host, "Hiders", "hider");
-	await setSide(host, "Seekers", "seeker");
 	return { host, other, code, phones: [host, other] };
 }
 
@@ -192,22 +186,21 @@ test("1. a full round, end to end", async ({ browser }) => {
 		Phone,
 	];
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Owls", side: "hider" },
+		{ name: "Bees", side: "seeker" },
+		{ name: "Sharks", side: "seeker" },
+		{ name: "Turtles", side: "seeker" },
+	]);
 	for (const phone of [ben, cara, dev, eli]) await joinGame(phone, code);
 	for (const phone of phones) await waitForSync(phone);
 
-	const teams = ["Foxes", "Owls", "Bees", "Sharks", "Turtles"];
-	for (const team of teams) await createTeam(ana, team);
 	await joinTeam(ana, "Foxes");
 	await joinTeam(ben, "Owls");
 	await joinTeam(cara, "Bees");
 	await joinTeam(dev, "Sharks");
 	await joinTeam(eli, "Turtles");
-	await setSide(ana, "Foxes", "hider");
-	await setSide(ana, "Owls", "hider");
-	await setSide(ana, "Bees", "seeker");
-	await setSide(ana, "Sharks", "seeker");
-	await setSide(ana, "Turtles", "seeker");
 
 	// House rules are written on the briefing, by the host, and read there by
 	// everybody else — the screen that says them is the screen that takes them.
@@ -352,12 +345,8 @@ test("4. the countdown pauses with the game", async ({ browser }) => {
 	const code = await createGame(ana);
 	await joinGame(ben, code);
 	for (const phone of [ana, ben]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(ben, "Hiders");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Seekers", "seeker");
 	await startHiding([ana, ben], code, "0.25");
 
 	await pauseRound(ana, "train replacement bus");
@@ -437,12 +426,8 @@ test("6. the countdown reaching zero changes nothing by itself", async ({
 	const code = await createGame(ana);
 	await joinGame(ben, code);
 	for (const phone of [ana, ben]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(ben, "Hiders");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Seekers", "seeker");
 	await startHiding([ana, ben], code, "0.05");
 
 	await openMap(ben, code);
@@ -510,20 +495,18 @@ test("8. a round that ends with a hider unfound records that", async ({
 	const phones: Phone[] = [];
 	for (const name of names) phones.push(await openPhone(browser, name));
 	const [ana, ben, cara] = phones as [Phone, Phone, Phone];
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Owls", side: "hider" },
+		{ name: "Bees", side: "seeker" },
+	]);
 	await joinGame(ben, code);
 	await joinGame(cara, code);
 	for (const phone of phones) await waitForSync(phone);
 
-	await createTeam(ana, "Foxes");
-	await createTeam(ana, "Owls");
-	await createTeam(ana, "Bees");
 	await joinTeam(ana, "Bees");
 	await joinTeam(ben, "Foxes");
 	await joinTeam(cara, "Owls");
-	await setSide(ana, "Foxes", "hider");
-	await setSide(ana, "Owls", "hider");
-	await setSide(ana, "Bees", "seeker");
 	await startHiding(phones, code, "30");
 	await commitZone(ben, code);
 	await commitZone(cara, code);

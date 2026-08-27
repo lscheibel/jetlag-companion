@@ -8,7 +8,6 @@ import {
 } from "./db";
 import {
 	createGame,
-	createTeam,
 	joinGame,
 	joinRefused,
 	joinTeam,
@@ -17,7 +16,6 @@ import {
 	type Phone,
 	presenceOf,
 	sawPresence,
-	setSide,
 	toggleHost,
 	waitForSync,
 } from "./harness";
@@ -54,24 +52,23 @@ test("1. five phones build two hider teams and three seeker teams", async ({
 		Phone,
 	];
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Owls", side: "hider" },
+		{ name: "Bees", side: "seeker" },
+		{ name: "Sharks", side: "seeker" },
+		{ name: "Turtles", side: "seeker" },
+	]);
 	for (const phone of [ben, cara, dev, eli]) await joinGame(phone, code);
 	for (const phone of phones) await waitForSync(phone);
 
 	const teams = ["Foxes", "Owls", "Bees", "Sharks", "Turtles"];
-	for (const team of teams) await createTeam(ana, team);
 
 	await joinTeam(ana, "Foxes");
 	await joinTeam(ben, "Owls");
 	await joinTeam(cara, "Bees");
 	await joinTeam(dev, "Sharks");
 	await joinTeam(eli, "Turtles");
-
-	await setSide(ana, "Foxes", "hider");
-	await setSide(ana, "Owls", "hider");
-	await setSide(ana, "Bees", "seeker");
-	await setSide(ana, "Sharks", "seeker");
-	await setSide(ana, "Turtles", "seeker");
 
 	/**
 	 * The same order on every device. Teams are ordered by `createdAt`, so this
@@ -122,13 +119,14 @@ test("2. switching teams is a move, and every phone sees it", async ({
 	const ana = await openPhone(browser, "Ana");
 	const ben = await openPhone(browser, "Ben");
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Owls", side: "seeker" },
+	]);
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
 
-	await createTeam(ana, "Foxes");
-	await createTeam(ana, "Owls");
 	await expect(ben.page.getByTestId("team-Owls")).toBeVisible();
 
 	await joinTeam(ben, "Foxes");
@@ -164,12 +162,14 @@ test("3. a team edits itself; a stranger and a non-host are refused", async ({
 	const ana = await openPhone(browser, "Ana");
 	const ben = await openPhone(browser, "Ben");
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Seekers", side: "seeker" },
+	]);
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
 
-	await createTeam(ana, "Foxes");
 	await joinTeam(ben, "Foxes");
 
 	// A non-host member renames their own team and recolours it.
@@ -196,8 +196,9 @@ test("3. a team edits itself; a stranger and a non-host are refused", async ({
 	await ana.page.getByTestId("rejection-notice-dismiss").click();
 	await expect(ben.page.getByTestId("team-Vixens")).toBeVisible();
 
-	// And creating a team is the host's, because team count is gameplay.
-	await expect(ben.page.getByTestId("create-team")).toHaveCount(0);
+	// And composing teams is the host's, because team count is gameplay.
+	await ben.page.getByTestId("lobby-menu").click();
+	await expect(ben.page.getByTestId("open-teams")).toHaveCount(0);
 
 	await ana.close();
 	await ben.close();
@@ -214,7 +215,9 @@ test("4. the host hat is claimable, releasable, and may sit on nobody", async ({
 	await waitForSync(ana);
 	await waitForSync(ben);
 
-	await expect(ben.page.getByTestId("create-team")).toHaveCount(0);
+	await ben.page.getByTestId("lobby-menu").click();
+	await expect(ben.page.getByTestId("open-teams")).toHaveCount(0);
+	await ben.page.getByTestId("lobby-menu-sheet-close").click();
 
 	await expect(ana.page.getByTestId("host-badge-Ana")).toBeVisible();
 
@@ -223,7 +226,9 @@ test("4. the host hat is claimable, releasable, and may sit on nobody", async ({
 	await expect(ben.page.getByTestId("host-badge-Ben")).toBeVisible();
 	await expect(ana.page.getByTestId("host-badge-Ben")).toBeVisible();
 	await expect(ana.page.getByTestId("host-badge-Ana")).toBeVisible();
-	await expect(ben.page.getByTestId("create-team")).toBeVisible();
+	await ben.page.getByTestId("lobby-menu").click();
+	await expect(ben.page.getByTestId("open-teams")).toBeVisible();
+	await ben.page.getByTestId("lobby-menu-sheet-close").click();
 
 	// Stepping down leaves the game running, with the other host still on.
 	await toggleHost(ana);
@@ -281,12 +286,14 @@ test("6. leaving voluntarily is frictionless to undo", async ({ browser }) => {
 	const ana = await openPhone(browser, "Ana");
 	const ben = await openPhone(browser, "Ben");
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Seekers", side: "seeker" },
+	]);
 	await joinGame(ben, code);
 	await waitForSync(ana);
 	await waitForSync(ben);
 
-	await createTeam(ana, "Foxes");
 	await joinTeam(ben, "Foxes");
 	const benId = await playerIdForName(code, "Ben");
 	// Polled, not read once: `joinTeam` waits on this phone's own optimistic
@@ -320,12 +327,13 @@ test("7. a lobby of five phones shows five phones", async ({ browser }) => {
 	for (const name of names) phones.push(await openPhone(browser, name));
 	const [ana, ben, cara, dev] = phones as [Phone, Phone, Phone, Phone];
 
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Foxes", side: "hider" },
+		{ name: "Owls", side: "seeker" },
+	]);
 	for (const phone of phones.slice(1)) await joinGame(phone, code);
 	for (const phone of phones) await waitForSync(phone);
 
-	await createTeam(ana, "Foxes");
-	await createTeam(ana, "Owls");
 	await joinTeam(ana, "Foxes");
 	await joinTeam(ben, "Foxes");
 	await joinTeam(cara, "Owls");
@@ -365,8 +373,6 @@ test("8. in a running round a seeker gets every name and no outside position", a
 	await joinGame(cara, code);
 	for (const phone of [ana, ben, cara]) await waitForSync(phone);
 
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(ben, "Hiders");
 	await joinTeam(cara, "Hiders");

@@ -102,11 +102,11 @@ export function LobbyHeader({
 						)}
 						{onMenu && (
 							<IconButton
-								aria-label="More"
+								aria-label="Settings"
 								onClick={onMenu}
 								testId="lobby-menu"
 							>
-								<Icon name="dots-three" size="md" weight="bold" />
+								<Icon name="gear-six" size="sm" />
 							</IconButton>
 						)}
 					</div>

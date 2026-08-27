@@ -289,24 +289,41 @@ export async function submitCreateName(phone: Phone): Promise<void> {
 	await phone.page.getByTestId("create-confirm").click();
 }
 
+export interface SetupTeamSpec {
+	name: string;
+	side: "hider" | "seeker";
+}
+
+/** A game cannot leave the teams step without one of each side. */
+export const DEFAULT_SETUP_TEAMS: readonly SetupTeamSpec[] = [
+	{ name: "Hiders", side: "hider" },
+	{ name: "Seekers", side: "seeker" },
+];
+
 /**
  * Creating and joining both land in the lobby at `/g/:code`, and both are now
  * wizards rather than one form: the start screen picks a door, and the name is
  * asked for inside the flow it opened. m1-spec §8.
  */
-export async function createGame(phone: Phone): Promise<string> {
+export async function createGame(
+	phone: Phone,
+	teams: readonly SetupTeamSpec[] = DEFAULT_SETUP_TEAMS,
+): Promise<string> {
 	await phone.page.getByTestId("create-game").click();
 	await submitCreateName(phone);
 
 	/**
-	 * The wizard: area, transit, size, review. Area has no default — the host
-	 * picks Berlin (or a district) before the rest of the flow has counts that
-	 * mean anything.
+	 * The wizard: area, transit, size, teams, review. Area has no default —
+	 * the host picks Berlin (or a district) before the rest of the flow has
+	 * counts that mean anything. Teams need both sides before Continue works.
 	 */
 	await chooseBerlinArea(phone);
 	await phone.page.getByTestId("setup-area-continue").click();
 	await phone.page.getByTestId("setup-transit-continue").click();
 	await phone.page.getByTestId("setup-size-continue").click();
+	await expect(phone.page.getByTestId("setup-teams")).toBeVisible();
+	for (const team of teams) await fillSetupTeam(phone, team.name, team.side);
+	await phone.page.getByTestId("setup-teams-continue").click();
 	await phone.page.getByTestId("setup-open-lobby").click();
 
 	/**
@@ -452,15 +469,39 @@ export function sawPresence(phone: Phone): boolean {
 	return phone.frames.some((frame) => frame.includes('"presence"'));
 }
 
-/**
- * The lobby, reworked: a team is made in the identity drawer, and who is on it
- * is settled on the players screen. Two different questions, two places.
- */
-export async function createTeam(phone: Phone, name: string): Promise<void> {
+/** Name, side, create — the teams step, whether the wizard opened it or the menu. */
+async function fillSetupTeam(
+	phone: Phone,
+	name: string,
+	side: "hider" | "seeker",
+): Promise<void> {
 	await phone.page.getByTestId("create-team").click();
 	await phone.page.getByTestId("team-name-input").fill(name);
+	await phone.page.getByTestId(`side-${side}`).click();
 	await phone.page.getByTestId("team-editor-done").click();
 	await expect(phone.page.getByTestId(`team-${name}`)).toBeVisible();
+}
+
+/**
+ * A team is made on the setup step. From the lobby that means the game menu;
+ * from the wizard it is the control already on screen. A side is required.
+ */
+export async function createTeam(
+	phone: Phone,
+	name: string,
+	side: "hider" | "seeker",
+): Promise<void> {
+	const onLobby = await phone.page.getByTestId("lobby").isVisible();
+	if (onLobby) {
+		await phone.page.getByTestId("lobby-menu").click();
+		await phone.page.getByTestId("open-teams").click();
+		await expect(phone.page.getByTestId("setup-teams")).toBeVisible();
+	}
+	await fillSetupTeam(phone, name, side);
+	if (onLobby) {
+		await phone.page.getByTestId("setup-teams-continue").click();
+		await expect(phone.page.getByTestId("lobby")).toBeVisible();
+	}
 }
 
 /** Which side a team plays, set in the same drawer that named it. Host only. */

@@ -1,3 +1,4 @@
+import { Chip } from "@zero-lag/ui/components/chip";
 import { Icon } from "@zero-lag/ui/components/icon";
 import { fadeOnly, listContainer, listItem } from "@zero-lag/ui/lib/motion";
 import { motion, useReducedMotion } from "motion/react";
@@ -39,17 +40,11 @@ export function BlockerCards({
 				const text = blockerText(blocker);
 				const body = (
 					<>
-						<span
-							aria-hidden
-							className="zl-breathe size-2 shrink-0 rounded-full bg-stale"
-						/>
+						<span aria-hidden className="shrink-0 text-stale">
+							<Icon name="warning" size="xs" />
+						</span>
 						<span className="min-w-0 flex-1">{text}</span>
-						{actionable && (
-							<span className="eyebrow flex shrink-0 items-center gap-1 text-stale">
-								Fix
-								<Icon name="caret-right" size="xs" />
-							</span>
-						)}
+						{actionable && <Chip tone="action">Fix</Chip>}
 					</>
 				);
 

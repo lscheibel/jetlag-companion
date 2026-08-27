@@ -36,7 +36,7 @@ export function outsideViewport(
 	return outside.polygons.length === 0 ? null : regionToMultiPolygon(outside);
 }
 
-/** Current map bounds, padded so the dim still covers a pan that is in flight. */
+/** Current map bounds, padded so the dim still covers a pan or pinch in flight. */
 export function usePaddedView(): BBox | null {
 	const map = useMapInstance();
 	const [view, setView] = useState<BBox | null>(null);
@@ -53,8 +53,8 @@ export function usePaddedView(): BBox | null {
 				const south = bounds.getSouth();
 				const east = bounds.getEast();
 				const north = bounds.getNorth();
-				const padLng = (east - west) * 0.08;
-				const padLat = (north - south) * 0.08;
+				const padLng = (east - west) * 0.45;
+				const padLat = (north - south) * 0.45;
 				setView([west - padLng, south - padLat, east + padLng, north + padLat]);
 			});
 		};

@@ -8,7 +8,6 @@ import {
 import type { AreaPieceSource } from "@zero-lag/schema";
 import { Chip } from "@zero-lag/ui/components/chip";
 import { Field } from "@zero-lag/ui/components/field";
-import { Surface } from "@zero-lag/ui/components/surface";
 import {
 	ToggleButton,
 	ToggleStrip,
@@ -17,7 +16,7 @@ import { cn } from "@zero-lag/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { formatArea } from "../builder/use-builder";
 import { useGameShell } from "../game/shell";
-import { MapFlyTo, MapIdleBounds } from "../map/map-interactions";
+import { MapIdleBounds } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
 import { EditorScreen } from "../setup/area/editor-screen";
 import { GERMANY_BOUNDS } from "../setup/area/labels";
@@ -25,7 +24,6 @@ import { FoldLayer, PreviewLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
 import { useBoundarySearch } from "../setup/area/use-boundary-search";
 import { useAreaEditor } from "../setup/area/use-editor";
-import { WouldBecome } from "../setup/area/would-become";
 
 type PlaceFilter = "land" | "district" | "ortsteil";
 
@@ -74,13 +72,6 @@ export default function SetupAreaDistricts() {
 	const search = useBoundarySearch(session, levels, query, viewBbox);
 	const selected = search.rows.find((row) => row.id === selectedId) ?? null;
 	const op = editor.cut ? "subtract" : "add";
-	const preview = selected ? selected.polygons : null;
-	const flyTo = selected
-		? {
-				kind: "bounds" as const,
-				bounds: multiPolygonBBox(selected.polygons) ?? GERMANY_BOUNDS,
-			}
-		: null;
 
 	function commit() {
 		if (!selected) return;
@@ -125,7 +116,6 @@ export default function SetupAreaDistricts() {
 				<FoldLayer area={editor.foldMulti} />
 				{selected && <PreviewLayer geometry={selected.polygons} op={op} />}
 				<MapIdleBounds onIdle={setView} />
-				<MapFlyTo target={flyTo} />
 			</EditorMap>
 			<div className="shrink-0">
 				<Field
@@ -204,14 +194,6 @@ export default function SetupAreaDistricts() {
 					);
 				})}
 			</div>
-			{preview && (
-				<Surface
-					className="flex shrink-0 items-center justify-between px-3.5 py-2.5"
-					data-testid="area-district-would"
-				>
-					<WouldBecome geometry={preview} op={op} />
-				</Surface>
-			)}
 		</EditorScreen>
 	);
 }

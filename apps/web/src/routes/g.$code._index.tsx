@@ -3,6 +3,7 @@ import type { TeamRole } from "@zero-lag/schema";
 import { mutators } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { HoldButton } from "@zero-lag/ui/components/hold-button";
+import { Icon } from "@zero-lag/ui/components/icon";
 import { Notice } from "@zero-lag/ui/components/notice";
 import {
 	Screen,
@@ -27,13 +28,11 @@ import { InviteSheet } from "../lobby/invite-sheet";
 import { LobbyHeader } from "../lobby/lobby-header";
 import { LobbyMenu } from "../lobby/lobby-menu";
 import {
-	type Blocker,
 	canStart,
 	type LobbyPerson,
 	type LobbyTeamView,
 	readyCount,
 	startBlockers,
-	startRemarks,
 } from "../lobby/model";
 import { HiderResult } from "../lobby/outcome-list";
 import { PersonRow } from "../lobby/person-row";
@@ -45,6 +44,7 @@ import { StartSeekingAction } from "../lobby/start-seeking";
 import { TeamDrawer } from "../lobby/team-drawer";
 import { TeamRow } from "../lobby/team-row";
 import { useLobby } from "../lobby/use-lobby";
+import { YouAre } from "../lobby/you-are";
 import { rejectionMessage } from "../lobby/use-rejections";
 import { clearSession } from "../session";
 import { editorHomePath } from "../setup/area/tool-nav";
@@ -78,7 +78,7 @@ type Overlay =
 	| { kind: "none" }
 	| { kind: "invite" }
 	| { kind: "menu" }
-	| { kind: "team"; team: LobbyTeamView | null }
+	| { kind: "team"; team: LobbyTeamView }
 	| { kind: "player"; person: LobbyPerson }
 	| { kind: "move"; person: LobbyPerson };
 
@@ -94,8 +94,6 @@ function Lobby() {
 	const [leaving, setLeaving] = useState(false);
 
 	const blockers = startBlockers(lobby.teams, lobby.people);
-	const remarks = startRemarks(lobby.teams);
-	const host = lobby.people.find((person) => person.isHost) ?? null;
 	const roundPending = lobby.round?.status === "pending";
 	const seenBriefing = hasSeenBriefing(session.gameId, session.playerId);
 	const { ready, total } = readyCount(lobby.people);
@@ -127,17 +125,12 @@ function Lobby() {
 	}
 
 	/**
-	 * Each block is a tap to the thing that fixes it. Both of the ones left are
-	 * about teams, so both land in the drawer — a game with no teams needs one
-	 * made, and a board with one side needs a side set.
+	 * Each block is a tap to the thing that fixes it. Both of the ones left
+	 * are about teams, and teams are composed on the setup step — not on a
+	 * plus on the board.
 	 */
-	function fix(blocker: Blocker) {
-		if (blocker.kind === "no-teams") {
-			setOverlay({ kind: "team", team: null });
-			return;
-		}
-		const team = lobby.teams.find((value) => value.role === null);
-		setOverlay({ kind: "team", team: team ?? lobby.teams[0] ?? null });
+	function fix() {
+		void navigate(`/g/${session.code}/setup/teams?from=lobby`);
 	}
 
 	/** Putting somebody on a team — themselves, or because a host said so. */
@@ -218,24 +211,6 @@ function Lobby() {
 						</section>
 					)}
 
-					{lobby.amHost && roundPending && (
-						<div className="flex justify-end pt-1.5">
-							<button
-								aria-label="New team"
-								className={cn(
-									"grid size-7 place-items-center rounded-control border border-hairline-strong",
-									"font-semibold text-ink text-sm",
-									"transition-transform duration-[--dur-press] ease-[--ease-pop] hover:-translate-y-0.5 active:scale-90",
-								)}
-								data-testid="create-team"
-								onClick={() => setOverlay({ kind: "team", team: null })}
-								type="button"
-							>
-								+
-							</button>
-						</div>
-					)}
-
 					{sides.map(({ role, label }) => {
 						const group = lobby.teams.filter((team) => team.role === role);
 						if (group.length === 0) return null;
@@ -253,7 +228,6 @@ function Lobby() {
 								{group.map((team) => (
 									<TeamRow
 										key={team.id}
-										mine={team.id === lobby.myTeam?.id}
 										onOpen={() => setOverlay({ kind: "team", team })}
 										result={
 											<HiderResult
@@ -288,20 +262,18 @@ function Lobby() {
 				</motion.div>
 
 				<div className="flex-1" />
-
-				{remarks.map((remark) => (
-					<p
-						className="px-1 text-ink-dim text-xs leading-snug"
-						data-testid="lobby-remark"
-						key={remark}
-					>
-						{remark}
-					</p>
-				))}
 			</ScreenBody>
 
 			{roundPending && (
-				<ScreenActions note={waitingNote(lobby, host)}>
+				<ScreenActions
+					note={
+						lobby.myTeam &&
+						(lobby.myTeam.role === "hider" ||
+							lobby.myTeam.role === "seeker") ? (
+							<YouAre playerId={session.playerId} team={lobby.myTeam} />
+						) : undefined
+					}
+				>
 					{blockers.length > 0 && (
 						<BlockerCards
 							actionable={lobby.amHost}
@@ -371,6 +343,9 @@ function Lobby() {
 				onGameArea={() => void navigate(editorHomePath(session.code, "lobby"))}
 				onHidingZone={() =>
 					void navigate(`/g/${session.code}/setup/size?from=lobby`)
+				}
+				onTeams={() =>
+					void navigate(`/g/${session.code}/setup/teams?from=lobby`)
 				}
 				onClaimHost={() => {
 					claimHost();
@@ -448,26 +423,6 @@ function Lobby() {
 	);
 }
 
-/** Names who is missing, and leaves you out of it: yours is the button. */
-function waitingNote(
-	lobby: ReturnType<typeof useLobby>,
-	host: LobbyPerson | null,
-): string {
-	const others = lobby.people.filter(
-		(person) => person.readyAt === null && person.id !== lobby.me?.id,
-	);
-	if (others.length === 0) {
-		return host
-			? `${host.displayName} starts it once everybody is ready.`
-			: "Nobody is running this game yet.";
-	}
-	const names = others.map((person) => person.displayName);
-	const last = names.pop();
-	return names.length === 0
-		? `Still to say yes: ${last}.`
-		: `Still to say yes: ${names.join(", ")} and ${last}.`;
-}
-
 interface SectionHeadProps {
 	label: string;
 	tally: string;
@@ -485,10 +440,9 @@ function SectionHead({
 	return (
 		<div className={cn("flex items-center gap-2.5", thin ? "pt-1" : "pt-1.5")}>
 			{warn && (
-				<span
-					aria-hidden
-					className="zl-breathe size-1.5 shrink-0 rounded-full bg-stale"
-				/>
+				<span aria-hidden className="shrink-0 text-stale">
+					<Icon name="warning" size="xs" />
+				</span>
 			)}
 			<span
 				className={cn(

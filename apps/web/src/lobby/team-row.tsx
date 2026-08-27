@@ -14,7 +14,8 @@ import type { LobbyTeamView } from "./model";
  * opens the identity drawer, because on a board of five teams the thing a hand
  * reaches for is the team rather than a control beside it.
  *
- * A team nobody is on says so **where its members would be**, in the alert
+ * The header is a name, not a card — the people underneath are the cards. A
+ * team nobody is on says so **where its members would be**, in the alert
  * colour, in the row their names would occupy. That is the whole warning: a
  * card above the button repeating it would be the same sentence twice, and the
  * empty row is the one that can be pointed at.
@@ -22,8 +23,6 @@ import type { LobbyTeamView } from "./model";
 
 interface TeamRowProps {
 	team: LobbyTeamView;
-	/** The viewer is on this team. */
-	mine: boolean;
 	onOpen: () => void;
 	/** Found / still hiding, above the people. */
 	result?: ReactNode;
@@ -31,44 +30,36 @@ interface TeamRowProps {
 	children?: ReactNode;
 }
 
-export function TeamRow({
-	team,
-	mine,
-	onOpen,
-	result,
-	children,
-}: TeamRowProps) {
+export function TeamRow({ team, onOpen, result, children }: TeamRowProps) {
 	const reduced = useReducedMotion();
 	const empty = team.members.length === 0;
 
 	return (
 		<motion.div
-			className="flex flex-col gap-1"
+			className="flex flex-col gap-1.5"
 			variants={reduced ? fadeOnly : listItem}
 		>
 			<button
 				className={cn(
-					"flex w-full items-center gap-2.5 rounded-tile border border-hairline border-l-[5px] bg-surface px-3 py-2 text-left",
-					"transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:translate-x-0.5 active:scale-[0.99]",
-					mine && "border-action/40 bg-action/[0.07]",
+					"flex min-h-tap w-full items-center gap-2.5 px-1 py-1 text-left",
+					"transition-transform duration-[--dur-tap] ease-[--ease-pop] active:scale-[0.99]",
 				)}
 				data-testid={`team-${team.name}`}
 				onClick={onOpen}
-				style={{ borderLeftColor: team.color }}
 				type="button"
 			>
 				<TeamBadge team={team} variant="mark" />
 				<span className="min-w-0 flex-1 font-display font-extrabold text-[0.95rem] tracking-tight">
 					{team.name}
 				</span>
-				<span className="text-ink-faint">
-					<Icon name="caret-right" size="sm" />
-				</span>
 			</button>
 
 			{result}
 
-			<div className="flex flex-col gap-1" data-testid={`members-${team.name}`}>
+			<div
+				className="flex flex-col gap-1.5"
+				data-testid={`members-${team.name}`}
+			>
 				{empty ? (
 					<p
 						className={cn(
@@ -77,10 +68,9 @@ export function TeamRow({
 						)}
 						data-testid={`empty-${team.name}`}
 					>
-						<span
-							aria-hidden
-							className="zl-breathe size-1.5 shrink-0 rounded-full bg-stale"
-						/>
+						<span aria-hidden className="shrink-0 text-stale">
+							<Icon name="warning" size="xs" />
+						</span>
 						Nobody on this team yet
 					</p>
 				) : (

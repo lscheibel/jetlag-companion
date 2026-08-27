@@ -169,7 +169,7 @@ export default function BuildRoute() {
 				onStatusChange={setStatus}
 			>
 				<AreaLayer area={builder.area} />
-				<BuilderStopsLayer stops={preview} />
+				<BuilderStopsLayer selectedId={selectedStopId} stops={preview} />
 				<DrawLayer ring={builder.state.ring} />
 				<MapViewportReporter onSettle={setViewBounds} />
 				{builder.state.drawing ? (

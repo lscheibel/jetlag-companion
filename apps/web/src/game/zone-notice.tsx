@@ -2,6 +2,8 @@ import { useQuery } from "@rocicorp/zero/react";
 import { multiPolygonToRegion, regionContains } from "@zero-lag/geo";
 import { queries } from "@zero-lag/schema";
 import { Surface } from "@zero-lag/ui/components/surface";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { mapCardMotionProps } from "../map/map-card";
 import type { MyRole } from "./use-role";
 
 interface ZoneNoticeProps {
@@ -20,35 +22,42 @@ interface ZoneNoticeProps {
  */
 export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
 	const [commitments] = useQuery(queries.commitments());
-
-	if (
-		role.role !== "hider" ||
-		(role.roundStatus !== "hiding" && role.roundStatus !== "seeking") ||
-		!role.teamId ||
-		!fix ||
-		fix.source === "unavailable"
-	) {
-		return null;
-	}
-
-	const commitment = commitments.find(
-		(value) =>
-			value.roundId === role.roundId && value.hiderTeamId === role.teamId,
+	const reducedMotion = useReducedMotion();
+	const eligible =
+		role.role === "hider" &&
+		(role.roundStatus === "hiding" || role.roundStatus === "seeking") &&
+		Boolean(role.teamId) &&
+		fix !== null &&
+		fix.source !== "unavailable";
+	const commitment = eligible
+		? commitments.find(
+				(value) =>
+					value.roundId === role.roundId && value.hiderTeamId === role.teamId,
+			)
+		: undefined;
+	const open = Boolean(
+		eligible &&
+			commitment &&
+			fix &&
+			!regionContains(multiPolygonToRegion(commitment.zone), [
+				fix.lng,
+				fix.lat,
+			]),
 	);
-	if (
-		!commitment ||
-		regionContains(multiPolygonToRegion(commitment.zone), [fix.lng, fix.lat])
-	) {
-		return null;
-	}
 
 	return (
-		<Surface
-			className="px-3 py-2 font-medium text-sm"
-			data-testid="zone-leave-notice"
-			raised
-		>
-			Looks like you left your hiding zone.
-		</Surface>
+		<AnimatePresence>
+			{open && (
+				<motion.div key="zone-notice" {...mapCardMotionProps(reducedMotion)}>
+					<Surface
+						className="px-3 py-2 font-medium text-sm"
+						data-testid="zone-leave-notice"
+						raised
+					>
+						Looks like you left your hiding zone.
+					</Surface>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 }

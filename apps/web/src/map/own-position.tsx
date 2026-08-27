@@ -1,8 +1,10 @@
 import { circleLngLat } from "@zero-lag/geo";
 import type { PositionSnapshot } from "@zero-lag/schema";
+import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { useMemo } from "react";
 import { multiPolygonFeature } from "./geojson";
 import { MapMarker } from "./map-canvas";
+import { CoordinateCopy } from "./map-tool-sheet";
 import { formatAccuracy } from "./staleness";
 import { formatCoordinates } from "./toolkit";
 import { useGeoJsonLayer } from "./use-geojson-layer";
@@ -25,6 +27,7 @@ interface OwnPositionProps {
 	readonly fix: PositionSnapshot | null;
 	/** Compass degrees, or null where there is no compass. m2-spec §8. */
 	readonly headingDeg: number | null;
+	readonly onSelect?: () => void;
 }
 
 /**
@@ -34,40 +37,58 @@ interface OwnPositionProps {
  * knows, and asking the server to tell it back adds latency and a failure mode
  * for nothing. This marker and its ring are on screen with the socket down.
  */
-export function OwnPosition({ fix, headingDeg }: OwnPositionProps) {
+export function OwnPosition({ fix, headingDeg, onSelect }: OwnPositionProps) {
 	const usable = fix && fix.source !== "unavailable" ? fix : null;
 	const { bearing } = useMapCamera();
+
+	const mark = (
+		<>
+			{headingDeg !== null && (
+				<span
+					aria-hidden
+					className="absolute"
+					data-testid="own-heading"
+					style={{ transform: `rotate(${headingDeg - bearing}deg)` }}
+				>
+					<svg
+						aria-hidden
+						height="34"
+						viewBox="0 0 24 34"
+						width="24"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<title>Facing</title>
+						<path d="M12 0 L17 11 L12 8.5 L7 11 Z" fill="#0072B2" />
+					</svg>
+				</span>
+			)}
+			<span className="size-4 rounded-full border-2 border-white bg-[#0072B2] shadow" />
+		</>
+	);
 
 	return (
 		<>
 			<AccuracyRing fix={usable} />
 			{usable && (
 				<MapMarker lat={usable.lat} lng={usable.lng}>
-					<div
-						className="relative flex size-6 items-center justify-center"
-						data-testid="own-marker"
-					>
-						{headingDeg !== null && (
-							<span
-								aria-hidden
-								className="absolute"
-								data-testid="own-heading"
-								style={{ transform: `rotate(${headingDeg - bearing}deg)` }}
-							>
-								<svg
-									aria-hidden
-									height="34"
-									viewBox="0 0 24 34"
-									width="24"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<title>Facing</title>
-									<path d="M12 0 L17 11 L12 8.5 L7 11 Z" fill="#0072B2" />
-								</svg>
-							</span>
-						)}
-						<span className="size-4 rounded-full border-2 border-white bg-[#0072B2] shadow" />
-					</div>
+					{onSelect ? (
+						<button
+							aria-label="Your position"
+							className="relative flex size-6 items-center justify-center"
+							data-testid="own-marker"
+							onClick={onSelect}
+							type="button"
+						>
+							{mark}
+						</button>
+					) : (
+						<div
+							className="relative flex size-6 items-center justify-center"
+							data-testid="own-marker"
+						>
+							{mark}
+						</div>
+					)}
 				</MapMarker>
 			)}
 		</>
@@ -109,5 +130,36 @@ export function OwnPositionReadout({ fix }: { fix: PositionSnapshot | null }) {
 			{formatCoordinates([fix.lng, fix.lat])} ·{" "}
 			{formatAccuracy(fix.accuracyMeters)}
 		</p>
+	);
+}
+
+interface OwnPositionSheetProps {
+	readonly fix: PositionSnapshot | null;
+	readonly open: boolean;
+	readonly onClose: () => void;
+}
+
+/** Tap your own marker. The numbers live here rather than over the map. */
+export function OwnPositionSheet({
+	fix,
+	open,
+	onClose,
+}: OwnPositionSheetProps) {
+	const shown = useHeldValue(open, fix);
+
+	return (
+		<Sheet
+			onClose={onClose}
+			open={open}
+			testId="own-position-sheet"
+			title="Your position"
+		>
+			{shown && shown.source !== "unavailable" && (
+				<div className="space-y-2 text-sm">
+					<OwnPositionReadout fix={shown} />
+					<CoordinateCopy point={[shown.lng, shown.lat]} />
+				</div>
+			)}
+		</Sheet>
 	);
 }

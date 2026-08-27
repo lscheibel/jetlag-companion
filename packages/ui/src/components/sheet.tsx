@@ -99,7 +99,7 @@ export function Sheet({
 					<motion.div
 						className={cn(
 							"relative flex max-h-[86dvh] flex-col gap-3 rounded-t-sheet border-hairline border-t bg-surface",
-							"px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-24px_40px_-20px_rgb(0_0_0/0.6)]",
+							"px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]",
 							className,
 						)}
 						data-testid={testId}

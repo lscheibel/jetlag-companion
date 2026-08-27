@@ -10,6 +10,7 @@ import { webPlatform } from "@zero-lag/platform/web";
 import { mutators, queries } from "@zero-lag/schema";
 import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { FoundCard, SeekerActionsSheet } from "../game/found-sheet";
 import { HiderTeamSheet } from "../game/hider-selector";
@@ -32,8 +33,9 @@ import { DrawLayer } from "../map/draw-layer";
 import { EliminatedLayer } from "../map/eliminated-layer";
 import { GameAreaLayer } from "../map/game-area-layer";
 import { HidingZoneLayer } from "../map/hiding-zone-layer";
-import { MapBar } from "../map/map-bar";
+import { MapBar, sheetOwnsBar } from "../map/map-bar";
 import { MapCanvas, type MapStatus } from "../map/map-canvas";
+import { mapCardMotionProps } from "../map/map-card";
 import { MapControls } from "../map/map-controls";
 import {
 	MapFlyTo,
@@ -52,7 +54,11 @@ import { MapHud } from "../map/map-rail";
 import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
-import { OwnPosition, OwnPositionReadout } from "../map/own-position";
+import {
+	OwnPosition,
+	OwnPositionReadout,
+	OwnPositionSheet,
+} from "../map/own-position";
 import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
@@ -64,6 +70,7 @@ import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
 	type MapTool,
+	nearestAtPx,
 	nearestStopPx,
 	type SearchableStop,
 	type SearchResult,
@@ -130,6 +137,8 @@ export default function MapRoute() {
 
 function MapScreen() {
 	const { session, ephemeral, tracking } = useGameShell();
+	const reducedMotion = useReducedMotion();
+	const cardMotion = mapCardMotionProps(reducedMotion);
 	const role = useMyRole(session.playerId);
 	const zero = useZero();
 
@@ -151,6 +160,7 @@ function MapScreen() {
 	const [status, setStatus] = useState<MapStatus>("loading");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+	const [ownSheetOpen, setOwnSheetOpen] = useState(false);
 	const [tool, setTool] = useState<MapTool>({ kind: "none" });
 	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
 	const [pinLook, setPinLook] = useState<{
@@ -390,9 +400,19 @@ function MapScreen() {
 		if (next.kind !== "none") {
 			setSelectedStopId(null);
 			setSeekerOverlay("none");
+			setOwnSheetOpen(false);
 		}
 		if (next.kind === "drawingSplitConstraint") setCut(false);
 		setTool(next);
+	};
+
+	const selectPin = (pinId: string) => {
+		const pin = pins.find((row) => row.id === pinId);
+		setSelectedStopId(null);
+		setSelectedId(null);
+		setOwnSheetOpen(false);
+		setDraftPoint(pin ? [pin.lng, pin.lat] : null);
+		setTool({ kind: "editingPin", pinId });
 	};
 
 	const handleTap = (
@@ -404,6 +424,35 @@ function MapScreen() {
 			return;
 		}
 		if (tool.kind === "none") {
+			if (!isHidingHider) {
+				const ownHit =
+					ownFix && ownFix.source !== "unavailable"
+						? nearestAtPx(
+								[ownFix],
+								screen,
+								(fix) => [fix.lng, fix.lat],
+								project,
+								STOP_TAP_PX,
+							)
+						: null;
+				if (ownHit) {
+					setOwnSheetOpen(true);
+					setSelectedStopId(null);
+					setSelectedId(null);
+					return;
+				}
+				const pinHit = nearestAtPx(
+					pins,
+					screen,
+					(pin) => [pin.lng, pin.lat],
+					project,
+					STOP_TAP_PX,
+				);
+				if (pinHit) {
+					selectPin(pinHit.id);
+					return;
+				}
+			}
 			const hit = nearestStopPx(
 				searchableStops,
 				screen,
@@ -423,6 +472,7 @@ function MapScreen() {
 				return;
 			}
 			setSelectedStopId(hit?.stopId ?? null);
+			setOwnSheetOpen(false);
 			if (hit) setSelectedId(null);
 			return;
 		}
@@ -839,18 +889,14 @@ function MapScreen() {
 							role.role === "seeker" ? (searchArea.surviving ?? null) : null
 						}
 						id="play-stops"
+						selectedId={selectedStopId}
 						stops={searchableStops}
 					/>
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
 						disabled={tool.kind !== "none" || isHidingHider}
 						omitId={editingPin?.id}
-						onSelect={(pinId) => {
-							const pin = pins.find((row) => row.id === pinId);
-							setSelectedStopId(null);
-							setDraftPoint(pin ? [pin.lng, pin.lat] : null);
-							setTool({ kind: "editingPin", pinId });
-						}}
+						onSelect={selectPin}
 						pins={pins}
 					/>
 					{(tool.kind === "placingPin" || tool.kind === "editingPin") &&
@@ -907,7 +953,16 @@ function MapScreen() {
 					/>
 					<MapFlyTo target={flyTarget} />
 					<NorthReset />
-					<OwnPosition fix={ownFix} headingDeg={headingDeg} />
+					<OwnPosition
+						fix={ownFix}
+						headingDeg={headingDeg}
+						onSelect={() => {
+							if (tool.kind !== "none") return;
+							setOwnSheetOpen(true);
+							setSelectedStopId(null);
+							setSelectedId(null);
+						}}
+					/>
 					{others.map((player) => (
 						<PlayerMarker
 							key={player.playerId}
@@ -915,6 +970,7 @@ function MapScreen() {
 								if (tool.kind === "none") {
 									setSelectedId(playerId);
 									setSelectedStopId(null);
+									setOwnSheetOpen(false);
 								}
 							}}
 							player={player}
@@ -943,141 +999,161 @@ function MapScreen() {
 					<OfflineSurface onRetry={() => setAttempt((n) => n + 1)} />
 				)}
 
-				{ownFix && ownFix.source !== "unavailable" && (
-					<Surface
-						className="absolute top-3 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
-						raised
-					>
-						<OwnPositionReadout fix={ownFix} />
-						<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
-					</Surface>
-				)}
+				{status === "unavailable" &&
+					ownFix &&
+					ownFix.source !== "unavailable" && (
+						<Surface
+							className="absolute top-3 left-3 z-10 max-w-[11rem] px-2 py-1 text-xs"
+							raised
+						>
+							<OwnPositionReadout fix={ownFix} />
+							<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
+						</Surface>
+					)}
 				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
 					<ZoneNotice fix={ownFix} role={role} />
 				</div>
 				<MapControls blindness={blindnessControl} />
 				<div className="pointer-events-none absolute inset-x-3 top-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-end justify-between gap-3">
 					<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col items-stretch justify-end">
-						{tool.kind === "measure" && (
-							<MeasureCard
-								onCancel={cancelTool}
-								onSeedMeasure={() => {
-									if (
-										tool.measure.kind === "path" &&
-										ownFix &&
-										ownFix.source !== "unavailable"
-									) {
-										setTool({
-											kind: "measure",
-											measure: {
-												kind: "path",
-												points: [[ownFix.lng, ownFix.lat]],
-											},
-										});
-									}
-								}}
-								onUndoMeasure={() => {
-									if (tool.measure.kind !== "path") return;
-									setTool({
-										kind: "measure",
-										measure: {
-											kind: "path",
-											points: tool.measure.points.slice(0, -1),
-										},
-									});
-								}}
-								tool={tool}
-							/>
-						)}
-						{(tool.kind === "placingPin" || tool.kind === "editingPin") && (
-							<PinCard
-								draftPoint={draftPoint}
-								key={editingPin?.id ?? "new"}
-								onCancel={cancelTool}
-								onDelete={
-									editingPin
-										? () => {
-												void zero.mutate(
-													mutators.pin.delete({
-														...event(),
-														pinId: editingPin.id,
-													}),
-												);
-												cancelTool();
+						<AnimatePresence>
+							{tool.kind === "measure" && (
+								<motion.div key="measure" {...cardMotion}>
+									<MeasureCard
+										onCancel={cancelTool}
+										onSeedMeasure={() => {
+											if (
+												tool.measure.kind === "path" &&
+												ownFix &&
+												ownFix.source !== "unavailable"
+											) {
+												setTool({
+													kind: "measure",
+													measure: {
+														kind: "path",
+														points: [[ownFix.lng, ownFix.lat]],
+													},
+												});
 											}
-										: null
-								}
-								onDraftPoint={setDraftPoint}
-								onLook={({ color, label }) => {
-									if (pinDraftKey === null) return;
-									setPinLook({ key: pinDraftKey, color, label });
-								}}
-								onSave={savePin}
-								pin={editingPin}
-								teamColor={myTeam?.color ?? "#0072B2"}
-							/>
-						)}
-						{tool.kind === "listingConstraints" && (
-							<CutsCard
-								constraints={constraintItems}
-								onRemove={removeConstraint}
-								onRename={renameConstraint}
-								onToggle={toggleConstraint}
-							/>
-						)}
-						{tool.kind === "none" && (
-							<HidingSheet
-								clockOffsetMs={ephemeral.clockOffsetMs ?? 0}
-								radiusMeters={defaultRadiusMeters}
-								role={role}
-								selectedStop={hidingStop}
-							/>
-						)}
-						{seekerOverlay === "found" && (
-							<FoundCard
-								hiderTeamId={hiderTeamId}
-								onCancel={() => setSeekerOverlay("none")}
-								role={role}
-								token={session.token}
-							/>
-						)}
-						{canEditConstraints && seekerOverlay !== "found" && (
-							<MapBar
-								canEditConstraints={canEditConstraints}
-								cut={cut}
-								hiders={hiderTeams}
-								onActions={() =>
-									setSeekerOverlay((current) =>
-										current === "actions" ? "none" : "actions",
-									)
-								}
-								onCancel={cancelTool}
-								onCommitConstraint={commitConstraint}
-								onCutChange={setCut}
-								onOpenHiderSheet={() => setHiderSheetOpen(true)}
-								onRadiusStep={(direction) => {
-									if (tool.kind !== "drawingRadiusConstraint") return;
-									setTool({
-										...tool,
-										radiusMeters: stepZoneMeters(tool.radiusMeters, direction),
-									});
-								}}
-								onSelectBoundary={(id) => {
-									if (tool.kind !== "pickingBoundaryConstraint") return;
-									setTool({ ...tool, selectedId: id });
-								}}
-								onSplitChange={setTool}
-								onUndoPolygonVertex={() => {
-									if (tool.kind !== "drawingPolygonConstraint") return;
-									setTool({
-										kind: "drawingPolygonConstraint",
-										ring: tool.ring.slice(0, -1),
-									});
-								}}
-								selectedHiderId={hiderTeamId}
-								tool={tool}
-							/>
-						)}
+										}}
+										onUndoMeasure={() => {
+											if (tool.measure.kind !== "path") return;
+											setTool({
+												kind: "measure",
+												measure: {
+													kind: "path",
+													points: tool.measure.points.slice(0, -1),
+												},
+											});
+										}}
+										tool={tool}
+									/>
+								</motion.div>
+							)}
+							{(tool.kind === "placingPin" || tool.kind === "editingPin") && (
+								<motion.div key={editingPin?.id ?? "pin-new"} {...cardMotion}>
+									<PinCard
+										draftPoint={draftPoint}
+										onCancel={cancelTool}
+										onDelete={
+											editingPin
+												? () => {
+														void zero.mutate(
+															mutators.pin.delete({
+																...event(),
+																pinId: editingPin.id,
+															}),
+														);
+														cancelTool();
+													}
+												: null
+										}
+										onDraftPoint={setDraftPoint}
+										onLook={({ color, label }) => {
+											if (pinDraftKey === null) return;
+											setPinLook({ key: pinDraftKey, color, label });
+										}}
+										onSave={savePin}
+										pin={editingPin}
+										teamColor={myTeam?.color ?? "#0072B2"}
+									/>
+								</motion.div>
+							)}
+							{tool.kind === "listingConstraints" && (
+								<motion.div key="cuts" {...cardMotion}>
+									<CutsCard
+										constraints={constraintItems}
+										onRemove={removeConstraint}
+										onRename={renameConstraint}
+										onToggle={toggleConstraint}
+									/>
+								</motion.div>
+							)}
+							{tool.kind === "none" && isHidingHider && (
+								<motion.div key="hiding" {...cardMotion}>
+									<HidingSheet
+										clockOffsetMs={ephemeral.clockOffsetMs ?? 0}
+										radiusMeters={defaultRadiusMeters}
+										role={role}
+										selectedStop={hidingStop}
+									/>
+								</motion.div>
+							)}
+							{seekerOverlay === "found" && (
+								<motion.div key="found" {...cardMotion}>
+									<FoundCard
+										hiderTeamId={hiderTeamId}
+										onCancel={() => setSeekerOverlay("none")}
+										role={role}
+										token={session.token}
+									/>
+								</motion.div>
+							)}
+							{canEditConstraints &&
+								seekerOverlay !== "found" &&
+								!sheetOwnsBar(tool) && (
+									<motion.div key="bar" {...cardMotion}>
+										<MapBar
+											canEditConstraints={canEditConstraints}
+											cut={cut}
+											hiders={hiderTeams}
+											onActions={() =>
+												setSeekerOverlay((current) =>
+													current === "actions" ? "none" : "actions",
+												)
+											}
+											onCancel={cancelTool}
+											onCommitConstraint={commitConstraint}
+											onCutChange={setCut}
+											onOpenHiderSheet={() => setHiderSheetOpen(true)}
+											onRadiusStep={(direction) => {
+												if (tool.kind !== "drawingRadiusConstraint") return;
+												setTool({
+													...tool,
+													radiusMeters: stepZoneMeters(
+														tool.radiusMeters,
+														direction,
+													),
+												});
+											}}
+											onSelectBoundary={(id) => {
+												if (tool.kind !== "pickingBoundaryConstraint") return;
+												setTool({ ...tool, selectedId: id });
+											}}
+											onSplitChange={setTool}
+											onUndoPolygonVertex={() => {
+												if (tool.kind !== "drawingPolygonConstraint") return;
+												setTool({
+													kind: "drawingPolygonConstraint",
+													ring: tool.ring.slice(0, -1),
+												});
+											}}
+											selectedHiderId={hiderTeamId}
+											tool={tool}
+										/>
+									</motion.div>
+								)}
+						</AnimatePresence>
 					</div>
 				</div>
 			</div>
@@ -1170,6 +1246,11 @@ function MapScreen() {
 				}
 				open={selectedStop !== null}
 				stop={selectedStop}
+			/>
+			<OwnPositionSheet
+				fix={ownFix}
+				onClose={() => setOwnSheetOpen(false)}
+				open={ownSheetOpen}
 			/>
 			{selected && (
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />

@@ -34,10 +34,12 @@ import {
  * What the create-a-game wizard is holding while the host walks through it.
  *
  * The game exists from the first screen — a token has to exist before the
- * catalog can be read — but nothing the wizard decides is written until the
- * review step. Four screens that each apply their own change would leave a host
- * who backs out halfway with a game configured to somewhere they had already
- * changed their mind about, and would rebuild the board three times on the way.
+ * catalog can be read — but nothing the wizard decides about the *board* is
+ * written until the review step. Four screens that each apply their own change
+ * would leave a host who backs out halfway with a game configured to somewhere
+ * they had already changed their mind about, and would rebuild the board three
+ * times on the way. Teams are the exception: they are the same rows the lobby
+ * already uses, so they are live as soon as they are made.
  *
  * The draft therefore stores **overrides only**. Everything shown is derived
  * during render from the board the game already has: the suggestion follows the

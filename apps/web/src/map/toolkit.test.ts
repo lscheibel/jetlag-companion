@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	formatCoordinates,
 	formatDistance,
+	nearestAtPx,
 	nearestStopPx,
 	type ParsedCoordinates,
 	parseCoordinates,
@@ -137,7 +138,7 @@ describe("place search", () => {
 	});
 });
 
-describe("nearestStopPx", () => {
+describe("nearestAtPx", () => {
 	const project = (lngLat: readonly [number, number]) => ({
 		x: lngLat[0] * 1000,
 		y: lngLat[1] * 1000,
@@ -155,5 +156,16 @@ describe("nearestStopPx", () => {
 
 	it("misses when the tap is far from every stop", () => {
 		expect(nearestStopPx(STOPS, { x: 0, y: 0 }, project)).toBeNull();
+	});
+
+	it("finds a pin on top of a stop at the same point", () => {
+		const alex = STOPS.find((stop) => stop.stopId === "alexanderplatz");
+		expect(alex).toBeDefined();
+		if (!alex) return;
+		const pins = [{ id: "pin-1", lng: alex.lng, lat: alex.lat }];
+		const screen = project([alex.lng, alex.lat]);
+		expect(
+			nearestAtPx(pins, screen, (pin) => [pin.lng, pin.lat], project, 24)?.id,
+		).toBe("pin-1");
 	});
 });

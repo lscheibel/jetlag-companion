@@ -56,7 +56,7 @@ export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
 
 	return (
 		<>
-			{shown.map((pin, index) => (
+			{shown.map((pin) => (
 				<MapMarker key={pin.id} lat={pin.lat} lng={pin.lng}>
 					<button
 						data-testid={`pin-${pin.id}`}
@@ -64,10 +64,7 @@ export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
 						onClick={() => onSelect(pin.id)}
 						type="button"
 					>
-						<PinMark
-							color={pin.color}
-							label={pin.label.trim() || `Pin ${index + 1}`}
-						/>
+						<PinMark color={pin.color} label={pin.label} />
 					</button>
 				</MapMarker>
 			))}
@@ -87,7 +84,7 @@ export function PinDraftMarker({
 	return (
 		<MapMarker lat={point[1]} lng={point[0]}>
 			<span data-testid="pin-draft">
-				<PinMark color={color} label={label.trim() || "Pin"} />
+				<PinMark color={color} label={label} />
 			</span>
 		</MapMarker>
 	);
@@ -100,12 +97,15 @@ function PinMark({
 	readonly color: string;
 	readonly label: string;
 }) {
+	const name = label.trim();
 	return (
 		<span className="flex min-h-11 flex-col items-center">
 			<PinDot color={color} />
-			<span className="mt-0.5 max-w-28 truncate rounded-md bg-surface/95 px-1.5 py-0.5 font-semibold text-[0.65rem] leading-tight shadow">
-				{label}
-			</span>
+			{name ? (
+				<span className="mt-0.5 max-w-28 truncate rounded-md bg-surface/95 px-1.5 py-0.5 font-semibold text-[0.65rem] leading-tight shadow">
+					{name}
+				</span>
+			) : null}
 		</span>
 	);
 }

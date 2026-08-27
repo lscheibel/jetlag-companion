@@ -70,7 +70,7 @@ export function Door({
 					primary
 						? "bg-action text-action-ink"
 						: "border-2 border-hairline-strong bg-surface text-ink",
-					beacon && "zl-sheen",
+					beacon && !rest.disabled && "zl-sheen",
 				)}
 			>
 				<span

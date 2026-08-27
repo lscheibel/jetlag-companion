@@ -47,7 +47,11 @@ async function setUpRound(
 	code: string,
 	teams: { name: string; phones: Phone[]; side: "hider" | "seeker" }[],
 ): Promise<void> {
-	for (const team of teams) await createTeam(host, team.name);
+	for (const team of teams) {
+		if ((await host.page.getByTestId(`team-${team.name}`).count()) === 0) {
+			await createTeam(host, team.name, team.side);
+		}
+	}
 	for (const team of teams) {
 		for (const phone of team.phones) await joinTeam(phone, team.name);
 	}
@@ -119,6 +123,10 @@ test("1. a hider watches three seeker teams move", async ({ browser }) => {
 	for (const step of walk) {
 		await step.phone.page.bringToFront();
 		await step.phone.context.setGeolocation(step.to);
+		await expect(step.phone.page.getByTestId("own-marker")).toBeVisible({
+			timeout: 30_000,
+		});
+		await step.phone.page.getByTestId("own-marker").click();
 		await expect(step.phone.page.getByTestId("own-readout")).toContainText(
 			step.to.longitude.toFixed(2),
 			{ timeout: 30_000 },
@@ -332,6 +340,7 @@ test("5. one accuracy ring, and it is your own", async ({ browser }) => {
 	await expect(ana.page.getByTestId("own-marker")).toBeVisible({
 		timeout: 30_000,
 	});
+	await ana.page.getByTestId("own-marker").click();
 	await expect(ana.page.getByTestId("own-readout")).toContainText("±");
 
 	/**

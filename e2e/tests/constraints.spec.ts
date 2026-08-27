@@ -2,14 +2,12 @@ import { expect, test } from "@playwright/test";
 import { closeDb, teamIdForName } from "./db";
 import {
 	createGame,
-	createTeam,
 	joinGame,
 	joinTeam,
 	openLobby,
 	openMap,
 	openPhone,
 	type Phone,
-	setSide,
 	startHiding,
 	startSeekingPhase,
 	waitForSync,
@@ -87,13 +85,9 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await joinGame(ben, code);
 	await joinGame(cara, code);
 	for (const phone of [ana, ben, cara]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(cara, "Seekers");
 	await joinTeam(ben, "Hiders");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Seekers", "seeker");
 
 	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
@@ -139,19 +133,17 @@ test("two hider teams switch folds from the selector", async ({ browser }) => {
 	const ana = await openPhone(browser, "Ana");
 	const ben = await openPhone(browser, "Ben");
 	const cara = await openPhone(browser, "Cara");
-	const code = await createGame(ana);
+	const code = await createGame(ana, [
+		{ name: "Hiders", side: "hider" },
+		{ name: "Foxes", side: "hider" },
+		{ name: "Seekers", side: "seeker" },
+	]);
 	await joinGame(ben, code);
 	await joinGame(cara, code);
 	for (const phone of [ana, ben, cara]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Foxes");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(ben, "Hiders");
 	await joinTeam(cara, "Foxes");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Foxes", "hider");
-	await setSide(ana, "Seekers", "seeker");
 
 	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
@@ -197,13 +189,9 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await joinGame(ben, code);
 	await joinGame(cara, code);
 	for (const phone of [ana, ben, cara]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(cara, "Seekers");
 	await joinTeam(ben, "Hiders");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Seekers", "seeker");
 
 	await startHiding([ana, ben, cara], code, "30");
 	await commitZone(ben, code);
@@ -248,12 +236,8 @@ test("a seeker split cuts one side of the remaining area", async ({
 	const code = await createGame(ana);
 	await joinGame(ben, code);
 	for (const phone of [ana, ben]) await waitForSync(phone);
-	await createTeam(ana, "Hiders");
-	await createTeam(ana, "Seekers");
 	await joinTeam(ana, "Seekers");
 	await joinTeam(ben, "Hiders");
-	await setSide(ana, "Hiders", "hider");
-	await setSide(ana, "Seekers", "seeker");
 
 	await startHiding([ana, ben], code, "30");
 	await commitZone(ben, code);

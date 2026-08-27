@@ -47,7 +47,7 @@ export default function SetupSize() {
 
 	function continueSetup() {
 		if (!fromLobby) {
-			void navigate(`/g/${session.code}/setup/review`);
+			void navigate(`/g/${session.code}/setup/teams`);
 			return;
 		}
 		setBusy(true);

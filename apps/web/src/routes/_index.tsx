@@ -36,13 +36,13 @@ export default function Start() {
 					<p className="text-ink-dim text-sm">Hide and seek.</p>
 				</div>
 
-				{/* The four colours the rest of the app spends: U-Bahn, S-Bahn, tram,
-				    and the one loud yellow that always means "act". */}
+				{/* The four colours the rest of the app spends: U-Bahn, S-Bahn, the
+				    yellow that always means "act", and curse. */}
 				<div aria-hidden className="flex gap-1">
 					<i className="h-2 flex-1 rounded-full bg-transit-u" />
 					<i className="h-2 flex-1 rounded-full bg-transit-s" />
-					<i className="h-2 flex-1 rounded-full bg-transit-tram" />
 					<i className="h-2 flex-1 rounded-full bg-action" />
+					<i className="h-2 flex-1 rounded-full bg-curse" />
 				</div>
 
 				<div className="flex-1" />

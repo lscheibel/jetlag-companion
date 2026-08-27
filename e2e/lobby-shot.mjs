@@ -29,6 +29,17 @@ await page.getByTestId("setup-stops-in-play").waitFor();
 await page.getByTestId("setup-transit-continue").click();
 await page.getByTestId("hiding-time").waitFor();
 await page.getByTestId("setup-size-continue").click();
+await page.getByTestId("setup-teams").waitFor();
+for (const [name, side] of [
+	["Fuchsbau", "hider"],
+	["Eule", "seeker"],
+]) {
+	await page.getByTestId("create-team").click();
+	await page.getByTestId("team-name-input").fill(name);
+	await page.getByTestId(`side-${side}`).click();
+	await page.getByTestId("team-editor-done").click();
+}
+await page.getByTestId("setup-teams-continue").click();
 await page.getByTestId("setup-review").waitFor();
 await page.getByTestId("setup-open-lobby").click();
 await page.getByTestId("lobby").waitFor();
@@ -44,13 +55,6 @@ await ben.getByTestId("display-name").fill("Nils");
 await ben.getByTestId("join-game").click();
 await ben.getByTestId("lobby").waitFor();
 
-for (const [name, side] of [["Fuchsbau", "hider"], ["Eule", "seeker"]]) {
-	await page.getByTestId("create-team").click();
-	await page.getByTestId("team-name-input").fill(name);
-	await page.getByTestId(`side-${side}`).click();
-	await page.getByTestId("team-editor-done").click();
-	await page.waitForTimeout(400);
-}
 await page.getByTestId("player-Pia").click();
 await page.getByTestId("move-Pia").click();
 await page.getByTestId("join-Eule").click();

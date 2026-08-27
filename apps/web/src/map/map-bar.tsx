@@ -116,7 +116,7 @@ export function MapBar({
 	);
 }
 
-function sheetOwnsBar(tool: MapTool): boolean {
+export function sheetOwnsBar(tool: MapTool): boolean {
 	if (tool.kind === "searching" || tool.kind === "listingConstraints") {
 		return true;
 	}

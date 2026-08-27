@@ -63,6 +63,9 @@ export function LobbyChrome({
 						onHidingZone={() =>
 							void navigate(`/g/${session.code}/setup/size?from=lobby`)
 						}
+						onTeams={() =>
+							void navigate(`/g/${session.code}/setup/teams?from=lobby`)
+						}
 						onClaimHost={() => {
 							claimHost();
 							setOverlay("none");

@@ -23,6 +23,7 @@ interface LobbyMenuProps {
 	onGameArea: () => void;
 	onTransit: () => void;
 	onHidingZone: () => void;
+	onTeams: () => void;
 	onLeave: () => void;
 	leaving: boolean;
 }
@@ -36,6 +37,7 @@ export function LobbyMenu({
 	onGameArea,
 	onTransit,
 	onHidingZone,
+	onTeams,
 	onLeave,
 	leaving,
 }: LobbyMenuProps) {
@@ -143,6 +145,16 @@ export function LobbyMenu({
 					tone="secondary"
 				>
 					Hiding zone
+				</ActionButton>
+			)}
+
+			{amHost && (
+				<ActionButton
+					data-testid="open-teams"
+					onClick={onTeams}
+					tone="secondary"
+				>
+					Teams
 				</ActionButton>
 			)}
 

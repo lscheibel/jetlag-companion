@@ -55,6 +55,24 @@ await shot(page, "c4b-size-sheet");
 await page.keyboard.press("Escape");
 
 await page.getByTestId("setup-size-continue").click();
+await page.getByTestId("setup-teams").waitFor();
+await page.waitForTimeout(400);
+await shot(page, "c4c-teams");
+
+for (const [name, side] of [
+	["Fuchsbau", "hider"],
+	["Eule", "seeker"],
+]) {
+	await page.getByTestId("create-team").click();
+	await page.getByTestId("team-name-input").fill(name);
+	await page.waitForTimeout(200);
+	if (name === "Fuchsbau") await shot(page, "b1-team-drawer");
+	await page.getByTestId(`side-${side}`).click();
+	await page.getByTestId("team-editor-done").click();
+	await page.waitForTimeout(500);
+}
+
+await page.getByTestId("setup-teams-continue").click();
 await page.getByTestId("setup-review").waitFor();
 await page.waitForTimeout(600);
 await shot(page, "c5-review");
@@ -74,20 +92,6 @@ await ben.goto(`https://localhost:5173/j/${code}`);
 await ben.getByTestId("display-name").fill("Nils");
 await ben.getByTestId("join-game").click();
 await ben.getByTestId("lobby").waitFor();
-
-// Two teams, two sides, both with somebody on them.
-for (const [name, side] of [
-	["Fuchsbau", "hider"],
-	["Eule", "seeker"],
-]) {
-	await page.getByTestId("create-team").click();
-	await page.getByTestId("team-name-input").fill(name);
-	await page.waitForTimeout(200);
-	if (name === "Fuchsbau") await shot(page, "b1-team-drawer");
-	await page.getByTestId(`side-${side}`).click();
-	await page.getByTestId("team-editor-done").click();
-	await page.waitForTimeout(500);
-}
 
 await page.waitForTimeout(600);
 await page.getByTestId("player-Pia").click();

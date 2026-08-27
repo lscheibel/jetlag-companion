@@ -37,15 +37,19 @@ export function PersonRow({
 	onOpen,
 }: PersonRowProps) {
 	const reduced = useReducedMotion();
+	const ready = showReady && person.readyAt !== null && !removed;
 
 	return (
 		<motion.button
 			className={cn(
-				"flex min-h-tap w-full items-center gap-2 rounded-control border bg-surface px-2.5 py-1 text-left",
+				"flex min-h-tap-comfortable w-full items-center gap-2.5 rounded-tile border px-3.5 py-2.5 text-left",
 				"transition-transform duration-[--dur-press] ease-[--ease-pop] active:scale-[0.99]",
-				loose ? "border-stale/50 bg-stale/[0.08]" : "border-hairline",
 				removed && "opacity-60",
-				isMe && !loose && "border-action/35",
+				ready
+					? "border-live/40 bg-live/15"
+					: loose
+						? "border-stale/50 bg-stale/[0.08]"
+						: "border-hairline bg-surface",
 			)}
 			data-testid={`player-${person.displayName}`}
 			onClick={onOpen}
@@ -64,7 +68,7 @@ export function PersonRow({
 				{person.online ? "online" : "offline"}
 			</span>
 
-			<span className="min-w-0 flex-1 truncate text-sm">
+			<span className="min-w-0 flex-1 truncate text-[0.95rem]">
 				{person.displayName}
 				{isMe ? " (you)" : ""}
 			</span>
@@ -72,12 +76,12 @@ export function PersonRow({
 			{person.isHost && (
 				<Chip data-testid={`host-badge-${person.displayName}`}>Host</Chip>
 			)}
-			{showReady && person.readyAt !== null && !removed && (
+			{ready && (
 				<span
-					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live text-white"
+					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live text-action-ink"
 					data-testid={`ready-${person.displayName}`}
 				>
-					<Icon name="check" size="xs" />
+					<Icon name="check" size="xs" weight="bold" />
 				</span>
 			)}
 			<span
@@ -91,9 +95,6 @@ export function PersonRow({
 					Removed
 				</span>
 			)}
-			<span className="shrink-0 text-ink-faint">
-				<Icon name="caret-right" size="sm" />
-			</span>
 		</motion.button>
 	);
 }

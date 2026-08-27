@@ -67,6 +67,44 @@ export async function requireHost(
 	}
 }
 
+/**
+ * How a team presents itself belongs to that team — once somebody is on it.
+ *
+ * Empty teams are the host's to finish: the create-game wizard makes them
+ * before anyone has joined, and a name the host cannot then correct would
+ * mean deleting the team to rename it. Occupied teams stay the members'
+ * business. m1-spec §4.
+ */
+export async function requireTeamEditor(
+	tx: Tx,
+	playerId: string,
+	teamId: string,
+	action: string,
+): Promise<void> {
+	const membership = await tx.run(
+		zql.teamMember.where("teamId", teamId).where("playerId", playerId).one(),
+	);
+	if (membership) return;
+
+	const members = await tx.run(zql.teamMember.where("teamId", teamId));
+	const empty = !Array.isArray(members) || members.length === 0;
+
+	if (tx.location !== "server") {
+		const team = await tx.run(zql.team.where("id", teamId).one());
+		if (!team) return;
+	}
+
+	if (empty) {
+		await requireHost(tx, playerId, action);
+		return;
+	}
+
+	refuse(tx, {
+		code: "not_permitted",
+		reason: `${action} is for that team's own members`,
+	});
+}
+
 /** How a team presents itself belongs to that team, not to the host. m1-spec §4. */
 export async function requireTeamMember(
 	tx: Tx,

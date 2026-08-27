@@ -31,7 +31,7 @@ export function HiderChip({ hiders, selectedId, onOpen }: HiderChipProps) {
 			type="button"
 		>
 			<TeamBadge size="lg" team={selected} variant="mark" />
-			<span className="min-w-0 truncate font-display font-extrabold text-[0.95rem] tracking-tight [text-shadow:0_1px_2px_rgb(0_0_0/0.55)]">
+			<span className="min-w-0 truncate font-display font-extrabold text-[0.95rem] tracking-tight">
 				{selected.name}
 			</span>
 		</button>
