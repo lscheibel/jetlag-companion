@@ -14,11 +14,9 @@ import { useMemo } from "react";
  */
 interface QrCodeProps {
 	value: string;
-	/** Rendered size in CSS pixels. The module grid is resolution-independent. */
-	size?: number;
 }
 
-export function QrCode({ value, size = 220 }: QrCodeProps) {
+export function QrCode({ value }: QrCodeProps) {
 	const path = useMemo(() => {
 		// Type 0 picks the smallest version that fits; correction level M leaves
 		// room for a thumb over one corner without leaving room for nothing else.
@@ -45,12 +43,12 @@ export function QrCode({ value, size = 220 }: QrCodeProps) {
 	return (
 		<svg
 			aria-label="Join code"
-			className="rounded bg-white p-2"
+			className="block h-full w-full"
 			data-testid="join-qr"
-			height={size}
+			height="100%"
 			role="img"
 			viewBox={`-1 -1 ${extent} ${extent}`}
-			width={size}
+			width="100%"
 			xmlns="http://www.w3.org/2000/svg"
 		>
 			<path d={path.d} fill="#000000" shapeRendering="crispEdges" />

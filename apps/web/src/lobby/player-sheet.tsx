@@ -24,7 +24,7 @@ import type { LobbyPerson } from "./model";
 
 /** Square icon ActionButton, matching the primary Move height. */
 const SQUARE_ACTION =
-	"shrink-0 [&_.zl-press-face]:size-tap-primary [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
+	"w-tap-primary shrink-0 [&_.zl-press-face]:size-tap-primary [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
 
 interface PlayerSheetProps {
 	person: LobbyPerson | null;
@@ -56,7 +56,11 @@ export function PlayerSheet({
 	const canRename = person !== null && (isMe || amHost) && !removed;
 	const name = draft ?? person?.displayName ?? "";
 	const canMarkReady =
-		amHost && showReady && person !== null && person.readyAt === null && !removed;
+		amHost &&
+		showReady &&
+		person !== null &&
+		person.readyAt === null &&
+		!removed;
 
 	function close() {
 		saveName();
@@ -133,13 +137,16 @@ export function PlayerSheet({
 									className={SQUARE_ACTION}
 									data-testid={`host-ready-${person.displayName}`}
 									inline
-									onClick={() =>
-										setReady(true, isMe ? undefined : person.id)
-									}
+									onClick={() => setReady(true, isMe ? undefined : person.id)}
 									size="primary"
 									tone="live"
 								>
-									<Icon name="check" size="md" weight="bold" />
+									<Icon
+										className="text-ground"
+										name="check"
+										size="md"
+										weight="bold"
+									/>
 								</ActionButton>
 							)}
 						</div>

@@ -7,13 +7,13 @@ import {
 	ScreenHeader,
 } from "@zero-lag/ui/components/screen";
 import { useLocation, useNavigate } from "react-router";
-import { formatArea } from "../builder/use-builder";
 import { MapFitSelection } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
 import { GERMANY_BOUNDS } from "../setup/area/labels";
 import { FoldLayer } from "../setup/area/layers";
 import { ToolStrip } from "../setup/area/tool-strip";
 import { useAreaEditor } from "../setup/area/use-editor";
+import { formatArea } from "../setup/game-size";
 
 /**
  * The area editor home: one map, every tool, and a single action that leaves

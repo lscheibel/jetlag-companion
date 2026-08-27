@@ -201,7 +201,7 @@ export function MapCanvas({
 		<div
 			className={cn(
 				"absolute inset-0",
-				revealed ? "zl-enter" : "pointer-events-none opacity-0",
+				revealed ? "zl-enter-fade" : "pointer-events-none opacity-0",
 			)}
 		>
 			<div className="h-full w-full" data-testid="map-canvas" ref={container} />
@@ -216,7 +216,7 @@ export function MapCanvas({
 			 * little "i" button on a narrow screen. m2-spec §3.
 			 */}
 			<p
-				className="pointer-events-none absolute right-0 bottom-0 z-10 bg-surface/80 px-1 text-[10px] text-ink-dim"
+				className="pointer-events-none absolute right-4 bottom-4 z-10 rounded-full bg-surface/80 px-2 py-0.5 text-[10px] text-ink-dim"
 				data-testid="map-attribution"
 			>
 				{ATTRIBUTION}

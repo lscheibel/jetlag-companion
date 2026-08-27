@@ -112,6 +112,9 @@
 	--map-station: #08111c;
 	--map-hiding-area: #e0ae00;
 	--map-eliminated: rgb(8 17 28 / 0.16);
+
+	/** Invite sheet: page gray in the light, the usual panel in the dark. */
+	--sheet-fill: var(--ground);
 }
 
 /* ── dark ─────────────────────────────────────────────────────────────── */
@@ -153,6 +156,8 @@
 		--map-station: #e7edf6;
 		--map-hiding-area: var(--signal-yellow);
 		--map-eliminated: rgb(5 8 14 / 0.74);
+
+		--sheet-fill: var(--surface);
 	}
 }
 
@@ -193,6 +198,8 @@
 	--map-station: #e7edf6;
 	--map-hiding-area: var(--signal-yellow);
 	--map-eliminated: rgb(5 8 14 / 0.74);
+
+	--sheet-fill: var(--surface);
 }
 
 /**
@@ -245,6 +252,8 @@
 	--color-map-station: var(--map-station);
 	--color-map-hiding-area: var(--map-hiding-area);
 	--color-map-eliminated: var(--map-eliminated);
+
+	--color-sheet-fill: var(--sheet-fill);
 
 	--color-team-vermillion: var(--team-vermillion);
 	--color-team-cobalt: var(--team-cobalt);

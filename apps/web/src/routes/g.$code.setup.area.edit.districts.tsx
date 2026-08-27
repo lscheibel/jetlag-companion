@@ -14,7 +14,6 @@ import {
 } from "@zero-lag/ui/components/toggle-button";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useMemo, useState } from "react";
-import { formatArea } from "../builder/use-builder";
 import { useGameShell } from "../game/shell";
 import { MapIdleBounds } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
@@ -24,6 +23,7 @@ import { FoldLayer, PreviewLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
 import { useBoundarySearch } from "../setup/area/use-boundary-search";
 import { useAreaEditor } from "../setup/area/use-editor";
+import { formatArea } from "../setup/game-size";
 
 type PlaceFilter = "land" | "district" | "ortsteil";
 

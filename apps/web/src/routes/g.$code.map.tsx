@@ -72,6 +72,7 @@ import {
 	type MapTool,
 	nearestAtPx,
 	nearestStopPx,
+	PIN_TAP_PX,
 	type SearchableStop,
 	type SearchResult,
 	STOP_TAP_PX,
@@ -446,7 +447,7 @@ function MapScreen() {
 					screen,
 					(pin) => [pin.lng, pin.lat],
 					project,
-					STOP_TAP_PX,
+					PIN_TAP_PX,
 				);
 				if (pinHit) {
 					selectPin(pinHit.id);
@@ -478,6 +479,18 @@ function MapScreen() {
 		}
 		webPlatform.haptics.vibrate([10]);
 		if (tool.kind === "placingPin" || tool.kind === "editingPin") {
+			const pinHit = nearestAtPx(
+				pins,
+				screen,
+				(pin) => [pin.lng, pin.lat],
+				project,
+				PIN_TAP_PX,
+			);
+			if (pinHit) {
+				if (tool.kind === "editingPin" && pinHit.id === tool.pinId) return;
+				selectPin(pinHit.id);
+				return;
+			}
 			setDraftPoint(point);
 			return;
 		}
@@ -557,6 +570,10 @@ function MapScreen() {
 			return;
 		}
 		setFlyTarget({ kind: "point", point: stopPosition(result.stop) });
+		setSelectedStopId(result.stop.stopId);
+		setSelectedId(null);
+		setOwnSheetOpen(false);
+		setTool({ kind: "none" });
 	};
 
 	const handleSearchStopZone = (stop: SearchableStop) => {
@@ -891,6 +908,7 @@ function MapScreen() {
 						id="play-stops"
 						selectedId={selectedStopId}
 						stops={searchableStops}
+						zoneRadiusMeters={defaultRadiusMeters}
 					/>
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
@@ -1015,7 +1033,7 @@ function MapScreen() {
 				</div>
 				<MapControls blindness={blindnessControl} />
 				<div className="pointer-events-none absolute inset-x-3 top-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-end justify-between gap-3">
-					<div className="flex h-full min-h-0 min-w-0 flex-1 flex-col items-stretch justify-end">
+					<div className="relative h-full min-h-0 min-w-0 flex-1">
 						<AnimatePresence>
 							{tool.kind === "measure" && (
 								<motion.div key="measure" {...cardMotion}>

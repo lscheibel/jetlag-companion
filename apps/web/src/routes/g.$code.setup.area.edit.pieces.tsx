@@ -1,9 +1,9 @@
 import { Surface } from "@zero-lag/ui/components/surface";
-import { formatArea } from "../builder/use-builder";
 import { EditorScreen } from "../setup/area/editor-screen";
 import { PieceRow } from "../setup/area/piece-row";
 import { useAreaToolNav } from "../setup/area/tool-nav";
 import { useAreaEditor } from "../setup/area/use-editor";
+import { formatArea } from "../setup/game-size";
 
 export default function SetupAreaPieces() {
 	const editor = useAreaEditor();

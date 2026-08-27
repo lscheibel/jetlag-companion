@@ -2,17 +2,15 @@ import type { LngLat } from "@zero-lag/geo";
 import type {
 	AreaPiece,
 	ScalePreset,
-	Selection,
 	StoredMultiPolygon,
 } from "@zero-lag/schema";
 import { serverUrl } from "../dev-origin";
 import type { Session } from "../session";
 
 /**
- * Templates, applying and the catalog read, all plain HTTP. m4-spec §7.
+ * Applying a map and the catalog read, all plain HTTP. m4-spec §7.
  *
- * Zero's query context is a game and a template belongs to no game — and the
- * catalog is not in Zero's database at all.
+ * Zero's query context is a game, and the catalog is not in Zero's database.
  */
 
 export interface CatalogStopRow {
@@ -32,18 +30,6 @@ export interface CatalogView {
 	readonly total: number;
 	readonly truncated: boolean;
 	readonly stops: readonly CatalogStopRow[];
-}
-
-export interface TemplateRow {
-	readonly id: string;
-	readonly code: string;
-	readonly name: string;
-	readonly scalePreset: ScalePreset;
-	readonly selection: Selection;
-	readonly hidingRadiusMeters: number;
-	readonly validHidingArea: StoredMultiPolygon;
-	readonly catalogVersion: string;
-	readonly contentHash: string;
 }
 
 export interface AppliedMap {
@@ -152,23 +138,6 @@ export function fetchBoundarySearch(
 	);
 }
 
-export function saveTemplate(
-	session: Session,
-	draft: MapDraftBody,
-): Promise<{ id: string; code: string; contentHash: string }> {
-	return call("/maps", session, {
-		method: "POST",
-		body: JSON.stringify(draft),
-	});
-}
-
-export function fetchTemplate(
-	session: Session,
-	code: string,
-): Promise<TemplateRow> {
-	return call<TemplateRow>(`/maps/${code.toUpperCase()}`, session);
-}
-
 /**
  * Applying waits. m3-spec §10's rule: a write that has to be true somewhere
  * else before it means anything does not apply optimistically, and a board
@@ -176,7 +145,7 @@ export function fetchTemplate(
  */
 export function applyMap(
 	session: Session,
-	body: MapDraftBody | { templateCode: string },
+	body: MapDraftBody,
 ): Promise<AppliedMap> {
 	return call<AppliedMap>(`/games/${session.gameId}/map`, session, {
 		method: "POST",

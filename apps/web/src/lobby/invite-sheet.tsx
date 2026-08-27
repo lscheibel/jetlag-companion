@@ -37,17 +37,20 @@ export function InviteSheet({ code, open, onClose }: InviteSheetProps) {
 
 	return (
 		<Sheet
+			className="bg-sheet-fill"
 			onClose={onClose}
 			open={open}
 			testId="invite-sheet"
 			title="Ask people in"
 		>
-			<div className="mx-auto w-fit rounded-tile bg-white p-3">
-				<QrCode size={150} value={link} />
+			<div className="mx-auto aspect-square w-full max-w-72 rounded-tile bg-white p-4">
+				<QrCode value={link} />
 			</div>
 
 			<div>
-				<p className="eyebrow mb-1.5 text-center">Or read this out</p>
+				<p className="mb-1.5 text-center text-ink-dim text-sm leading-snug">
+					This is the game's code. They can join with it.
+				</p>
 				<p
 					// Large enough to read across a train carriage, which is the actual
 					// distance this gets read at.
@@ -58,7 +61,7 @@ export function InviteSheet({ code, open, onClose }: InviteSheetProps) {
 				</p>
 			</div>
 
-			<div className="flex gap-2.5">
+			<div className="mt-5 flex gap-2.5">
 				<ActionButton
 					className="flex-1"
 					data-testid="copy-link"

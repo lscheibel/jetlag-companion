@@ -2,7 +2,7 @@ import { multiPolygonToRegion, regionArea } from "@zero-lag/geo";
 import type { AreaPiece } from "@zero-lag/schema";
 import { Icon } from "@zero-lag/ui/components/icon";
 import { cn } from "@zero-lag/ui/lib/utils";
-import { formatArea } from "../../builder/use-builder";
+import { formatArea } from "../../setup/game-size";
 import { sourceLabel } from "./labels";
 
 interface PieceRowProps {

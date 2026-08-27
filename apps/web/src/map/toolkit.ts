@@ -24,6 +24,9 @@ export function stopPosition(stop: SearchableStop): LngLat {
 /** Finger slop around a 4 px circle so a stop is actually tappable. */
 export const STOP_TAP_PX = 24;
 
+/** The pin marker is a 44 px column, not a 4 px dot. */
+export const PIN_TAP_PX = 44;
+
 export function nearestAtPx<T>(
 	items: readonly T[],
 	screen: { x: number; y: number },

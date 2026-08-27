@@ -61,7 +61,11 @@ export function PinLayer({ pins, disabled, omitId, onSelect }: PinLayerProps) {
 					<button
 						data-testid={`pin-${pin.id}`}
 						disabled={disabled}
-						onClick={() => onSelect(pin.id)}
+						onClick={(event) => {
+							event.stopPropagation();
+							onSelect(pin.id);
+						}}
+						onPointerDown={(event) => event.stopPropagation()}
 						type="button"
 					>
 						<PinMark color={pin.color} label={pin.label} />

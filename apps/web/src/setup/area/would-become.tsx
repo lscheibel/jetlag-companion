@@ -1,6 +1,6 @@
 import type { MultiPolygon } from "@zero-lag/geo";
 import { useDeferredValue, useMemo } from "react";
-import { formatArea } from "../../builder/use-builder";
+import { formatArea } from "../../setup/game-size";
 import { useAreaEditor } from "./use-editor";
 
 interface WouldBecomeProps {

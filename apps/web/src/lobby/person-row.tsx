@@ -78,7 +78,7 @@ export function PersonRow({
 			)}
 			{ready && (
 				<span
-					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live text-action-ink"
+					className="zl-pop grid size-5 shrink-0 place-items-center rounded-[6px] bg-live text-ground"
 					data-testid={`ready-${person.displayName}`}
 				>
 					<Icon name="check" size="xs" weight="bold" />

@@ -128,6 +128,13 @@ export function formatZone(meters: number): string {
 		: `${Math.round(meters)} m`;
 }
 
+export function formatArea(squareMeters: number): string {
+	const km2 = squareMeters / 1_000_000;
+	if (km2 < 1) return `${Math.round(squareMeters / 10_000) / 100} km²`;
+	if (km2 < 100) return `${km2.toFixed(1)} km²`;
+	return `${Math.round(km2).toLocaleString()} km²`;
+}
+
 export function formatGround(squareKm: number): string {
 	return `${Math.round(squareKm).toLocaleString("en")} km²`;
 }

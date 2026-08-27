@@ -8,16 +8,15 @@ import type { FeatureData } from "./geojson";
 import { useMapInstance } from "./map-canvas";
 
 /**
- * One declared order for two screens. The builder never mounts the play layers
- * and the map route never mounts the builder's, but they share this list
- * because m3-spec §9's argument against discovering layer order from React's
- * mount order does not weaken when there are two screens. m4-spec §9.
+ * One declared order for setup and play. The two screens never mount each
+ * other's layers, but they share this list because m3-spec §9's argument
+ * against discovering layer order from React's mount order does not weaken
+ * when there are two screens. m4-spec §9.
  */
 const LAYER_ORDER = [
 	"setup-fold-mask",
 	"setup-fold-outline-case",
 	"setup-fold-outline",
-	"area-fill",
 	"piece-preview-fill",
 	"piece-preview-outline",
 	"piece-cut-fill",
@@ -37,6 +36,10 @@ const LAYER_ORDER = [
 	"hiding-zone-fill",
 	"hiding-zone-outline-case",
 	"hiding-zone-outline",
+	"builder-stops-zone-fill",
+	"builder-stops-zone-outline",
+	"play-stops-zone-fill",
+	"play-stops-zone-outline",
 	"builder-stops",
 	"builder-stops-selected",
 	"play-stops",

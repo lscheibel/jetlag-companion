@@ -134,6 +134,13 @@
 	}
 }
 
+/** The map itself: tiles should appear, not travel. */
+@keyframes zl-enter-fade {
+	from {
+		opacity: 0;
+	}
+}
+
 @keyframes zl-pop {
 	0% {
 		transform: scale(1);
@@ -252,6 +259,10 @@
  */
 @utility zl-enter {
 	animation: zl-enter var(--dur-enter) var(--ease-out-soft) backwards;
+}
+
+@utility zl-enter-fade {
+	animation: zl-enter-fade var(--dur-enter) var(--ease-out-soft) backwards;
 }
 
 /** Something the finger just chose, acknowledging the tap. */

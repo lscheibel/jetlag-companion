@@ -1,5 +1,6 @@
 import {
 	type BBox,
+	circleLngLat,
 	distanceMeters,
 	type LngLat,
 	type MultiPolygon,
@@ -9,8 +10,11 @@ import {
 } from "@zero-lag/geo";
 import { useTheme } from "@zero-lag/ui/hooks/use-theme";
 import { useMemo } from "react";
-import type { FeatureData } from "./geojson";
-import { EMPTY_FEATURES } from "./geojson";
+import {
+	EMPTY_FEATURES,
+	type FeatureData,
+	multiPolygonFeature,
+} from "./geojson";
 import type { SearchableStop } from "./toolkit";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
@@ -59,6 +63,8 @@ interface StopsLayerProps {
 	readonly area?: MultiPolygon | null;
 	/** The stop whose sheet is open, if any. */
 	readonly selectedId?: string | null;
+	/** When a stop is selected, a faint hiding-zone circle around it. */
+	readonly zoneRadiusMeters?: number | null;
 }
 
 /**
@@ -74,6 +80,7 @@ export function BuilderStopsLayer({
 	fold = null,
 	area = null,
 	selectedId = null,
+	zoneRadiusMeters = null,
 }: StopsLayerProps) {
 	const { resolved } = useTheme();
 	const dark = resolved === "dark";
@@ -88,6 +95,29 @@ export function BuilderStopsLayer({
 			},
 		],
 		[id, dark],
+	);
+	const zoneLayers = useMemo(
+		() => [
+			{
+				id: `${id}-zone-fill`,
+				type: "fill" as const,
+				paint: {
+					"fill-color": "#ffe01f",
+					"fill-opacity": 0.07,
+					"fill-outline-color": "rgba(0,0,0,0)",
+				},
+			},
+			{
+				id: `${id}-zone-outline`,
+				type: "line" as const,
+				paint: {
+					"line-color": "#ffe01f",
+					"line-opacity": 0.22,
+					"line-width": 1.5,
+				},
+			},
+		],
+		[id],
 	);
 	const data = useMemo<FeatureData>(() => {
 		if (stops.length === 0) return EMPTY_FEATURES;
@@ -109,6 +139,17 @@ export function BuilderStopsLayer({
 			}),
 		};
 	}, [stops, fold, area, selectedId]);
+	const zoneData = useMemo<FeatureData>(() => {
+		if (!selectedId || zoneRadiusMeters == null || zoneRadiusMeters <= 0) {
+			return EMPTY_FEATURES;
+		}
+		const stop = stops.find((row) => row.stopId === selectedId);
+		if (!stop) return EMPTY_FEATURES;
+		return multiPolygonFeature(
+			circleLngLat([stop.lng, stop.lat], zoneRadiusMeters),
+		);
+	}, [stops, selectedId, zoneRadiusMeters]);
+	useGeoJsonLayer(`${id}-zone-source`, zoneData, zoneLayers);
 	useGeoJsonLayer(id, data, layers);
 	return null;
 }
