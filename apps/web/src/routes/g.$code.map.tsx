@@ -1,9 +1,16 @@
 import { useQuery, useZero } from "@rocicorp/zero/react";
-import { buildValidHidingArea } from "@zero-lag/catalog";
+import {
+	buildValidHidingArea,
+	expandBBox,
+	isPoiKind,
+	SCALE_SETTINGS,
+} from "@zero-lag/catalog";
 import {
 	isEmptyRegion,
 	type LngLat,
 	multiPolygonBBox,
+	multiPolygonToRegion,
+	regionContains,
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
@@ -63,6 +70,10 @@ import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import { buildMapPlayers, visibleMarkers } from "../map/players";
+import { DEFAULT_POI_LAYERS, type MapPoi } from "../map/poi";
+import { PoiLayer } from "../map/poi-layer";
+import { PoiPickerSheet } from "../map/poi-picker-sheet";
+import { PoiSheet } from "../map/poi-sheet";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
 import { StopSheet } from "../map/stop-sheet";
@@ -71,7 +82,7 @@ import {
 	type ConstraintListItem,
 	type MapTool,
 	nearestAtPx,
-	nearestStopPx,
+	nearestHitPx,
 	PIN_TAP_PX,
 	type SearchableStop,
 	type SearchResult,
@@ -82,6 +93,7 @@ import { useBlindness } from "../map/use-blindness";
 import { boundaryAtPoint, useBoundaries } from "../map/use-boundaries";
 import { useCompassHeading } from "../map/use-compass-heading";
 import { useNow } from "../map/use-now";
+import { usePois } from "../map/use-pois";
 import { useWakeLock } from "../map/use-wake-lock";
 import { stepZoneMeters } from "../setup/game-size";
 
@@ -161,6 +173,9 @@ function MapScreen() {
 	const [status, setStatus] = useState<MapStatus>("loading");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+	const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
+	const [poiPickerOpen, setPoiPickerOpen] = useState(false);
+	const [poiLayers, setPoiLayers] = useState(DEFAULT_POI_LAYERS);
 	const [ownSheetOpen, setOwnSheetOpen] = useState(false);
 	const [tool, setTool] = useState<MapTool>({ kind: "none" });
 	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
@@ -264,6 +279,7 @@ function MapScreen() {
 	);
 	const selectedStop =
 		searchableStops.find((stop) => stop.stopId === selectedStopId) ?? null;
+	const scalePreset = games[0]?.mapConfig?.scalePreset ?? "city";
 	const myTeam = teams.find((team) => team.id === role.teamId);
 	const editingPin =
 		tool.kind === "editingPin"
@@ -284,15 +300,16 @@ function MapScreen() {
 				};
 	const zone = searchZones[0] ?? null;
 	const measure = tool.kind === "measure" ? tool.measure : null;
-	const origin: LngLat =
-		ownFix && ownFix.source !== "unavailable"
-			? [ownFix.lng, ownFix.lat]
-			: initialBounds
-				? [
-						(initialBounds[0] + initialBounds[2]) / 2,
-						(initialBounds[1] + initialBounds[3]) / 2,
-					]
-				: FALLBACK_CENTER;
+	const fromYou: LngLat | null =
+		ownFix && ownFix.source !== "unavailable" ? [ownFix.lng, ownFix.lat] : null;
+	const origin: LngLat = fromYou
+		? fromYou
+		: initialBounds
+			? [
+					(initialBounds[0] + initialBounds[2]) / 2,
+					(initialBounds[1] + initialBounds[3]) / 2,
+				]
+			: FALLBACK_CENTER;
 
 	const liveRound =
 		[...rounds].reverse().find((round) => round.status !== "ended") ?? null;
@@ -361,6 +378,29 @@ function MapScreen() {
 	const pickingLevels =
 		tool.kind === "pickingBoundaryConstraint" ? BOUNDARY_CONSTRAINT_LEVELS : [];
 	const areaBBox = area ? multiPolygonBBox(area) : null;
+	const poiBbox = areaBBox
+		? expandBBox(areaBBox, SCALE_SETTINGS[scalePreset].marginMeters)
+		: null;
+	const catalogPois = usePois(session, poiBbox, poiLayers.kinds.length > 0);
+	const visiblePois = useMemo<readonly MapPoi[]>(() => {
+		const wanted = new Set(poiLayers.kinds);
+		const region = area ? multiPolygonToRegion(area) : null;
+		const out: MapPoi[] = [];
+		for (const row of catalogPois) {
+			if (!isPoiKind(row.kind) || !wanted.has(row.kind)) continue;
+			out.push({
+				id: row.id,
+				name: row.name,
+				kind: row.kind,
+				lng: row.lng,
+				lat: row.lat,
+				insideArea: region ? regionContains(region, [row.lng, row.lat]) : true,
+			});
+		}
+		return out;
+	}, [catalogPois, poiLayers.kinds, area]);
+	const selectedPoi =
+		visiblePois.find((poi) => poi.id === selectedPoiId) ?? null;
 	const boundaries = useBoundaries(session, areaBBox, pickingLevels);
 	const visibleBoundaries =
 		tool.kind === "pickingBoundaryConstraint"
@@ -400,6 +440,8 @@ function MapScreen() {
 		}
 		if (next.kind !== "none") {
 			setSelectedStopId(null);
+			setSelectedPoiId(null);
+			setPoiPickerOpen(false);
 			setSeekerOverlay("none");
 			setOwnSheetOpen(false);
 		}
@@ -410,6 +452,7 @@ function MapScreen() {
 	const selectPin = (pinId: string) => {
 		const pin = pins.find((row) => row.id === pinId);
 		setSelectedStopId(null);
+		setSelectedPoiId(null);
 		setSelectedId(null);
 		setOwnSheetOpen(false);
 		setDraftPoint(pin ? [pin.lng, pin.lat] : null);
@@ -439,6 +482,7 @@ function MapScreen() {
 				if (ownHit) {
 					setOwnSheetOpen(true);
 					setSelectedStopId(null);
+					setSelectedPoiId(null);
 					setSelectedId(null);
 					return;
 				}
@@ -454,17 +498,39 @@ function MapScreen() {
 					return;
 				}
 			}
-			const hit = nearestStopPx(
-				searchableStops,
-				screen,
-				project,
-				isHidingHider ? 36 : STOP_TAP_PX,
-			);
+			const tapPx = isHidingHider ? 36 : STOP_TAP_PX;
+			const stopHit = poiLayers.transit
+				? nearestHitPx(
+						searchableStops,
+						screen,
+						(stop) => [stop.lng, stop.lat],
+						project,
+						tapPx,
+					)
+				: null;
+			const poiHit =
+				!isHidingHider && visiblePois.length > 0
+					? nearestHitPx(
+							visiblePois,
+							screen,
+							(poi) => [poi.lng, poi.lat],
+							project,
+							tapPx,
+						)
+					: null;
+			const hitStop =
+				stopHit && (!poiHit || stopHit.dist <= poiHit.dist)
+					? stopHit.item
+					: null;
+			const hitPoi =
+				poiHit && (!stopHit || poiHit.dist < stopHit.dist) ? poiHit.item : null;
 			if (isHidingHider) {
-				if (hit) {
+				if (hitStop) {
 					webPlatform.haptics.vibrate([10]);
 					setHidingPick(
-						role.roundId ? { roundId: role.roundId, stopId: hit.stopId } : null,
+						role.roundId
+							? { roundId: role.roundId, stopId: hitStop.stopId }
+							: null,
 					);
 				} else if (role.roundId) {
 					webPlatform.haptics.vibrate([10]);
@@ -472,9 +538,10 @@ function MapScreen() {
 				}
 				return;
 			}
-			setSelectedStopId(hit?.stopId ?? null);
+			setSelectedStopId(hitStop?.stopId ?? null);
+			setSelectedPoiId(hitPoi?.id ?? null);
 			setOwnSheetOpen(false);
-			if (hit) setSelectedId(null);
+			if (hitStop || hitPoi) setSelectedId(null);
 			return;
 		}
 		webPlatform.haptics.vibrate([10]);
@@ -571,6 +638,7 @@ function MapScreen() {
 		}
 		setFlyTarget({ kind: "point", point: stopPosition(result.stop) });
 		setSelectedStopId(result.stop.stopId);
+		setSelectedPoiId(null);
 		setSelectedId(null);
 		setOwnSheetOpen(false);
 		setTool({ kind: "none" });
@@ -900,16 +968,19 @@ function MapScreen() {
 								radiusMeters={defaultRadiusMeters}
 							/>
 						)}
-					<BuilderStopsLayer
-						area={area}
-						fold={
-							role.role === "seeker" ? (searchArea.surviving ?? null) : null
-						}
-						id="play-stops"
-						selectedId={selectedStopId}
-						stops={searchableStops}
-						zoneRadiusMeters={defaultRadiusMeters}
-					/>
+					{poiLayers.transit && (
+						<BuilderStopsLayer
+							area={area}
+							fold={
+								role.role === "seeker" ? (searchArea.surviving ?? null) : null
+							}
+							id="play-stops"
+							selectedId={selectedStopId}
+							stops={searchableStops}
+							zoneRadiusMeters={defaultRadiusMeters}
+						/>
+					)}
+					<PoiLayer area={area} pois={visiblePois} selectedId={selectedPoiId} />
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
 						disabled={tool.kind !== "none" || isHidingHider}
@@ -978,6 +1049,7 @@ function MapScreen() {
 							if (tool.kind !== "none") return;
 							setOwnSheetOpen(true);
 							setSelectedStopId(null);
+							setSelectedPoiId(null);
 							setSelectedId(null);
 						}}
 					/>
@@ -988,6 +1060,7 @@ function MapScreen() {
 								if (tool.kind === "none") {
 									setSelectedId(playerId);
 									setSelectedStopId(null);
+									setSelectedPoiId(null);
 									setOwnSheetOpen(false);
 								}
 							}}
@@ -1007,8 +1080,14 @@ function MapScreen() {
 							}
 							setCamera((current) => nextCamera(current, hasCompass));
 						}}
+						onPoiPicker={() => {
+							setPoiPickerOpen((open) => !open);
+							setSelectedStopId(null);
+							setSelectedPoiId(null);
+						}}
 						onToolChange={changeTool}
 						playTools={!isHidingHider}
+						poiPickerOpen={poiPickerOpen}
 						tool={tool}
 					/>
 				</MapCanvas>
@@ -1241,6 +1320,7 @@ function MapScreen() {
 				onSearchStopZone={handleSearchStopZone}
 				onToolChange={changeTool}
 				origin={origin}
+				fromYou={fromYou !== null}
 				tool={tool}
 			/>
 			<GpsHelpSheet
@@ -1257,13 +1337,26 @@ function MapScreen() {
 				selectedId={hiderTeamId}
 			/>
 
+			<PoiPickerSheet
+				layers={poiLayers}
+				onChange={setPoiLayers}
+				onClose={() => setPoiPickerOpen(false)}
+				open={poiPickerOpen}
+			/>
 			<StopSheet
+				fromYou={fromYou}
 				onClose={() => setSelectedStopId(null)}
 				onSuspectHidingZone={
 					canSuspectHidingZone ? suspectHidingZone : undefined
 				}
 				open={selectedStop !== null}
 				stop={selectedStop}
+			/>
+			<PoiSheet
+				fromYou={fromYou}
+				onClose={() => setSelectedPoiId(null)}
+				open={selectedPoi !== null}
+				poi={selectedPoi}
 			/>
 			<OwnPositionSheet
 				fix={ownFix}

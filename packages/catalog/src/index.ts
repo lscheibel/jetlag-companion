@@ -33,6 +33,23 @@ export {
 } from "./osm/boundary";
 export { BERLIN_FIXTURE_BOUNDARIES } from "./osm/fixture";
 export {
+	type CatalogPoi,
+	type PoiParseResult,
+	type PoiSkipReason,
+	parsePoiLine,
+	poisFromGeojsonseq,
+} from "./osm/poi";
+export { BERLIN_FIXTURE_POIS } from "./osm/poi-fixture";
+export {
+	isPoiKind,
+	POI_KIND_FALLBACK,
+	POI_KIND_LABELS,
+	POI_KINDS,
+	type PoiKind,
+	poiKindFromTags,
+} from "./osm/poi-kinds";
+export { poisFromJson, poisInBBox } from "./osm/poi-query";
+export {
 	BOUNDARY_SEARCH_LIMIT,
 	type BoundarySearch,
 	boundariesFromGeojsonseq,

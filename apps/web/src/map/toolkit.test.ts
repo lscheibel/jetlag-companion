@@ -1,6 +1,7 @@
 import { BERLIN_FIXTURE_CATALOG } from "@zero-lag/catalog";
 import { describe, expect, it } from "vitest";
 import {
+	distanceFromYou,
 	formatCoordinates,
 	formatDistance,
 	nearestAtPx,
@@ -38,6 +39,14 @@ describe("distance formatting", () => {
 		[100_500, "101 km"],
 	])("formats %s metres", (meters, expected) => {
 		expect(formatDistance(meters)).toBe(expected);
+	});
+
+	it("omits distance when there is no GPS fix", () => {
+		expect(distanceFromYou(null, 13.4, 52.52)).toBeNull();
+	});
+
+	it("formats the distance from a GPS origin", () => {
+		expect(distanceFromYou([13.4, 52.52], 13.4, 52.52)).toBe("0 m");
 	});
 });
 

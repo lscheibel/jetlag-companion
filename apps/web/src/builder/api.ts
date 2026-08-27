@@ -138,6 +138,32 @@ export function fetchBoundarySearch(
 	);
 }
 
+export interface CatalogPoiRow {
+	readonly id: string;
+	readonly name: string;
+	readonly kind: string;
+	readonly lng: number;
+	readonly lat: number;
+}
+
+export interface CatalogPoisView {
+	readonly total: number;
+	readonly truncated: boolean;
+	readonly pois: readonly CatalogPoiRow[];
+}
+
+export function fetchCatalogPois(
+	session: Session,
+	bbox: readonly [number, number, number, number],
+	options?: { readonly all?: boolean },
+): Promise<CatalogPoisView> {
+	const query = options?.all ? "&limit=all" : "";
+	return call<CatalogPoisView>(
+		`/catalog/pois?bbox=${bbox.join(",")}${query}`,
+		session,
+	);
+}
+
 /**
  * Applying waits. m3-spec §10's rule: a write that has to be true somewhere
  * else before it means anything does not apply optimistically, and a board

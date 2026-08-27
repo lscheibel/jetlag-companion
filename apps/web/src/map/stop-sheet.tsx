@@ -1,6 +1,8 @@
 import { groupLinesByMode, type ModeId } from "@zero-lag/catalog";
+import type { LngLat } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
+import { DistanceToYou } from "./distance-to-you";
 import type { SearchableStop } from "./toolkit";
 
 const MODE_LABELS: Record<ModeId, string> = {
@@ -20,6 +22,8 @@ interface StopSheetProps {
 	readonly onClose: () => void;
 	/** Seekers in seeking: treat this stop as the hiding zone. */
 	readonly onSuspectHidingZone?: (stop: SearchableStop) => void;
+	/** GPS origin, or null when there is no fix to measure from. */
+	readonly fromYou: LngLat | null;
 }
 
 /**
@@ -31,6 +35,7 @@ export function StopSheet({
 	open,
 	onClose,
 	onSuspectHidingZone,
+	fromYou,
 }: StopSheetProps) {
 	const shown = useHeldValue(open, stop);
 	const groups = shown ? groupLinesByMode(shown.lines) : [];
@@ -59,20 +64,28 @@ export function StopSheet({
 			testId="stop-sheet"
 			title={shown?.name}
 		>
-			{groups.length === 0 ? (
-				<p className="text-ink-dim text-sm">
-					No named lines in the catalog for this stop.
-				</p>
-			) : (
-				<dl className="space-y-3">
-					{groups.map((group) => (
-						<div key={group.modeId} data-testid={`stop-lines-${group.modeId}`}>
-							<dt className="eyebrow">{MODE_LABELS[group.modeId]}</dt>
-							<dd className="text-sm">{group.names.join(" · ")}</dd>
-						</div>
-					))}
-				</dl>
-			)}
+			<div className="space-y-3">
+				{shown && (
+					<DistanceToYou from={fromYou} lat={shown.lat} lng={shown.lng} />
+				)}
+				{groups.length === 0 ? (
+					<p className="text-ink-dim text-sm">
+						No named lines in the catalog for this stop.
+					</p>
+				) : (
+					<dl className="space-y-3">
+						{groups.map((group) => (
+							<div
+								key={group.modeId}
+								data-testid={`stop-lines-${group.modeId}`}
+							>
+								<dt className="eyebrow">{MODE_LABELS[group.modeId]}</dt>
+								<dd className="text-sm">{group.names.join(" · ")}</dd>
+							</div>
+						))}
+					</dl>
+				)}
+			</div>
 		</Sheet>
 	);
 }

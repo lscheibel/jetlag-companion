@@ -23,6 +23,8 @@ import {
 interface MapToolSheetProps {
 	readonly tool: MapTool;
 	readonly origin: LngLat;
+	/** Origin is the GPS fix, so search distances are "from you". */
+	readonly fromYou: boolean;
 	readonly canPlaceZone: boolean;
 	/** The stops this game carries — what place search runs over. m4-spec §5. */
 	readonly stops: readonly SearchableStop[];
@@ -80,7 +82,7 @@ function SearchSheet(props: MapToolSheetProps & { readonly open: boolean }) {
 								onClick={() => props.onSearchResult(result)}
 								type="button"
 							>
-								{searchLabel(result)}
+								{searchLabel(result, props.fromYou)}
 								{result.kind === "stop" &&
 									!result.stop.insideArea &&
 									" · outside the area"}
@@ -288,11 +290,14 @@ function searchKey(result: SearchResult): string {
 	return `stop:${result.stop.stopId}`;
 }
 
-function searchLabel(result: SearchResult): string {
+function searchLabel(result: SearchResult, fromYou: boolean): string {
 	if (result.kind === "coordinate") {
 		return `${formatCoordinates(result.parsed.point)} — fly there and drop pin`;
 	}
-	return result.stop.name;
+	const distance = formatDistance(result.distance);
+	return fromYou
+		? `${result.stop.name} · ${distance} from you`
+		: `${result.stop.name} · ${distance}`;
 }
 
 export function CoordinateCopy({ point }: { readonly point: LngLat }) {

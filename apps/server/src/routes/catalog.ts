@@ -9,6 +9,7 @@ import {
 	boundaryCountAtLevels,
 } from "../boundaries";
 import { catalogVersion, stopsInView } from "../catalog";
+import { poisInView } from "../pois";
 
 /**
  * The builder's one catalog read. m4-spec §7, §9.
@@ -33,6 +34,7 @@ const bboxSchema = z
  */
 const MAX_STOPS = 2_000;
 const MAX_BOUNDARIES = 200;
+const MAX_POIS = 8_000;
 
 const adminLevelSchema = z
 	.string()
@@ -60,6 +62,24 @@ catalog.get("/stops", async (c) => {
 		total: found.length,
 		truncated: !unlimited && found.length > MAX_STOPS,
 		stops: unlimited ? found : found.slice(0, MAX_STOPS),
+	});
+});
+
+catalog.get("/pois", async (c) => {
+	const ctx = await contextFromRequest(c.req.raw);
+	if (!ctx) return c.json({ error: "unauthenticated" }, 401);
+
+	const parsed = bboxSchema.safeParse(c.req.query("bbox") ?? "");
+	if (!parsed.success) return c.json({ error: "invalid_bbox" }, 400);
+
+	const bbox = parsed.data as BBox;
+	const found = poisInView(bbox);
+	const unlimited = c.req.query("limit") === "all";
+
+	return c.json({
+		total: found.length,
+		truncated: !unlimited && found.length > MAX_POIS,
+		pois: unlimited ? found : found.slice(0, MAX_POIS),
 	});
 });
 

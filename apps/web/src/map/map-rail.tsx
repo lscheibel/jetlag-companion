@@ -16,6 +16,8 @@ interface MapHudProps {
 	readonly onCancel: () => void;
 	/** Off during hiding: hiders only need locate, fit, and a station tap. */
 	readonly playTools?: boolean;
+	readonly poiPickerOpen?: boolean;
+	readonly onPoiPicker?: () => void;
 }
 
 /**
@@ -32,6 +34,8 @@ export function MapHud({
 	onToolChange,
 	onCancel,
 	playTools = true,
+	poiPickerOpen = false,
+	onPoiPicker,
 }: MapHudProps) {
 	return (
 		<div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-end px-3">
@@ -62,6 +66,16 @@ export function MapHud({
 						testId="toggle-blindness"
 					>
 						<Icon name={blindness.blind ? "eye-slash" : "eye"} size="sm" />
+					</IconButton>
+				)}
+				{onPoiPicker && (
+					<IconButton
+						aria-label="Points of interest"
+						onClick={onPoiPicker}
+						pressed={poiPickerOpen}
+						testId="map-poi-layers"
+					>
+						<Icon name="map-trifold" size="sm" />
 					</IconButton>
 				)}
 				{playTools && (

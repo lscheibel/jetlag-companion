@@ -10,6 +10,7 @@ import { db } from "./db";
 import { attachEphemeralChannel } from "./ephemeral";
 import { processPhoto } from "./photo";
 import { findPhotoForGame, loadPhotoBytes, savePhotoUpload } from "./photo-db";
+import { loadPois } from "./pois";
 import { catalog } from "./routes/catalog";
 import { mountDevRoutes } from "./routes/dev";
 import { games } from "./routes/games";
@@ -55,6 +56,7 @@ mountDevRoutes(app, env.NODE_ENV);
 // artifact is a line in the boot log instead of a slow first builder open.
 loadCatalog();
 loadBoundaries();
+loadPois();
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
 	console.log(`server listening on http://localhost:${info.port}`);

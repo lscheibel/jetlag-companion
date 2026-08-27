@@ -27,13 +27,13 @@ export const STOP_TAP_PX = 24;
 /** The pin marker is a 44 px column, not a 4 px dot. */
 export const PIN_TAP_PX = 44;
 
-export function nearestAtPx<T>(
+export function nearestHitPx<T>(
 	items: readonly T[],
 	screen: { x: number; y: number },
 	locate: (item: T) => LngLat,
 	project: (lngLat: LngLat) => { x: number; y: number },
 	maxPx: number,
-): T | null {
+): { item: T; dist: number } | null {
 	let best: T | null = null;
 	let bestDist = maxPx;
 	for (const item of items) {
@@ -44,7 +44,17 @@ export function nearestAtPx<T>(
 			best = item;
 		}
 	}
-	return best;
+	return best ? { item: best, dist: bestDist } : null;
+}
+
+export function nearestAtPx<T>(
+	items: readonly T[],
+	screen: { x: number; y: number },
+	locate: (item: T) => LngLat,
+	project: (lngLat: LngLat) => { x: number; y: number },
+	maxPx: number,
+): T | null {
+	return nearestHitPx(items, screen, locate, project, maxPx)?.item ?? null;
 }
 
 export function nearestStopPx(
@@ -135,6 +145,16 @@ export function formatDistance(meters: number): string {
 	if (meters < 1_000) return `${Math.round(meters)} m`;
 	if (meters <= 100_000) return `${(meters / 1_000).toFixed(2)} km`;
 	return `${Math.round(meters / 1_000)} km`;
+}
+
+/** Null when there is no GPS fix to measure from. */
+export function distanceFromYou(
+	from: LngLat | null,
+	lng: number,
+	lat: number,
+): string | null {
+	if (!from) return null;
+	return formatDistance(distanceMeters(from, [lng, lat]));
 }
 
 export function pathSegments(points: readonly LngLat[]): readonly number[] {

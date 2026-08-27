@@ -44,6 +44,8 @@ const LAYER_ORDER = [
 	"builder-stops-selected",
 	"play-stops",
 	"play-stops-selected",
+	"play-pois",
+	"play-pois-selected",
 	"search-zone-fill",
 	"search-zone-outline",
 	"zone-draft-fill",
