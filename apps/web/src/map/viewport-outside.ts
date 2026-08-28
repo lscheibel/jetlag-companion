@@ -2,6 +2,7 @@ import {
 	type BBox,
 	type MultiPolygon,
 	multiPolygonToRegion,
+	type Region,
 	regionToMultiPolygon,
 	subtractRegions,
 } from "@zero-lag/geo";
@@ -19,7 +20,9 @@ export function outsideViewport(
 ): MultiPolygon | null {
 	if (!area || area.length === 0 || !view) return null;
 	const [west, south, east, north] = view;
-	const frame = {
+	// Annotated rather than inferred: a bare literal types the coordinate pairs
+	// as number[], and LngLat is a two-element tuple.
+	const frame: Region = {
 		polygons: [
 			[
 				[

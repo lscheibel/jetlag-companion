@@ -38,6 +38,18 @@ export type LocalNotification = {
 	readonly silent?: boolean;
 };
 
+/**
+ * What asking for notification permission produced.
+ *
+ * These are the browser's own three values on purpose. "default" is the
+ * dismissed-without-choosing case — neither a grant nor a refusal, and the
+ * only one of the three where asking again is permitted. Folding it into
+ * "denied" would lose exactly the distinction a caller needs to decide whether
+ * a second prompt is worth offering. A Capacitor implementation maps its
+ * native result onto these, not the other way round.
+ */
+export type PermissionOutcome = "default" | "denied" | "granted";
+
 export type LocationIssue =
 	| "denied"
 	| "no_fix"
