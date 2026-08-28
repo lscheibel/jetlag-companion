@@ -11,6 +11,8 @@ export const env = createEnv({
 		/** Content-addressed processed photo bytes; metadata remains in Postgres. */
 		PHOTOS_PATH: z.string().min(1).default("./data/photos"),
 		PORT: z.coerce.number().int().positive().default(3000),
+		/** The commit the image was built from; "dev" when run from source. */
+		BUILD_VERSION: z.string().default("dev"),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),

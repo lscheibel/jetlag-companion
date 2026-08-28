@@ -30,7 +30,7 @@ app.use(
 	}),
 );
 
-app.get("/health", (c) => c.json({ ok: true }));
+app.get("/health", (c) => c.json({ ok: true, version: env.BUILD_VERSION }));
 app.get("/", (c) => c.text("OK"));
 
 app.route("/api/games", games);
@@ -59,7 +59,9 @@ loadBoundaries();
 loadPois();
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-	console.log(`server listening on http://localhost:${info.port}`);
+	console.log(
+		`server listening on http://localhost:${info.port} — build ${env.BUILD_VERSION}`,
+	);
 });
 
 attachEphemeralChannel(server as never, "/api/ephemeral");

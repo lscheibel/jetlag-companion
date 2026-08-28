@@ -10,39 +10,49 @@
 	root * /srv
 	encode zstd gzip
 
-	# Vite hashes every filename under /assets, so a URL there can never change
-	# meaning — with two exceptions. MapLibre's worker pair is emitted under
-	# fixed names because the runtime computes the URL from a string, so those
-	# two URLs *do* change meaning when maplibre is upgraded. Marking them
-	# immutable would hide the new version from returning browsers for a year.
-	@immutable {
-		path /assets/*
-		not path /assets/maplibre-gl-worker.mjs /assets/maplibre-gl-shared.mjs
-	}
-	header @immutable Cache-Control "public, max-age=31536000, immutable"
-
-	# Anything whose URL can outlive its contents. An autoUpdate PWA that cannot
-	# revalidate its own service worker is a PWA that never updates.
-	@volatile path / /index.html /sw.js /registerSW.js /manifest.webmanifest /assets/maplibre-gl-worker.mjs /assets/maplibre-gl-shared.mjs
-	header @volatile Cache-Control "no-cache"
-
 	# Go's mime table does not know this extension, and a manifest served as
 	# application/octet-stream is a manifest the browser ignores.
 	@webmanifest path *.webmanifest
 	header @webmanifest Content-Type "application/manifest+json"
 
-	# Hashed build output. A missing file here is a build bug, and it must 404
-	# as one: handing it to the SPA fallback returns index.html with a 200, and
-	# the browser reports "Failed to load module script: non-JavaScript MIME
-	# type of text/html" — which says nothing about the file being absent.
 	handle /assets/* {
+		# The `file` matcher is load-bearing: it matches only when the path
+		# really exists. Caching is a property of what was *served*, not of
+		# what was asked for, and an earlier version of this file set the
+		# immutable header before routing — so a missing asset answered with
+		# index.html was cached as that URL's content, immutably, for a year.
+		# A 404 must be cheap to be wrong about.
+		@hashed {
+			file
+			not path /assets/maplibre-gl-worker.mjs
+		}
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		# One file in the whole bundle carries a fixed name: maplibre computes
+		# this URL from a string literal at runtime, so it cannot be hashed, and
+		# therefore its URL changes meaning whenever maplibre is upgraded. Its
+		# 482 KB dependency *is* hashed and falls under the rule above — this is
+		# 19 KB revalidating, which costs one 304.
+		@fixed path /assets/maplibre-gl-worker.mjs
+		header @fixed Cache-Control "no-cache"
+
+		# No try_files: a missing file here is a build bug and must 404 as one.
+		# Handing it to the SPA fallback returns index.html with a 200, and the
+		# browser reports "Failed to load module script: non-JavaScript MIME
+		# type of text/html" — which says nothing about the file being absent.
 		file_server
 	}
 
-	# SPA mode: every other route is index.html, and the client router takes it
-	# from there. m2-spec — a route that needs a server round-trip to paint is
-	# a route that does not exist underground.
 	handle {
+		# Everything outside /assets has a URL that outlives its contents: the
+		# shell, the service worker, the manifest, and every client route. An
+		# autoUpdate PWA that cannot revalidate its own service worker is a PWA
+		# that never updates.
+		header Cache-Control "no-cache"
+
+		# SPA mode: every route is index.html, and the client router takes it
+		# from there. m2-spec — a route that needs a server round-trip to paint
+		# is a route that does not exist underground.
 		try_files {path} /index.html
 		file_server
 	}

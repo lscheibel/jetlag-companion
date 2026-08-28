@@ -10,7 +10,11 @@ import {
 
 import "./index.css";
 import type { Route } from "./+types/root";
+import { logBuildVersion } from "./build-version";
 import { Wordmark } from "./setup/wordmark";
+
+// Module scope, so it runs once when the bundle loads rather than on a render.
+logBuildVersion();
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (

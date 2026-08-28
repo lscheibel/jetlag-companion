@@ -14,8 +14,12 @@ RUN --mount=type=cache,target=/root/.npm npm install
 # so it never reached the build; packages/env/src/web.ts requires it as a URL.
 ARG VITE_SERVER_URL
 ARG VITE_ZERO_CACHE_URL
+# Baked in like the URLs above, and for the same reason it has to be: a client
+# bundle cannot be asked at runtime which commit produced it.
+ARG BUILD_VERSION=dev
 ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 ENV VITE_ZERO_CACHE_URL=${VITE_ZERO_CACHE_URL}
+ENV VITE_BUILD_VERSION=${BUILD_VERSION}
 ENV NODE_ENV=production
 
 # SPA mode prerenders the shell: `react-router build` starts a server on an

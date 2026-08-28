@@ -63,6 +63,11 @@ COPY --from=builder /app/apps/server/dist ./apps/server/dist
 # The loader would find these by walking up from the working directory, but
 # saying so explicitly is one less thing that depends on where CMD runs from.
 # A wrong path here is a server that quietly serves twelve Berlin stations.
+# Which commit this image was built from. Reported by /health and logged at
+# startup, so "is the fix deployed?" is a question with an answer.
+ARG BUILD_VERSION=dev
+ENV BUILD_VERSION=${BUILD_VERSION}
+
 ENV STOP_CATALOG_PATH=/app/assets/catalog/stops.catalog.json
 ENV POIS_PATH=/app/assets/catalog/pois.catalog.json
 ENV BOUNDARIES_PATH=/app/assets/catalog/boundaries.catalog.json

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type Plugin } from "vite";
@@ -28,11 +28,17 @@ const require_ = createRequire(import.meta.url);
  * server responded with a non-JavaScript MIME type of text/html", and every
  * vector tile silently never arrives.
  *
- * The shared chunk is emitted too. The worker's single import is
- * `./maplibre-gl-shared.mjs`, resolved relative to itself.
+ * The shared chunk it imports is emitted too, and unlike the worker it *is*
+ * content-hashed. A hash is only useful when every reference to a file can be
+ * rewritten to match, which is precisely what the rest of the bundle gets from
+ * Vite and what these two are excluded from. But the shared chunk has exactly
+ * one reference — `./maplibre-gl-shared.mjs`, inside the worker written out
+ * below — and that one is ours to rewrite. So 482 KB of the 500 can be cached
+ * immutably, leaving only the 19 KB worker to revalidate.
  */
 function maplibreWorkerAssets(): Plugin {
-	const files = ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"];
+	const WORKER = "maplibre-gl-worker.mjs";
+	const SHARED = "maplibre-gl-shared.mjs";
 	return {
 		name: "zero-lag:maplibre-worker-assets",
 		apply: "build",
@@ -43,13 +49,35 @@ function maplibreWorkerAssets(): Plugin {
 			const dist = dirname(
 				require_.resolve("maplibre-gl/dist/maplibre-gl.mjs"),
 			);
-			for (const file of files) {
-				this.emitFile({
-					type: "asset",
-					fileName: `assets/${file}`,
-					source: readFileSync(join(dist, file)),
-				});
+
+			// `name`, not `fileName`: this asks Rollup for a hashed filename
+			// instead of dictating one.
+			const sharedRef = this.emitFile({
+				type: "asset",
+				name: SHARED,
+				source: readFileSync(join(dist, SHARED)),
+			});
+			const hashed = `./${basename(this.getFileName(sharedRef))}`;
+
+			const worker = readFileSync(join(dist, WORKER), "utf8");
+			const specifier = `./${SHARED}`;
+			// Failing loudly matters more here than anywhere else in this file:
+			// a silently un-rewritten import produces a worker that 404s on its
+			// own dependency, and the visible symptom is a blank map.
+			if (!worker.includes(specifier)) {
+				this.error(
+					`maplibre's worker no longer imports ${specifier}. The hashed ` +
+						"shared chunk cannot be wired up; check what this version emits.",
+				);
 			}
+
+			// Fixed name, alone in the bundle: maplibre builds this URL from a
+			// string literal at runtime, so a hash here would simply 404.
+			this.emitFile({
+				type: "asset",
+				fileName: `assets/${WORKER}`,
+				source: worker.split(specifier).join(hashed),
+			});
 		},
 	};
 }

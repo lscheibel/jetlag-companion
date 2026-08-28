@@ -60,6 +60,8 @@ jobs:
         include:
           - name: server
             dockerfile: apps/server/Dockerfile
+            build-args: |
+              BUILD_VERSION=${{ github.sha }}
           - name: web
             dockerfile: apps/web/Dockerfile
             # Baked into the client bundle, which is what makes the web image
@@ -67,6 +69,7 @@ jobs:
             # JavaScript every visitor downloads — but changing hosts means
             # changing them here and rebuilding.
             build-args: |
+              BUILD_VERSION=${{ github.sha }}
               VITE_SERVER_URL=https://jetlag.lennardscheibel.de
               VITE_ZERO_CACHE_URL=https://sync.jetlag.lennardscheibel.de
           - name: migrate
