@@ -10,6 +10,27 @@ Don't opt for band-aids without explicit consent. Always yield to the user befor
 
 Never infer one fact from another that merely correlates with it today.
 
+# Database
+
+Schema changes go through generated migrations. Not `db:push`.
+
+`npm run db:generate` writes a numbered SQL file into
+`packages/schema/src/migrations`; commit it with the schema change that
+produced it. `npm run db:migrate` applies whatever is pending and records it in
+`drizzle.__drizzle_migrations`, so the same files produce the same schema
+everywhere. Production runs exactly this, as a blocking init step: the server
+does not start if it fails.
+
+`db:push` is a different thing wearing the same coat. It diffs the schema
+against whatever the live database currently holds and applies the difference
+directly — no file to review, no ordering, no record of what ran, and when the
+diff implies a drop, it drops. A dev database maintained that way is on a
+different footing from production even when the two happen to agree, and the
+first time they disagree there is nothing to compare.
+
+The dev database is `jetlag` on `localhost:5432`, created by
+`infra/docker/docker-compose.yml`.
+
 # Typescript
 
 Prefer an exported/inferred type instead of using unknown with `in` guards and `as` casts.

@@ -1,7 +1,9 @@
 import { closeRing } from "@zero-lag/catalog";
 import {
+	EMPTY_REGION,
 	type MultiPolygon,
 	multiPolygonToRegion,
+	type Polygon,
 	type Ring,
 	regionToMultiPolygon,
 	unionRegions,
@@ -20,31 +22,97 @@ export type AreaImport =
  * when they already close; a hiking trace is not an area.
  */
 export function parseAreaFile(fileName: string, text: string): AreaImport {
-	const name = displayName(fileName);
 	const lower = fileName.toLowerCase();
 	try {
 		if (lower.endsWith(".kml") || looksLikeXml(text, "kml")) {
-			return finish(name, ringsFromKml(text));
+			return finish(displayName(fileName), ringsAsPolygons(ringsFromKml(text)));
 		}
 		if (lower.endsWith(".gpx") || looksLikeXml(text, "gpx")) {
-			return finish(name, ringsFromGpx(text));
+			return finish(displayName(fileName), ringsAsPolygons(ringsFromGpx(text)));
 		}
-		return finish(name, ringsFromGeoJson(JSON.parse(text) as unknown));
+		const json = JSON.parse(text) as unknown;
+		return finish(nameFromGeoJson(fileName, json), polygonsFromGeoJson(json));
 	} catch {
 		return { ok: false, error: "That file could not be read as a map." };
 	}
 }
 
-function finish(name: string, rings: Ring[]): AreaImport {
-	if (rings.length === 0) {
+/**
+ * The folded playable outline as GeoJSON the file chooser can read back.
+ * One MultiPolygon, not the piece recipe — Pick a file adds a single piece.
+ */
+export function serializeAreaFile(
+	name: string,
+	geometry: MultiPolygon,
+): string {
+	return `${JSON.stringify(
+		{
+			type: "Feature",
+			properties: { name },
+			geometry: {
+				type: "MultiPolygon",
+				coordinates: geometry.map((polygon) =>
+					polygon.map((ring) =>
+						closeRing(ring).map(([lng, lat]) => [lng, lat]),
+					),
+				),
+			},
+		},
+		null,
+		2,
+	)}\n`;
+}
+
+export function areaFileName(name: string): string {
+	const slug =
+		name
+			.trim()
+			.replace(/[^\p{L}\p{N}]+/gu, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 60) || "game-area";
+	return `${slug}.geojson`;
+}
+
+/** Put a GeoJSON of the folded area on the phone, for Pick a file later. */
+export function saveAreaFile(name: string, geometry: MultiPolygon): void {
+	downloadTextFile(
+		areaFileName(name),
+		serializeAreaFile(name, geometry),
+		"application/geo+json",
+	);
+}
+
+function downloadTextFile(fileName: string, text: string, type: string): void {
+	const blob = new Blob([text], { type });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.download = fileName;
+	link.href = url;
+	link.rel = "noopener";
+	link.target = "_blank";
+	link.addEventListener("click", (event) => {
+		event.stopPropagation();
+	});
+	document.body.append(link);
+	link.click();
+	link.remove();
+	window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
+
+function finish(name: string, polygons: Polygon[]): AreaImport {
+	if (polygons.length === 0) {
 		return {
 			ok: false,
 			error: "No area in that file — need a polygon, not a pin.",
 		};
 	}
-	let acc = multiPolygonToRegion([[closeRing(rings[0] as Ring)]]);
-	for (const ring of rings.slice(1)) {
-		acc = unionRegions(acc, multiPolygonToRegion([[closeRing(ring)]]));
+	let acc = EMPTY_REGION;
+	for (const polygon of polygons) {
+		const closed = polygon
+			.map((ring) => closeRing(ring))
+			.filter((ring) => ring.length >= 4);
+		if (closed.length === 0) continue;
+		acc = unionRegions(acc, multiPolygonToRegion([closed]));
 	}
 	const geometry = regionToMultiPolygon(acc);
 	if (geometry.length === 0) {
@@ -53,42 +121,82 @@ function finish(name: string, rings: Ring[]): AreaImport {
 	return { ok: true, name, geometry };
 }
 
+function ringsAsPolygons(rings: Ring[]): Polygon[] {
+	return rings.map((ring) => [ring]);
+}
+
 function displayName(fileName: string): string {
 	const base = fileName.split("/").pop()?.split("\\").pop() ?? fileName;
 	return base.replace(/\.(geojson|json|kml|gpx)$/i, "") || "Imported area";
+}
+
+function nameFromGeoJson(fileName: string, value: unknown): string {
+	const named = geoJsonName(value);
+	return named ?? displayName(fileName);
+}
+
+function geoJsonName(value: unknown): string | null {
+	if (!value || typeof value !== "object") return null;
+	const record = value as Record<string, unknown>;
+	if (record.type === "Feature") {
+		const props = record.properties;
+		if (props && typeof props === "object" && "name" in props) {
+			const name = (props as { name: unknown }).name;
+			if (typeof name === "string" && name.trim()) return name.trim();
+		}
+		return null;
+	}
+	if (record.type === "FeatureCollection" && Array.isArray(record.features)) {
+		for (const feature of record.features) {
+			const named = geoJsonName(feature);
+			if (named) return named;
+		}
+	}
+	return null;
 }
 
 function looksLikeXml(text: string, root: string): boolean {
 	return new RegExp(`<${root}[\\s>]`, "i").test(text.slice(0, 400));
 }
 
-function ringsFromGeoJson(value: unknown): Ring[] {
+function polygonsFromGeoJson(value: unknown): Polygon[] {
 	if (!value || typeof value !== "object") return [];
 	const record = value as Record<string, unknown>;
 	if (record.type === "FeatureCollection" && Array.isArray(record.features)) {
-		return record.features.flatMap(ringsFromGeoJson);
+		return record.features.flatMap(polygonsFromGeoJson);
 	}
-	if (record.type === "Feature") return ringsFromGeoJson(record.geometry);
+	if (record.type === "Feature") return polygonsFromGeoJson(record.geometry);
 	if (
 		record.type === "GeometryCollection" &&
 		Array.isArray(record.geometries)
 	) {
-		return record.geometries.flatMap(ringsFromGeoJson);
+		return record.geometries.flatMap(polygonsFromGeoJson);
 	}
 	if (record.type === "Polygon" && Array.isArray(record.coordinates)) {
-		const outer = ringFromCoords(record.coordinates[0]);
-		return outer ? [outer] : [];
+		const polygon = polygonFromCoords(record.coordinates);
+		return polygon ? [polygon] : [];
 	}
 	if (record.type === "MultiPolygon" && Array.isArray(record.coordinates)) {
-		const rings: Ring[] = [];
-		for (const polygon of record.coordinates) {
-			if (!Array.isArray(polygon)) continue;
-			const outer = ringFromCoords(polygon[0]);
-			if (outer) rings.push(outer);
+		const polygons: Polygon[] = [];
+		for (const raw of record.coordinates) {
+			const polygon = polygonFromCoords(raw);
+			if (polygon) polygons.push(polygon);
 		}
-		return rings;
+		return polygons;
 	}
 	return [];
+}
+
+function polygonFromCoords(raw: unknown): Polygon | null {
+	if (!Array.isArray(raw) || raw.length === 0) return null;
+	const outer = ringFromCoords(raw[0]);
+	if (!outer) return null;
+	const holes: Ring[] = [];
+	for (const coords of raw.slice(1)) {
+		const ring = ringFromCoords(coords);
+		if (ring) holes.push(ring);
+	}
+	return [outer, ...holes];
 }
 
 function ringFromCoords(raw: unknown): Ring | null {

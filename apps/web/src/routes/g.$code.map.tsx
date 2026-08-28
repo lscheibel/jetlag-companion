@@ -3,6 +3,7 @@ import {
 	buildValidHidingArea,
 	expandBBox,
 	isPoiKind,
+	POI_KIND_LABELS,
 	SCALE_SETTINGS,
 } from "@zero-lag/catalog";
 import {
@@ -78,6 +79,7 @@ import {
 	defaultClosestPoiRadius,
 	ensurePoiKind,
 	type MapPoi,
+	radiusPoiCenters,
 } from "../map/poi";
 import { PoiLayer } from "../map/poi-layer";
 import { PoiPickerSheet } from "../map/poi-picker-sheet";
@@ -122,7 +124,17 @@ function pointerMode(tool: MapTool): PointerMode {
 			radiusMeters: tool.measure.radiusMeters,
 		};
 	}
-	if (tool.kind === "drawingRadiusConstraint" || tool.kind === "placingZone") {
+	if (tool.kind === "drawingRadiusConstraint") {
+		if (tool.poiKind || tool.pickingKind) {
+			return { kind: "off" };
+		}
+		return {
+			kind: "radius",
+			center: tool.centers[0] ?? null,
+			radiusMeters: tool.radiusMeters,
+		};
+	}
+	if (tool.kind === "placingZone") {
 		return {
 			kind: "radius",
 			center: tool.center,
@@ -400,7 +412,9 @@ function MapScreen() {
 	const catalogPois = usePois(
 		session,
 		poiBbox,
-		poiLayers.kinds.length > 0 || tool.kind === "pickingClosestPoiConstraint",
+		poiLayers.kinds.length > 0 ||
+			tool.kind === "pickingClosestPoiConstraint" ||
+			tool.kind === "drawingRadiusConstraint",
 	);
 	const allPois = useMemo<readonly MapPoi[]>(() => {
 		const region = area ? multiPolygonToRegion(area) : null;
@@ -443,6 +457,11 @@ function MapScreen() {
 			},
 		);
 	}, [tool, selectedClosestPoi, allPois, area]);
+	const radiusDraftCenters = useMemo(() => {
+		if (tool.kind !== "drawingRadiusConstraint") return [];
+		if (tool.poiKind) return radiusPoiCenters(tool.poiKind, allPois);
+		return tool.centers;
+	}, [tool, allPois]);
 	const boundaries = useBoundaries(session, areaBBox, pickingLevels);
 	const visibleBoundaries =
 		tool.kind === "pickingBoundaryConstraint"
@@ -492,6 +511,10 @@ function MapScreen() {
 			const kind = next.filterKind;
 			setPoiLayers((current) => ensurePoiKind(current, kind));
 		}
+		if (next.kind === "drawingRadiusConstraint" && next.poiKind) {
+			const kind = next.poiKind;
+			setPoiLayers((current) => ensurePoiKind(current, kind));
+		}
 		setTool(next);
 	};
 
@@ -499,8 +522,10 @@ function MapScreen() {
 		if (kind === "circle") {
 			changeTool({
 				kind: "drawingRadiusConstraint",
-				center: [poi.lng, poi.lat],
+				centers: [[poi.lng, poi.lat]],
 				radiusMeters: defaultRadiusMeters,
+				poiKind: null,
+				pickingKind: false,
 			});
 			return;
 		}
@@ -675,9 +700,11 @@ function MapScreen() {
 		if (cause === "tap") webPlatform.haptics.vibrate([10]);
 		setTool((current) => {
 			if (current.kind === "drawingRadiusConstraint") {
+				if (current.poiKind) return current;
 				return {
 					...current,
-					center: draft.center,
+					centers: draft.center ? [draft.center] : [],
+					poiKind: null,
 					radiusMeters: draft.radiusMeters,
 				};
 			}
@@ -843,8 +870,13 @@ function MapScreen() {
 				? (selectedBoundary?.name ?? null)
 				: tool.kind === "pickingClosestPoiConstraint"
 					? (selectedClosestPoi?.name ?? null)
-					: null);
-		if (tool.kind === "drawingRadiusConstraint" && tool.center) {
+					: tool.kind === "drawingRadiusConstraint" && tool.poiKind
+						? POI_KIND_LABELS[tool.poiKind]
+						: null);
+		if (
+			tool.kind === "drawingRadiusConstraint" &&
+			radiusDraftCenters.length > 0
+		) {
 			void zero.mutate(
 				mutators.constraint.createManual({
 					...event(),
@@ -854,7 +886,9 @@ function MapScreen() {
 					hiderTeamId,
 					geometry: {
 						kind: "radius",
-						center: [tool.center[0], tool.center[1]],
+						centers: radiusDraftCenters.map(
+							(center) => [center[0], center[1]] as [number, number],
+						),
 						radius: tool.radiusMeters,
 					},
 					mode,
@@ -1119,7 +1153,7 @@ function MapScreen() {
 					<MeasureLayer measure={measure} />
 					{tool.kind === "drawingRadiusConstraint" && (
 						<ConstraintDraftLayer
-							center={tool.center}
+							centers={radiusDraftCenters}
 							radiusMeters={tool.radiusMeters}
 						/>
 					)}
@@ -1364,7 +1398,9 @@ function MapScreen() {
 												setTool({ ...tool, selectedId: id });
 											}}
 											onSplitChange={setTool}
+											onRadiusChange={setTool}
 											onClosestPoiChange={setTool}
+											radiusCenters={radiusDraftCenters}
 											closestPoiCenter={
 												selectedClosestPoi
 													? [selectedClosestPoi.lng, selectedClosestPoi.lat]

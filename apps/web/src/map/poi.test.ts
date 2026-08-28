@@ -5,6 +5,7 @@ import {
 	defaultClosestPoiRadius,
 	ensurePoiKind,
 	type MapPoi,
+	radiusPoiCenters,
 	togglePoiKind,
 } from "./poi";
 
@@ -90,5 +91,21 @@ describe("defaultClosestPoiRadius", () => {
 		expect(
 			defaultClosestPoiRadius([ZOO.lng, ZOO.lat], TIERPARK.lng, TIERPARK.lat),
 		).toBeGreaterThan(0);
+	});
+});
+
+describe("radiusPoiCenters", () => {
+	it("takes every same-kind pin, including those outside the area", () => {
+		expect(radiusPoiCenters("zoo", [ZOO, TIERPARK, OUTSIDE_ZOO, PARK])).toEqual(
+			[
+				[ZOO.lng, ZOO.lat],
+				[TIERPARK.lng, TIERPARK.lat],
+				[OUTSIDE_ZOO.lng, OUTSIDE_ZOO.lat],
+			],
+		);
+	});
+
+	it("is empty when the kind is absent", () => {
+		expect(radiusPoiCenters("museum", [ZOO, PARK])).toEqual([]);
 	});
 });

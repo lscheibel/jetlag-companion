@@ -94,8 +94,10 @@ export type MapTool =
 	  }
 	| {
 			readonly kind: "drawingRadiusConstraint";
-			readonly center: LngLat | null;
+			readonly centers: readonly LngLat[];
 			readonly radiusMeters: number;
+			readonly poiKind: PoiKind | null;
+			readonly pickingKind: boolean;
 	  }
 	| {
 			readonly kind: "drawingPolygonConstraint";
@@ -120,6 +122,15 @@ export type MapTool =
 	  }
 	| { readonly kind: "listingConstraints" }
 	| { readonly kind: "searching" };
+
+export type RadiusConstraintTool = Extract<
+	MapTool,
+	{ kind: "drawingRadiusConstraint" }
+>;
+
+export function radiusConstraintReady(centers: readonly LngLat[]): boolean {
+	return centers.length > 0;
+}
 
 export const BOUNDARY_CONSTRAINT_LEVELS = [9, 10] as const;
 

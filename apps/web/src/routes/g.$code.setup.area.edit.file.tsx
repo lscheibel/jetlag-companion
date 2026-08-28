@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { MapFlyTo } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
 import { EditorScreen } from "../setup/area/editor-screen";
-import { parseAreaFile } from "../setup/area/import-file";
+import { parseAreaFile, saveAreaFile } from "../setup/area/import-file";
 import { GERMANY_BOUNDS } from "../setup/area/labels";
 import { FoldLayer, PreviewLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
@@ -86,9 +86,15 @@ export default function SetupAreaFile() {
 							onClick: pick,
 							testId: "area-file-pick",
 						}
-					: undefined
+					: editor.empty
+						? undefined
+						: {
+								label: "Save as file",
+								onClick: () => saveAreaFile(editor.name, editor.foldMulti),
+								testId: "area-file-save",
+							}
 			}
-			secondaryFirst={Boolean(draft)}
+			secondaryFirst={Boolean(draft) || !editor.empty}
 			showAddCut
 			title={editor.cut ? "Take out from a file" : "A saved map"}
 		>

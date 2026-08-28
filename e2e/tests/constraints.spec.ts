@@ -128,6 +128,37 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await expect(cara.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 });
 
+test("a seeker radius can be placed by typing coordinates", async ({
+	browser,
+}) => {
+	test.setTimeout(120_000);
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben");
+	const code = await createGame(ana);
+	await joinGame(ben, code);
+	for (const phone of [ana, ben]) await waitForSync(phone);
+	await joinTeam(ana, "Seekers");
+	await joinTeam(ben, "Hiders");
+
+	await startHiding([ana, ben], code, "30");
+	await commitZone(ben, code);
+	await startSeeking(ana, code);
+
+	await openMap(ana, code);
+	await waitForSync(ana);
+
+	const seed = await areaHash(ana);
+	await pickConstraint(ana, "add-radius-constraint");
+	await expect(ana.page.getByTestId("radius-draft")).toBeVisible();
+	await ana.page.getByTestId("radius-center-lat").fill("52.52000");
+	await ana.page.getByTestId("radius-center-lng").fill("13.40500");
+	await ana.page.getByTestId("they-are-inside").click();
+	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
+		timeout: 20_000,
+	});
+	expect(await areaHash(ana)).not.toBe(seed);
+});
+
 test("two hider teams switch folds from the selector", async ({ browser }) => {
 	test.setTimeout(120_000);
 	const ana = await openPhone(browser, "Ana");

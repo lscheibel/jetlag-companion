@@ -49,6 +49,8 @@ export function MapToolSheet(props: MapToolSheetProps) {
 		props.tool.kind === "pickingBoundaryConstraint" && !props.tool.selectedId;
 	const pickingClosest =
 		props.tool.kind === "pickingClosestPoiConstraint" && !props.tool.selectedId;
+	const pickingRadiusKind =
+		props.tool.kind === "drawingRadiusConstraint" && props.tool.pickingKind;
 
 	return (
 		<>
@@ -56,6 +58,7 @@ export function MapToolSheet(props: MapToolSheetProps) {
 			<ZoneForm {...props} open={zoneOpen} />
 			<BoundaryPickerSheet {...props} open={picking} />
 			<ClosestPoiPickerSheet {...props} open={pickingClosest} />
+			<RadiusPoiKindSheet {...props} open={pickingRadiusKind} />
 		</>
 	);
 }
@@ -423,6 +426,67 @@ function ClosestPoiPickerSheet(
 					)}
 				</>
 			)}
+		</Sheet>
+	);
+}
+
+function RadiusPoiKindSheet(
+	props: MapToolSheetProps & { readonly open: boolean },
+) {
+	const picking =
+		props.tool.kind === "drawingRadiusConstraint" ? props.tool : null;
+	const kindCounts = POI_KINDS.map((kind) => ({
+		kind,
+		count: props.pois.filter((poi) => poi.kind === kind).length,
+	}));
+
+	function selectKind(kind: PoiKind) {
+		if (!picking) return;
+		props.onToolChange({
+			...picking,
+			poiKind: kind,
+			centers: [],
+			pickingKind: false,
+		});
+	}
+
+	return (
+		<Sheet
+			onClose={() => {
+				if (!picking) {
+					props.onCancel();
+					return;
+				}
+				props.onToolChange({ ...picking, pickingKind: false });
+			}}
+			open={props.open}
+			testId="radius-poi-kind-sheet"
+			title="All of this type"
+		>
+			<div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+				{kindCounts.map(({ kind, count }) => (
+					<button
+						className={cn(
+							"flex w-full shrink-0 items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+							picking?.poiKind === kind ? "border-action" : "border-hairline",
+						)}
+						data-testid={`radius-poi-kind-${kind}`}
+						disabled={count === 0}
+						key={kind}
+						onClick={() => selectKind(kind)}
+						type="button"
+					>
+						<span className="min-w-0 flex-1">
+							<b className="block text-[0.85rem] leading-tight">
+								{POI_KIND_LABELS[kind]}
+							</b>
+							<span className="eyebrow mt-0.5 block text-ink-dim">
+								{count === 0 ? "None nearby" : `${count} nearby`}
+							</span>
+						</span>
+					</button>
+				))}
+			</div>
 		</Sheet>
 	);
 }

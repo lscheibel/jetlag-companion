@@ -386,8 +386,10 @@ function constraintTool(
 	if (kind === "drawingRadiusConstraint") {
 		return {
 			kind: "drawingRadiusConstraint",
-			center: null,
+			centers: [],
 			radiusMeters: defaultRadiusMeters,
+			poiKind: null,
+			pickingKind: false,
 		};
 	}
 	if (kind === "drawingSplitConstraint") {

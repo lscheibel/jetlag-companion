@@ -25,7 +25,7 @@ export function radarGeometry(
 	center: LngLat,
 	radiusMeters: Meters,
 ): ConstraintGeometry {
-	return { kind: "radius", center, radius: radiusMeters };
+	return { kind: "radius", centers: [center], radius: radiusMeters };
 }
 
 export type AnsweredQuestion = {

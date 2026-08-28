@@ -18,7 +18,7 @@ const SEED = [
 const INCLUDE_RADIUS: Constraint = {
 	id: "a",
 	mode: "include",
-	geometry: { kind: "radius", center: [13.4, 52.5], radius: 4000 },
+	geometry: { kind: "radius", centers: [[13.4, 52.5]], radius: 4000 },
 };
 
 const EXCLUDE_POLYGON: Constraint = {

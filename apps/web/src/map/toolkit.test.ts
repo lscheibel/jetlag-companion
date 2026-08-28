@@ -9,6 +9,7 @@ import {
 	type ParsedCoordinates,
 	parseCoordinates,
 	parsePastedCoordinates,
+	radiusConstraintReady,
 	type SearchableStop,
 	searchStops,
 } from "./toolkit";
@@ -176,5 +177,18 @@ describe("nearestAtPx", () => {
 		expect(
 			nearestAtPx(pins, screen, (pin) => [pin.lng, pin.lat], project, 24)?.id,
 		).toBe("pin-1");
+	});
+});
+
+describe("radiusConstraintReady", () => {
+	it("needs at least one centre", () => {
+		expect(radiusConstraintReady([])).toBe(false);
+		expect(radiusConstraintReady([[13.4, 52.5]])).toBe(true);
+		expect(
+			radiusConstraintReady([
+				[13.4, 52.5],
+				[13.41, 52.51],
+			]),
+		).toBe(true);
 	});
 });

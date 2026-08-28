@@ -19,7 +19,7 @@ const outPath = flag("out", "assets/catalog/stops.catalog.json");
 const adminUrl = flag(
 	"db",
 	process.env.DATABASE_URL ??
-		"postgresql://postgres:password@localhost:5432/zero-lag",
+		"postgresql://postgres:password@localhost:5432/jetlag",
 );
 
 const started = Date.now();

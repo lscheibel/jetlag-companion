@@ -12,6 +12,7 @@ import type {
 	RoundStatus,
 	TeamRole,
 } from "../types";
+import { constraintGeometry } from "./constraint-geometry";
 import {
 	refuse,
 	reject,
@@ -60,29 +61,9 @@ const answerValue = z.object({
 	value: z.boolean(),
 });
 
+const withEvent = { eventId: z.string() };
 const lngLat = z.tuple([z.number(), z.number()]);
 const multiPolygon = z.array(z.array(z.array(lngLat)));
-
-/** Mirrors `ConstraintGeometry` in @zero-lag/rules — the four kinds of §9. */
-const constraintGeometry = z.discriminatedUnion("kind", [
-	z.object({ kind: z.literal("radius"), center: lngLat, radius: z.number() }),
-	z.object({
-		kind: z.literal("halfPlane"),
-		a: lngLat,
-		b: lngLat,
-		nearer: z.enum(["a", "b"]),
-	}),
-	z.object({ kind: z.literal("polygon"), polygons: multiPolygon }),
-	z.object({
-		kind: z.literal("sector"),
-		center: lngLat,
-		radius: z.number(),
-		fromDeg: z.number(),
-		toDeg: z.number(),
-	}),
-]);
-
-const withEvent = { eventId: z.string() };
 const longitude = z.number().finite().min(-180).max(180);
 const latitude = z.number().finite().min(-90).max(90);
 const radiusMeters = z.number().finite().positive();
@@ -1829,7 +1810,7 @@ export const mutators = defineMutators({
 					answerId: null,
 					geometry: {
 						kind: "radius",
-						center: [args.lng, args.lat],
+						centers: [[args.lng, args.lat]],
 						radius: args.radiusMeters,
 					},
 					mode: "include",

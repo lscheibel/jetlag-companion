@@ -18,6 +18,7 @@ import {
 	type Constraint,
 	type ConstraintGeometry,
 	foldConstraints,
+	radiusCenters,
 	satisfies,
 	toRegion,
 } from "./constraints";
@@ -56,7 +57,7 @@ const radiusGeometry = fc
 	.map(
 		([center, radius]): ConstraintGeometry => ({
 			kind: "radius",
-			center,
+			centers: [center],
 			radius,
 		}),
 	);
@@ -152,9 +153,10 @@ function nearBoundary(point: LngLat, geometry: ConstraintGeometry): boolean {
 	const toLocal = localFrame(point);
 	switch (geometry.kind) {
 		case "radius":
-			return (
-				Math.abs(distanceMeters(point, geometry.center) - geometry.radius) <
-				BOUNDARY_CLEARANCE_METERS
+			return radiusCenters(geometry).some(
+				(center) =>
+					Math.abs(distanceMeters(point, center) - geometry.radius) <
+					BOUNDARY_CLEARANCE_METERS,
 			);
 		case "halfPlane": {
 			// The gap to the bisector is half the difference of the two distances.
@@ -237,7 +239,9 @@ describe("satisfies and applyConstraint are two readings of one definition", () 
 				const constraint: Constraint = { id: "r", geometry, mode: "include" };
 				const inside =
 					geometry.kind === "radius" &&
-					distanceMeters(point, geometry.center) < geometry.radius;
+					radiusCenters(geometry).some(
+						(center) => distanceMeters(point, center) < geometry.radius,
+					);
 				expect(satisfies(point, constraint)).toBe(inside);
 			}),
 			{ numRuns: 200 },
@@ -253,7 +257,7 @@ function symmetricDifferenceArea(a: Region, b: Region): number {
 describe("the fold commutes", () => {
 	const seed = toRegion({
 		kind: "radius",
-		center: [13.4, 52.52],
+		centers: [[13.4, 52.52]],
 		radius: 8000,
 	});
 
@@ -326,12 +330,20 @@ describe("the fold commutes", () => {
 			{
 				id: "a",
 				mode: "include",
-				geometry: { kind: "radius", center: [13.4, 52.52], radius: 5000 },
+				geometry: {
+					kind: "radius",
+					centers: [[13.4, 52.52]],
+					radius: 5000,
+				},
 			},
 			{
 				id: "b",
 				mode: "exclude",
-				geometry: { kind: "radius", center: [13.42, 52.53], radius: 1200 },
+				geometry: {
+					kind: "radius",
+					centers: [[13.42, 52.53]],
+					radius: 1200,
+				},
 			},
 			{
 				id: "c",
@@ -364,7 +376,7 @@ describe("the fold commutes", () => {
 describe("the fold is idempotent", () => {
 	const seed = toRegion({
 		kind: "radius",
-		center: [13.4, 52.52],
+		centers: [[13.4, 52.52]],
 		radius: 8000,
 	});
 
@@ -373,12 +385,20 @@ describe("the fold is idempotent", () => {
 			{
 				id: "a",
 				mode: "include",
-				geometry: { kind: "radius", center: [13.4, 52.52], radius: 4000 },
+				geometry: {
+					kind: "radius",
+					centers: [[13.4, 52.52]],
+					radius: 4000,
+				},
 			},
 			{
 				id: "b",
 				mode: "exclude",
-				geometry: { kind: "radius", center: [13.43, 52.53], radius: 900 },
+				geometry: {
+					kind: "radius",
+					centers: [[13.43, 52.53]],
+					radius: 900,
+				},
 			},
 		];
 
@@ -404,13 +424,13 @@ describe("the fold is idempotent", () => {
 
 describe("radar", () => {
 	const alex: LngLat = [13.4132, 52.5219];
-	const seed = toRegion({ kind: "radius", center: alex, radius: 10000 });
+	const seed = toRegion({ kind: "radius", centers: [alex], radius: 10000 });
 
 	it("keeps the disc on yes and carves it out on no", () => {
 		const yes: Constraint = {
 			id: "yes",
 			mode: "include",
-			geometry: { kind: "radius", center: alex, radius: 3000 },
+			geometry: { kind: "radius", centers: [alex], radius: 3000 },
 		};
 		const no: Constraint = { ...yes, id: "no", mode: "exclude" };
 
@@ -423,5 +443,42 @@ describe("radar", () => {
 			regionArea(seed),
 			-1,
 		);
+	});
+});
+
+describe("radiusCenters", () => {
+	const alex: LngLat = [13.4132, 52.5219];
+
+	it("lifts a stored single center", () => {
+		expect(radiusCenters({ center: alex })).toEqual([alex]);
+	});
+
+	it("prefers centers over a leftover center", () => {
+		const other: LngLat = [13.5, 52.5];
+		expect(radiusCenters({ centers: [other], center: alex })).toEqual([other]);
+	});
+});
+
+describe("a radius with several centers", () => {
+	const a: LngLat = [13.4, 52.52];
+	const b: LngLat = [13.45, 52.52];
+	const geometry: ConstraintGeometry = {
+		kind: "radius",
+		centers: [a, b],
+		radius: 400,
+	};
+	const include: Constraint = { id: "multi", geometry, mode: "include" };
+
+	it("covers a point inside either disc and not the gap", () => {
+		expect(satisfies(a, include)).toBe(true);
+		expect(satisfies(b, include)).toBe(true);
+		expect(satisfies([13.425, 52.52], include)).toBe(false);
+	});
+
+	it("is the union: exclude drops both discs", () => {
+		const exclude: Constraint = { ...include, mode: "exclude" };
+		expect(satisfies(a, exclude)).toBe(false);
+		expect(satisfies(b, exclude)).toBe(false);
+		expect(satisfies([13.425, 52.52], exclude)).toBe(true);
 	});
 });

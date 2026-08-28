@@ -16,6 +16,7 @@ import {
 	regionHash,
 	sectorRegion,
 	subtractRegions,
+	unionRegions,
 	WORLD_REGION,
 } from "./region";
 import type { LngLat, MultiPolygon } from "./types";
@@ -273,6 +274,21 @@ describe("boolean operations", () => {
 		);
 		expect(regionContains(ring, east(ALEX, 1000))).toBe(true);
 		expect(regionContains(ring, ALEX)).toBe(false);
+	});
+
+	it("unions many discs in one sweep", () => {
+		const a = circleRegion(ALEX, 400);
+		const b = circleRegion(east(ALEX, 3000), 400);
+		const c = circleRegion(east(ALEX, 6000), 400);
+		const all = unionRegions(a, b, c);
+		expect(regionContains(all, ALEX)).toBe(true);
+		expect(regionContains(all, east(ALEX, 3000))).toBe(true);
+		expect(regionContains(all, east(ALEX, 6000))).toBe(true);
+		expect(regionContains(all, east(ALEX, 1500))).toBe(false);
+		expect(regionArea(all)).toBeCloseTo(
+			regionArea(a) + regionArea(b) + regionArea(c),
+			-1,
+		);
 	});
 
 	it("complements to everything outside", () => {

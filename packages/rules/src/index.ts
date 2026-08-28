@@ -11,6 +11,7 @@ export {
 	type ConstraintGeometry,
 	type ConstraintMode,
 	foldConstraints,
+	radiusCenters,
 	satisfies,
 	toRegion,
 } from "./constraints";

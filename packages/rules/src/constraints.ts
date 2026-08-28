@@ -1,5 +1,6 @@
 import {
 	circleRegion,
+	EMPTY_REGION,
 	halfPlaneRegion,
 	intersectRegions,
 	type LngLat,
@@ -12,6 +13,7 @@ import {
 	sectorRegion,
 	subtractRegions,
 	type Tolerances,
+	unionRegions,
 } from "@zero-lag/geo";
 
 /**
@@ -26,7 +28,7 @@ import {
 export type ConstraintGeometry =
 	| {
 			readonly kind: "radius";
-			readonly center: LngLat;
+			readonly centers: readonly LngLat[];
 			readonly radius: Meters;
 	  }
 	| {
@@ -53,6 +55,36 @@ export type Constraint = {
 };
 
 /**
+ * Stored radius rows may still have a single `center` from before multi-circle.
+ * New writes always use `centers`.
+ */
+export function radiusCenters(geometry: {
+	readonly centers?: readonly LngLat[];
+	readonly center?: LngLat;
+}): readonly LngLat[] {
+	if (geometry.centers && geometry.centers.length > 0) {
+		return geometry.centers;
+	}
+	if (geometry.center) return [geometry.center];
+	return [];
+}
+
+function radiusRegion(
+	geometry: Extract<ConstraintGeometry, { kind: "radius" }>,
+): Region {
+	const centers = radiusCenters(geometry);
+	if (centers.length === 0) return EMPTY_REGION;
+	if (centers.length === 1) {
+		const only = centers[0];
+		if (!only) return EMPTY_REGION;
+		return circleRegion(only, geometry.radius);
+	}
+	return unionRegions(
+		...centers.map((center) => circleRegion(center, geometry.radius)),
+	);
+}
+
+/**
  * The set a constraint refers to, normalized. Not yet the constraint's effect:
  * `mode` decides whether the area is intersected with this set or with its
  * complement.
@@ -64,7 +96,7 @@ export function toRegion(
 	const raw = (() => {
 		switch (geometry.kind) {
 			case "radius":
-				return circleRegion(geometry.center, geometry.radius);
+				return radiusRegion(geometry);
 			case "halfPlane":
 				return halfPlaneRegion(geometry.a, geometry.b, geometry.nearer);
 			case "polygon":

@@ -99,3 +99,16 @@ export function defaultClosestPoiRadius(
 	const meters = distanceMeters(fromYou, [lng, lat]);
 	return meters > 0 ? meters : null;
 }
+
+/**
+ * Circles for a radius constraint on every POI of a kind. Pins just outside
+ * the fence still count: a buffer that overlaps the area should still cut.
+ */
+export function radiusPoiCenters(
+	kind: PoiKind,
+	pois: readonly MapPoi[],
+): readonly LngLat[] {
+	return pois
+		.filter((poi) => poi.kind === kind)
+		.map((poi) => [poi.lng, poi.lat] as const);
+}

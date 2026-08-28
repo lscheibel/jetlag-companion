@@ -1,8 +1,15 @@
-import { multiPolygonToRegion, regionContains } from "@zero-lag/geo";
+import {
+	type MultiPolygon,
+	multiPolygonToRegion,
+	type Polygon,
+	regionContains,
+} from "@zero-lag/geo";
 import { describe, expect, it } from "vitest";
-import { parseAreaFile } from "./import-file";
+import { areaFileName, parseAreaFile, serializeAreaFile } from "./import-file";
 
-const BOX = {
+// Annotated rather than inferred: a bare literal types the positions as
+// number[], and `[BOX.coordinates]` has to satisfy MultiPolygon below.
+const BOX: { type: "Polygon"; coordinates: Polygon } = {
 	type: "Polygon",
 	coordinates: [
 		[
@@ -72,5 +79,60 @@ describe("parseAreaFile", () => {
 			}),
 		);
 		expect(result.ok).toBe(false);
+	});
+
+	it("keeps a hole so a saved area round-trips through the chooser", () => {
+		const withHole: MultiPolygon = [
+			[
+				[
+					[13.4, 52.5],
+					[13.5, 52.5],
+					[13.5, 52.55],
+					[13.4, 52.55],
+					[13.4, 52.5],
+				],
+				[
+					[13.43, 52.51],
+					[13.47, 52.51],
+					[13.47, 52.54],
+					[13.43, 52.54],
+					[13.43, 52.51],
+				],
+			],
+		];
+		const text = serializeAreaFile("Mitte with a cut", withHole);
+		const result = parseAreaFile("game-area.geojson", text);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.name).toBe("Mitte with a cut");
+		const region = multiPolygonToRegion(result.geometry);
+		expect(regionContains(region, [13.41, 52.505])).toBe(true);
+		expect(regionContains(region, [13.45, 52.525])).toBe(false);
+	});
+});
+
+describe("serializeAreaFile", () => {
+	it("writes GeoJSON the chooser can read back", () => {
+		const geometry: MultiPolygon = [BOX.coordinates];
+		const result = parseAreaFile(
+			"ignored.geojson",
+			serializeAreaFile("Friedrichshain-Kreuzberg", geometry),
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.name).toBe("Friedrichshain-Kreuzberg");
+		expect(
+			regionContains(multiPolygonToRegion(result.geometry), [13.45, 52.52]),
+		).toBe(true);
+	});
+});
+
+describe("areaFileName", () => {
+	it("turns the area name into a .geojson filename", () => {
+		expect(areaFileName("Friedrichshain-Kreuzberg")).toBe(
+			"Friedrichshain-Kreuzberg.geojson",
+		);
+		expect(areaFileName("3 pieces")).toBe("3-pieces.geojson");
+		expect(areaFileName("   ")).toBe("game-area.geojson");
 	});
 });

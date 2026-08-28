@@ -1,8 +1,17 @@
+import { useTheme } from "@zero-lag/ui/hooks/use-theme";
+import { useMemo } from "react";
+
 /**
- * The game-area casing, in yellow and black: a light case against the dim,
- * a dark core against the map.
+ * The in-hand casing: a yellow case against the map, and a core that reads
+ * on top of it — black in the dark, the yellow's own darker edge in the light
+ * so the line stays a two-tone without dropping a black stroke onto a pale
+ * basemap.
  */
-export function yellowBlackLine(id: string, dashed = false) {
+const CASE = "#ffe01f";
+const CORE_DARK = "#08111c";
+const CORE_LIGHT = "#b39b00";
+
+export function yellowBlackLine(id: string, dark: boolean, dashed = false) {
 	const dash = dashed ? { "line-dasharray": [2, 1.5] } : {};
 	return [
 		{
@@ -13,7 +22,7 @@ export function yellowBlackLine(id: string, dashed = false) {
 				"line-cap": "round" as const,
 			},
 			paint: {
-				"line-color": "#ffe01f",
+				"line-color": CASE,
 				"line-width": 7,
 				...dash,
 			},
@@ -26,10 +35,16 @@ export function yellowBlackLine(id: string, dashed = false) {
 				"line-cap": "round" as const,
 			},
 			paint: {
-				"line-color": "#08111c",
+				"line-color": dark ? CORE_DARK : CORE_LIGHT,
 				"line-width": 3,
 				...dash,
 			},
 		},
 	];
+}
+
+export function useYellowBlackLine(id: string, dashed = false) {
+	const { resolved } = useTheme();
+	const dark = resolved === "dark";
+	return useMemo(() => yellowBlackLine(id, dark, dashed), [id, dashed, dark]);
 }

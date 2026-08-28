@@ -1,6 +1,6 @@
 import type { LngLat } from "@zero-lag/geo";
 import { useMemo } from "react";
-import { yellowBlackLine } from "./draft-paint";
+import { useYellowBlackLine } from "./draft-paint";
 import { ringMidpoints } from "./draw-handles";
 import {
 	EMPTY_FEATURES,
@@ -12,7 +12,6 @@ import { useGeoJsonLayer } from "./use-geojson-layer";
 
 export type RingDraftKind = "measure" | "draw";
 
-const MEASURE_LINE = yellowBlackLine("measure-line");
 const MEASURE_MIDPOINTS = [
 	{
 		id: "measure-midpoints",
@@ -48,8 +47,6 @@ const DRAW_FILL = [
 		},
 	},
 ];
-const DRAW_LINE = yellowBlackLine("draw-line");
-const DRAW_CLOSE = yellowBlackLine("draw-close", true);
 const DRAW_MIDPOINTS = [
 	{
 		id: "draw-midpoints",
@@ -108,7 +105,8 @@ function MeasureRingDraft({
 		() => pointsFeature(ringMidpoints(points, closed)),
 		[closed, points],
 	);
-	useGeoJsonLayer("measure-line-source", line, MEASURE_LINE);
+	const lineLayers = useYellowBlackLine("measure-line");
+	useGeoJsonLayer("measure-line-source", line, lineLayers);
 	useGeoJsonLayer("measure-midpoints-source", midpoints, MEASURE_MIDPOINTS);
 	useGeoJsonLayer("measure-vertices-source", vertices, MEASURE_VERTICES);
 	return null;
@@ -137,9 +135,11 @@ function DrawRingDraft({
 		() => pointsFeature(ringMidpoints(points, closed)),
 		[closed, points],
 	);
+	const lineLayers = useYellowBlackLine("draw-line");
+	const closeLayers = useYellowBlackLine("draw-close", true);
 	useGeoJsonLayer("builder-draw-fill", fill, DRAW_FILL);
-	useGeoJsonLayer("builder-draw-line", line, DRAW_LINE);
-	useGeoJsonLayer("builder-draw-close", close, DRAW_CLOSE);
+	useGeoJsonLayer("builder-draw-line", line, lineLayers);
+	useGeoJsonLayer("builder-draw-close", close, closeLayers);
 	useGeoJsonLayer("builder-draw-midpoints", midpoints, DRAW_MIDPOINTS);
 	useGeoJsonLayer("builder-draw-vertices", vertices, DRAW_VERTICES);
 	return null;

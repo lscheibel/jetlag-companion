@@ -1,4 +1,5 @@
 import { circleLngLat, type LngLat } from "@zero-lag/geo";
+import { useTheme } from "@zero-lag/ui/hooks/use-theme";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useMemo } from "react";
 import { yellowBlackLine } from "./draft-paint";
@@ -29,6 +30,8 @@ export function HidingZoneLayer({
 	committed = false,
 	muted = false,
 }: HidingZoneLayerProps) {
+	const { resolved } = useTheme();
+	const dark = resolved === "dark";
 	const data = useMemo(
 		() =>
 			center && radiusMeters > 0
@@ -49,9 +52,9 @@ export function HidingZoneLayer({
 			},
 			...(muted
 				? mutedLine(`${id}-outline`)
-				: yellowBlackLine(`${id}-outline`, !committed)),
+				: yellowBlackLine(`${id}-outline`, dark, !committed)),
 		],
-		[id, committed, muted],
+		[id, committed, dark, muted],
 	);
 	useGeoJsonLayer(`${id}-source`, data, layers);
 

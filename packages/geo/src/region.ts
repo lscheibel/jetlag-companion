@@ -82,10 +82,17 @@ export function intersectRegions(a: Region, b: Region): Region {
 	return fromClipping(intersection(toClipping(a), toClipping(b)));
 }
 
-export function unionRegions(a: Region, b: Region): Region {
-	if (isEmptyRegion(a)) return b;
-	if (isEmptyRegion(b)) return a;
-	return fromClipping(union(toClipping(a), toClipping(b)));
+/**
+ * Variadic so a radius around every museum is one sweep, not a pairwise fold
+ * that accumulates slivers. Empty and singleton inputs skip clipping.
+ */
+export function unionRegions(...regions: readonly Region[]): Region {
+	const nonempty = regions.filter((region) => !isEmptyRegion(region));
+	if (nonempty.length === 0) return EMPTY_REGION;
+	const [first, ...rest] = nonempty;
+	if (!first) return EMPTY_REGION;
+	if (rest.length === 0) return first;
+	return fromClipping(union(toClipping(first), ...rest.map(toClipping)));
 }
 
 export function subtractRegions(a: Region, b: Region): Region {

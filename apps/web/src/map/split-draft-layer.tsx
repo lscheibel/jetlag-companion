@@ -9,13 +9,11 @@ import {
 } from "@zero-lag/geo";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useMemo } from "react";
-import { yellowBlackLine } from "./draft-paint";
+import { useYellowBlackLine } from "./draft-paint";
 import { lineFeature, multiPolygonFeature, pointsFeature } from "./geojson";
 import { MapMarker } from "./map-canvas";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
-const SPAN = yellowBlackLine("split-span", true);
-const BISECTOR = yellowBlackLine("split-bisector");
 const VERTICES = [
 	{
 		id: "split-vertices",
@@ -85,9 +83,12 @@ export function SplitDraftLayer({
 		);
 	}, [excludeNearer, from, surviving, to]);
 
+	const spanLayers = useYellowBlackLine("split-span", true);
+	const bisectorLayers = useYellowBlackLine("split-bisector");
+
 	useGeoJsonLayer("split-fill-source", cut, CUT_FILL);
-	useGeoJsonLayer("split-span-source", span, SPAN);
-	useGeoJsonLayer("split-bisector-source", bisector, BISECTOR);
+	useGeoJsonLayer("split-span-source", span, spanLayers);
+	useGeoJsonLayer("split-bisector-source", bisector, bisectorLayers);
 	useGeoJsonLayer("split-vertices-source", vertices, VERTICES);
 
 	return (

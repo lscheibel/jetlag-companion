@@ -9,6 +9,7 @@ import {
 import { useLocation, useNavigate } from "react-router";
 import { MapFitSelection } from "../map/map-interactions";
 import { EditorMap } from "../setup/area/editor-map";
+import { saveAreaFile } from "../setup/area/import-file";
 import { GERMANY_BOUNDS } from "../setup/area/labels";
 import { FoldLayer } from "../setup/area/layers";
 import { ToolStrip } from "../setup/area/tool-strip";
@@ -62,16 +63,29 @@ export default function SetupAreaEditor() {
 			</EditorMap>
 			<div className="flex shrink-0 flex-col gap-2.5 px-4 pt-3">
 				<ToolStrip />
-				<ActionButton
-					data-testid="area-show-pieces"
-					onClick={() =>
-						void navigate(`/g/${editor.code}/setup/area/edit/pieces`)
-					}
-					size="compact"
-					tone="secondary"
-				>
-					Edit layers
-				</ActionButton>
+				<div className="flex gap-2.5">
+					<ActionButton
+						className="min-w-0 flex-1"
+						data-testid="area-show-pieces"
+						onClick={() =>
+							void navigate(`/g/${editor.code}/setup/area/edit/pieces`)
+						}
+						size="compact"
+						tone="secondary"
+					>
+						Edit layers
+					</ActionButton>
+					<ActionButton
+						className="min-w-0 flex-1"
+						data-testid="area-save-file"
+						disabled={editor.empty}
+						onClick={() => saveAreaFile(editor.name, editor.foldMulti)}
+						size="compact"
+						tone="secondary"
+					>
+						Save as file
+					</ActionButton>
+				</div>
 			</div>
 			<ScreenActions
 				note={

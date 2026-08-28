@@ -30,7 +30,7 @@ function db(): Pool {
 	pool ??= new Pool({
 		connectionString:
 			process.env.DATABASE_URL ??
-			"postgresql://postgres:password@localhost:5432/zero-lag",
+			"postgresql://postgres:password@localhost:5432/jetlag",
 	});
 	return pool;
 }

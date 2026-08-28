@@ -1,3 +1,4 @@
+import { POI_KIND_LABELS } from "@zero-lag/catalog";
 import { distanceMeters, type LngLat } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
@@ -12,7 +13,11 @@ import { useState } from "react";
 import { HiderChip, type HiderOption } from "../game/hider-selector";
 import { formatZone, stepZoneMeters } from "../setup/game-size";
 import { CoordinateFields } from "./coordinate-fields";
-import type { MapTool } from "./toolkit";
+import {
+	type MapTool,
+	type RadiusConstraintTool,
+	radiusConstraintReady,
+} from "./toolkit";
 
 type SplitTool = Extract<MapTool, { kind: "drawingSplitConstraint" }>;
 type ClosestPoiTool = Extract<MapTool, { kind: "pickingClosestPoiConstraint" }>;
@@ -40,7 +45,9 @@ interface MapBarProps {
 	readonly onCommitConstraint: (name: string) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
 	readonly onSplitChange: (next: SplitTool) => void;
+	readonly onRadiusChange: (next: RadiusConstraintTool) => void;
 	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
+	readonly radiusCenters: readonly LngLat[];
 	readonly closestPoiCenter: LngLat | null;
 	readonly fromYou: LngLat | null;
 	readonly fallbackRadiusMeters: number;
@@ -66,7 +73,9 @@ export function MapBar({
 	onCommitConstraint,
 	onSelectBoundary,
 	onSplitChange,
+	onRadiusChange,
 	onClosestPoiChange,
+	radiusCenters,
 	closestPoiCenter,
 	fromYou,
 	fallbackRadiusMeters,
@@ -91,7 +100,9 @@ export function MapBar({
 				onRadiusStep={onRadiusStep}
 				onSelectBoundary={onSelectBoundary}
 				onSplitChange={onSplitChange}
+				onRadiusChange={onRadiusChange}
 				onClosestPoiChange={onClosestPoiChange}
+				radiusCenters={radiusCenters}
 				closestPoiCenter={closestPoiCenter}
 				fromYou={fromYou}
 				fallbackRadiusMeters={fallbackRadiusMeters}
@@ -143,6 +154,9 @@ export function sheetOwnsBar(tool: MapTool): boolean {
 	if (tool.kind === "pickingClosestPoiConstraint" && !tool.selectedId) {
 		return true;
 	}
+	if (tool.kind === "drawingRadiusConstraint" && tool.pickingKind) {
+		return true;
+	}
 	return false;
 }
 
@@ -155,7 +169,9 @@ function ConstraintDraft({
 	onRadiusStep,
 	onSelectBoundary,
 	onSplitChange,
+	onRadiusChange,
 	onClosestPoiChange,
+	radiusCenters,
 	closestPoiCenter,
 	fromYou,
 	fallbackRadiusMeters,
@@ -169,7 +185,9 @@ function ConstraintDraft({
 	readonly onRadiusStep: (direction: 1 | -1) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
 	readonly onSplitChange: (next: SplitTool) => void;
+	readonly onRadiusChange: (next: RadiusConstraintTool) => void;
 	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
+	readonly radiusCenters: readonly LngLat[];
 	readonly closestPoiCenter: LngLat | null;
 	readonly fromYou: LngLat | null;
 	readonly fallbackRadiusMeters: number;
@@ -177,11 +195,12 @@ function ConstraintDraft({
 }) {
 	const [name, setName] = useState("");
 	const split = tool.kind === "drawingSplitConstraint" ? tool : null;
+	const radius = tool.kind === "drawingRadiusConstraint" ? tool : null;
 	const vertexCount =
 		tool.kind === "drawingPolygonConstraint" ? tool.ring.length : null;
 	const closest = tool.kind === "pickingClosestPoiConstraint" ? tool : null;
 	const ready =
-		(tool.kind === "drawingRadiusConstraint" && tool.center !== null) ||
+		(radius !== null && radiusConstraintReady(radiusCenters)) ||
 		(tool.kind === "drawingPolygonConstraint" && tool.ring.length >= 3) ||
 		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId !== null) ||
 		(closest !== null && closest.selectedId !== null) ||
@@ -194,17 +213,29 @@ function ConstraintDraft({
 			? () => onSelectBoundary(null)
 			: closest !== null && ready
 				? () => onClosestPoiChange({ ...closest, selectedId: null })
-				: null;
+				: radius?.poiKind
+					? () => onRadiusChange({ ...radius, pickingKind: true })
+					: null;
 
 	function setSplitPoint(which: "from" | "to", point: LngLat) {
 		if (!split) return;
 		onSplitChange({ ...split, [which]: point });
 	}
 
+	function setRadiusPoint(point: LngLat) {
+		if (!radius) return;
+		onRadiusChange({
+			...radius,
+			centers: [point],
+			poiKind: null,
+			pickingKind: false,
+		});
+	}
+
 	return (
 		<Surface
 			className="pointer-events-auto flex max-h-[45%] w-full flex-col overflow-y-auto"
-			data-testid={split ? "split-draft" : undefined}
+			data-testid={split ? "split-draft" : radius ? "radius-draft" : undefined}
 			raised
 		>
 			<div className="flex flex-col gap-2">
@@ -234,6 +265,14 @@ function ConstraintDraft({
 							/>
 						</div>
 					</>
+				)}
+				{radius && (
+					<RadiusPosition
+						centers={radiusCenters}
+						onAllOfType={() => onRadiusChange({ ...radius, pickingKind: true })}
+						onPoint={setRadiusPoint}
+						poiKind={radius.poiKind}
+					/>
 				)}
 				<div className="flex items-stretch gap-2">
 					<ToggleModePair className="min-w-0 flex-1">
@@ -304,18 +343,18 @@ function ConstraintDraft({
 						</span>
 					)}
 				</div>
-				{tool.kind === "drawingRadiusConstraint" && (
+				{radius && (
 					<NumberStepper
 						canDecrease={
-							stepZoneMeters(tool.radiusMeters, -1) < tool.radiusMeters
+							stepZoneMeters(radius.radiusMeters, -1) < radius.radiusMeters
 						}
 						canIncrease={
-							stepZoneMeters(tool.radiusMeters, 1) > tool.radiusMeters
+							stepZoneMeters(radius.radiusMeters, 1) > radius.radiusMeters
 						}
 						label="Radius"
 						onStep={onRadiusStep}
 						testId="constraint-radius"
-						value={formatZone(tool.radiusMeters)}
+						value={formatZone(radius.radiusMeters)}
 					/>
 				)}
 				{closest && (
@@ -423,5 +462,49 @@ function ConstraintDraft({
 				</div>
 			</div>
 		</Surface>
+	);
+}
+
+function RadiusPosition({
+	poiKind,
+	centers,
+	onPoint,
+	onAllOfType,
+}: {
+	readonly poiKind: RadiusConstraintTool["poiKind"];
+	readonly centers: readonly LngLat[];
+	readonly onPoint: (point: LngLat) => void;
+	readonly onAllOfType: () => void;
+}) {
+	if (poiKind) {
+		return (
+			<div className="flex flex-col gap-1" data-testid="radius-poi-kind">
+				<span className="eyebrow">Centre</span>
+				<p className="text-sm leading-snug">
+					{POI_KIND_LABELS[poiKind]}
+					<span className="text-ink-dim"> · {centers.length}</span>
+				</p>
+			</div>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-2">
+			<p className="text-ink-dim text-xs leading-snug">
+				Tap the map to place the centre, or paste coordinates.
+			</p>
+			<CoordinateFields
+				onPoint={onPoint}
+				point={centers[0] ?? null}
+				testIdPrefix="radius-center"
+			/>
+			<ActionButton
+				data-testid="radius-all-of-type"
+				onClick={onAllOfType}
+				size="comfortable"
+				tone="secondary"
+			>
+				All of this type
+			</ActionButton>
+		</div>
 	);
 }

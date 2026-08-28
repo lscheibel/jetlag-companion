@@ -66,8 +66,12 @@ npm install
 ```
 
 ```bash
-npm run db:push
+npm run db:migrate
 ```
+
+That applies the migrations in `packages/schema/src/migrations` and, on an
+empty database, creates the whole schema from them. **Not `db:push`** — see
+[AGENTS.md](AGENTS.md#database).
 
 ```bash
 npm run zero:start

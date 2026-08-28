@@ -1,6 +1,6 @@
 import { circleLngLat, type LngLat, offsetLngLat } from "@zero-lag/geo";
 import { useMemo } from "react";
-import { yellowBlackLine } from "./draft-paint";
+import { useYellowBlackLine } from "./draft-paint";
 import {
 	EMPTY_FEATURES,
 	lineFeature,
@@ -18,7 +18,6 @@ const MEASURE_FILL = [
 		paint: { "fill-color": "#ffe01f", "fill-opacity": 0.14 },
 	},
 ];
-const MEASURE_SPOKE = yellowBlackLine("measure-line");
 const MEASURE_VERTICES = [
 	{
 		id: "measure-vertices",
@@ -42,8 +41,6 @@ const CONSTRAINT_FILL = [
 		},
 	},
 ];
-const CONSTRAINT_OUTLINE = yellowBlackLine("constraint-draft-outline");
-const CONSTRAINT_SPOKE = yellowBlackLine("constraint-draft-line");
 const CONSTRAINT_VERTICES = [
 	{
 		id: "constraint-draft-vertices",
@@ -90,22 +87,24 @@ const ZONE_VERTICES = [
 	},
 ];
 
-function useCircleGeometry(center: LngLat | null, radiusMeters: number) {
-	const edge = center ? offsetLngLat(center, radiusMeters, 0) : null;
-	const fill = useMemo(
-		() =>
-			center
-				? multiPolygonFeature(circleLngLat(center, radiusMeters))
-				: EMPTY_FEATURES,
-		[center, radiusMeters],
-	);
+function useCircleGeometry(centers: readonly LngLat[], radiusMeters: number) {
+	const first = centers[0] ?? null;
+	const showHandles = centers.length === 1;
+	const edge =
+		showHandles && first ? offsetLngLat(first, radiusMeters, 0) : null;
+	const fill = useMemo(() => {
+		if (centers.length === 0) return EMPTY_FEATURES;
+		return multiPolygonFeature(
+			centers.flatMap((center) => circleLngLat(center, radiusMeters)),
+		);
+	}, [centers, radiusMeters]);
 	const spoke = useMemo(
-		() => (center && edge ? lineFeature([center, edge]) : EMPTY_FEATURES),
-		[center, edge],
+		() => (first && edge ? lineFeature([first, edge]) : EMPTY_FEATURES),
+		[first, edge],
 	);
 	const vertices = useMemo(
-		() => (center && edge ? pointsFeature([center, edge]) : EMPTY_FEATURES),
-		[center, edge],
+		() => (first && edge ? pointsFeature([first, edge]) : EMPTY_FEATURES),
+		[first, edge],
 	);
 	return { fill, spoke, vertices };
 }
@@ -117,24 +116,28 @@ function MeasureCircleDraft({
 	readonly center: LngLat | null;
 	readonly radiusMeters: number;
 }) {
-	const { fill, spoke, vertices } = useCircleGeometry(center, radiusMeters);
+	const centers = useMemo(() => (center ? [center] : []), [center]);
+	const { fill, spoke, vertices } = useCircleGeometry(centers, radiusMeters);
+	const spokeLayers = useYellowBlackLine("measure-line");
 	useGeoJsonLayer("measure-fill-source", fill, MEASURE_FILL);
-	useGeoJsonLayer("measure-line-source", spoke, MEASURE_SPOKE);
+	useGeoJsonLayer("measure-line-source", spoke, spokeLayers);
 	useGeoJsonLayer("measure-vertices-source", vertices, MEASURE_VERTICES);
 	return null;
 }
 
 function ConstraintCircleDraft({
-	center,
+	centers,
 	radiusMeters,
 }: {
-	readonly center: LngLat | null;
+	readonly centers: readonly LngLat[];
 	readonly radiusMeters: number;
 }) {
-	const { fill, spoke, vertices } = useCircleGeometry(center, radiusMeters);
+	const { fill, spoke, vertices } = useCircleGeometry(centers, radiusMeters);
+	const outline = useYellowBlackLine("constraint-draft-outline");
+	const spokeLayers = useYellowBlackLine("constraint-draft-line");
 	useGeoJsonLayer("constraint-draft-fill-source", fill, CONSTRAINT_FILL);
-	useGeoJsonLayer("constraint-draft-outline-source", fill, CONSTRAINT_OUTLINE);
-	useGeoJsonLayer("constraint-draft-line-source", spoke, CONSTRAINT_SPOKE);
+	useGeoJsonLayer("constraint-draft-outline-source", fill, outline);
+	useGeoJsonLayer("constraint-draft-line-source", spoke, spokeLayers);
 	useGeoJsonLayer(
 		"constraint-draft-vertices-source",
 		vertices,
@@ -150,7 +153,8 @@ function ZoneCircleDraft({
 	readonly center: LngLat | null;
 	readonly radiusMeters: number;
 }) {
-	const { fill, spoke, vertices } = useCircleGeometry(center, radiusMeters);
+	const centers = useMemo(() => (center ? [center] : []), [center]);
+	const { fill, spoke, vertices } = useCircleGeometry(centers, radiusMeters);
 	useGeoJsonLayer("zone-draft-fill-source", fill, ZONE_FILL);
 	useGeoJsonLayer("zone-draft-outline-source", fill, ZONE_OUTLINE);
 	useGeoJsonLayer("zone-draft-line-source", spoke, ZONE_SPOKE);
@@ -207,7 +211,8 @@ function AreaCircleDraft({
 	readonly center: LngLat | null;
 	readonly radiusMeters: number;
 }) {
-	const { fill, spoke, vertices } = useCircleGeometry(center, radiusMeters);
+	const centers = useMemo(() => (center ? [center] : []), [center]);
+	const { fill, spoke, vertices } = useCircleGeometry(centers, radiusMeters);
 	useGeoJsonLayer("area-draft-fill-source", fill, AREA_FILL);
 	useGeoJsonLayer("area-draft-outline-source", fill, AREA_OUTLINE);
 	useGeoJsonLayer("area-draft-line-source", spoke, AREA_SPOKE);
@@ -221,11 +226,13 @@ function AreaCircleDraft({
  */
 export function CircleDraftLayer({
 	kind,
-	center,
+	center = null,
+	centers,
 	radiusMeters,
 }: {
 	readonly kind: CircleDraftKind;
-	readonly center: LngLat | null;
+	readonly center?: LngLat | null;
+	readonly centers?: readonly LngLat[];
 	readonly radiusMeters: number;
 }) {
 	if (kind === "measure") {
@@ -233,7 +240,10 @@ export function CircleDraftLayer({
 	}
 	if (kind === "constraint") {
 		return (
-			<ConstraintCircleDraft center={center} radiusMeters={radiusMeters} />
+			<ConstraintCircleDraft
+				centers={centers ?? (center ? [center] : [])}
+				radiusMeters={radiusMeters}
+			/>
 		);
 	}
 	if (kind === "area") {
