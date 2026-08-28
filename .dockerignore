@@ -30,3 +30,13 @@ docker-compose.yml
 local.db
 local.db-*
 .data
+
+# Server-side configuration, copied to the host rather than built into
+# anything. It has no business in an image build context.
+infra/deploy/
+
+# The catalog artifacts reach the server image as their own layer, via
+# `COPY --from` on infra/docker/data.Dockerfile — see apps/server/Dockerfile.
+# The raw inputs they are built from are 7 GB of .pbf and GTFS that nothing at
+# build time reads. Neither belongs in a context that is otherwise source.
+assets/

@@ -1,0 +1,182 @@
+name: jetlag
+
+# Production. This directory is meant to be copied to the server as a unit —
+# nothing in the repository reads it, and no source checkout is needed there
+# because every image is pulled. The development stack is a different file,
+# infra/docker/docker-compose.yml, which builds from source and publishes every
+# port to the host.
+#
+# This one pulls tagged images and publishes nothing at all. Traefik reaches
+# the services over a network they share; Postgres is not on that network and
+# binds no host port, so it cannot collide with another stack's database.
+#
+# Copy .env.example to .env beside this file first. Every secret below is
+# written `${VAR:?...}`, so a missing one stops the stack rather than silently
+# starting it with a development default, which is what the dev compose does.
+#
+#   docker compose up -d
+
+services:
+  postgres:
+    image: postgres:18
+    # wal_level=logical is not optional: it is how zero-cache builds its SQLite
+    # replica. Without it, zero-cache starts and then never syncs anything.
+    command: postgres -c wal_level=logical
+    environment:
+      POSTGRES_DB: jetlag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Deliberately not on the proxy network, and publishing no host port. The
+    # dev compose maps 5432 to the host, which would collide with any other
+    # Postgres on the machine; this one is reachable only from the containers
+    # in this stack.
+    #
+    # The alias is why the hostname below is not just `postgres`. `server` and
+    # `zero-cache` are attached to the shared proxy network as well, and Docker
+    # resolves a name across every network a container is on — so a generic
+    # name is one `postgres` alias on that shared network away from resolving
+    # somewhere surprising. This one cannot.
+    networks:
+      internal:
+        aliases:
+          - jetlag-postgres
+    restart: unless-stopped
+
+  # Applies pending migrations and exits. Runs on every `up`, before anything
+  # that touches the schema, and blocks them if it fails — which is the whole
+  # point: forgetting to migrate should not be possible, and a broken migration
+  # should stop a deploy rather than half-start it.
+  #
+  # It does not re-run when the server restarts: `restart: unless-stopped`
+  # restarts a container, it does not re-evaluate depends_on. And it is
+  # idempotent anyway.
+  migrate:
+    image: ghcr.io/lscheibel/jetlag-companion-migrate:${IMAGE_TAG:-latest}
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?}@jetlag-postgres:5432/jetlag
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    # A task, not a service. Restarting it on exit would defeat the condition
+    # the other services wait on.
+    restart: "no"
+
+  server:
+    image: ghcr.io/lscheibel/jetlag-companion-server:${IMAGE_TAG:-latest}
+    init: true
+    environment:
+      # Same origin as the web app: Traefik routes /api on the app's own host
+      # to this service, so the browser never makes a cross-origin API call.
+      CORS_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN in .env}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?}@jetlag-postgres:5432/jetlag
+      GAME_TOKEN_SECRET: ${GAME_TOKEN_SECRET:?set GAME_TOKEN_SECRET in .env}
+      PHOTOS_PATH: /data/photos
+      ZERO_CACHE_URL: http://zero-cache:4848
+    volumes:
+      - photos:/data/photos
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      internal:
+      traefik:
+        # `server` and `web` are names half the containers on a shared proxy
+        # network could plausibly claim. The Traefik service files address the
+        # stack by these aliases instead.
+        aliases:
+          - jetlag-server
+    restart: unless-stopped
+
+  zero-cache:
+    image: rocicorp/zero:1.9.0
+    environment:
+      # Direct connection, never through pgbouncer.
+      ZERO_UPSTREAM_DB: postgresql://postgres:${POSTGRES_PASSWORD:?}@jetlag-postgres:5432/jetlag
+      ZERO_REPLICA_FILE: /data/replica.db
+      # Server-to-server, inside this stack. These never leave the network.
+      ZERO_QUERY_URL: http://server:3000/api/zero/query
+      ZERO_MUTATE_URL: http://server:3000/api/zero/mutate
+      # No ZERO_AUTH_SECRET: zero-cache does not validate our tokens. It
+      # forwards the client's `Authorization: Bearer` header to the query and
+      # mutate endpoints, and those verify it. m0-spec §4.
+      ZERO_ADMIN_PASSWORD: ${ZERO_ADMIN_PASSWORD:?set ZERO_ADMIN_PASSWORD in .env}
+      ZERO_PORT: "4848"
+      ZERO_LOG_LEVEL: ${ZERO_LOG_LEVEL:-info}
+    volumes:
+      - zero_replica:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4848/').then(() => process.exit(0)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      # Initial sync can take minutes on a cold replica. m0-spec §3.
+      start_period: 600s
+    networks:
+      internal:
+      traefik:
+        aliases:
+          - jetlag-sync
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/lscheibel/jetlag-companion-web:${IMAGE_TAG:-latest}
+    init: true
+    # Static files from Caddy. The server URLs are baked into the bundle at
+    # build time, so this image is specific to APP_ORIGIN — a tag built for a
+    # different host cannot be reused here, it has to be rebuilt.
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No internal network: it talks to nothing. The browser calls the API.
+    networks:
+      traefik:
+        aliases:
+          - jetlag-web
+    restart: unless-stopped
+
+networks:
+  internal:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
+
+volumes:
+  photos:
+  postgres_data:
+  zero_replica:

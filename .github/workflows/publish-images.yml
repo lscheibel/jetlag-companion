@@ -1,0 +1,104 @@
+# Builds and publishes the three application images to GHCR.
+#
+# The catalog is not built here and never will be: assets/ is gitignored, so a
+# checkout has no 4.8 GB .pbf or 2.0 GB GTFS feed to build it from. It arrives
+# as its own image, pinned by tag in apps/server/Dockerfile, and is republished
+# from a laptop with `npm run data:image -- --push` a few times a year.
+#
+# Runners are amd64, which is what the server is. No cross-building, no QEMU.
+
+name: Publish images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check-types
+
+      # apps/web/.env is gitignored, and packages/env/src/web.ts validates
+      # VITE_SERVER_URL and VITE_ZERO_CACHE_URL when it is imported — with no
+      # skipValidation escape hatch, unlike the server's schema. So the tests
+      # need these present, but only need them to parse as URLs. They are
+      # placeholders on purpose: nothing under test should care where the
+      # deployment actually lives, and a real hostname here would quietly
+      # become a second place to keep in step with the build args below.
+      - run: npm run test
+        env:
+          VITE_SERVER_URL: http://server.invalid
+          VITE_ZERO_CACHE_URL: http://sync.invalid
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      # One image failing should not cancel the others: a broken web build is
+      # no reason to withhold a server fix.
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            dockerfile: apps/server/Dockerfile
+          - name: web
+            dockerfile: apps/web/Dockerfile
+            # Baked into the client bundle, which is what makes the web image
+            # specific to this deployment. Not secrets — they ship inside
+            # JavaScript every visitor downloads — but changing hosts means
+            # changing them here and rebuilding.
+            build-args: |
+              VITE_SERVER_URL=https://jetlag.lennardscheibel.de
+              VITE_ZERO_CACHE_URL=https://sync.jetlag.lennardscheibel.de
+          - name: migrate
+            dockerfile: infra/docker/migrate.Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # No PAT: GITHUB_TOKEN can publish packages for this repository, and
+      # transfer through Actions does not count against any quota.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build-args }}
+          platforms: linux/amd64
+          push: true
+          # `latest` is what infra/deploy/docker-compose.yml follows by default;
+          # the commit SHA is what makes a rollback a one-line edit of
+          # IMAGE_TAG.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/jetlag-companion-${{ matrix.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/jetlag-companion-${{ matrix.name }}:${{ github.sha }}
+          # Scoped per image so the server's npm install does not evict the
+          # web's on every run.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

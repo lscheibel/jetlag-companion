@@ -1,0 +1,76 @@
+# Traefik dynamic configuration for jetlag.
+#
+# Copy to `config/jetlag.yml` beside the Traefik compose file — that is the
+# directory bind-mounted to /etc/traefik/conf.d, which
+# `--providers.file.directory` watches. Traefik reloads it without a restart.
+#
+# The service URLs below are resolved by Docker's embedded DNS using the
+# network aliases the compose file beside it declares, which works because Traefik
+# is attached to the same `traefik` network (`--providers.docker.network`).
+#
+# `entryPoints` is stated explicitly here, unlike the Grafana file. A router
+# that omits it is attached to *every* entrypoint, which on this Traefik
+# includes `traefik` on :8082 — the published dashboard port. Naming websecure
+# keeps the app on 443 only; the :80 entrypoint already redirects there.
+#
+# certResolver is redundant with
+# `--entrypoints.websecure.http.tls.certresolver=letsencrypt` and kept only to
+# match the convention of the other service files.
+#
+# Two hosts, and the split is deliberate. The API lives under /api on the app's
+# own host, which makes it same-origin with the web bundle: no preflight, no
+# CORS to misconfigure, one certificate. zero-cache gets its own subdomain
+# instead, because it is addressed by a URL baked into the client
+# (VITE_ZERO_CACHE_URL) that Zero opens a WebSocket against, and serving that
+# under a path prefix assumes more about Zero's client than is written down.
+#
+# Nothing here configures WebSocket support: Traefik proxies the Upgrade
+# handshake for a plain http service on its own.
+
+http:
+  routers:
+    jetlag-api:
+      # Both this and jetlag-web match the same host, and the more specific
+      # rule has to win. Traefik would sort these by rule length anyway; saying
+      # it means the routing does not depend on that staying true.
+      rule: "Host(`jetlag.lennardscheibel.de`) && PathPrefix(`/api`)"
+      priority: 100
+      service: jetlag-server
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+    jetlag-web:
+      rule: "Host(`jetlag.lennardscheibel.de`)"
+      priority: 10
+      service: jetlag-web
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+    jetlag-sync:
+      rule: "Host(`sync.jetlag.lennardscheibel.de`)"
+      service: jetlag-sync
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    # Hono mounts its routes at /api already, so there is no prefix to strip.
+    jetlag-server:
+      loadBalancer:
+        servers:
+          - url: "http://jetlag-server:3000"
+
+    jetlag-web:
+      loadBalancer:
+        servers:
+          - url: "http://jetlag-web:3001"
+
+    jetlag-sync:
+      loadBalancer:
+        servers:
+          - url: "http://jetlag-sync:4848"

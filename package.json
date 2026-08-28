@@ -22,6 +22,7 @@
 		"catalog:import:pois": "tsx packages/catalog/src/osm/poi-import-cli.ts",
 		"osm:extract": "bash infra/osm/extract-boundaries.sh",
 		"osm:extract:pois": "bash infra/osm/extract-pois.sh",
+		"data:image": "bash infra/docker/build-data-image.sh",
 		"db:start": "docker compose -f infra/docker/docker-compose.yml up -d postgres",
 		"db:watch": "docker compose -f infra/docker/docker-compose.yml up postgres",
 		"db:stop": "docker compose -f infra/docker/docker-compose.yml stop postgres",
