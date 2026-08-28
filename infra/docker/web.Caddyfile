@@ -11,12 +11,19 @@
 	encode zstd gzip
 
 	# Vite hashes every filename under /assets, so a URL there can never change
-	# meaning. Anything else can, and an autoUpdate PWA that cannot revalidate
-	# its own service worker is a PWA that never updates.
-	@immutable path /assets/*
+	# meaning — with two exceptions. MapLibre's worker pair is emitted under
+	# fixed names because the runtime computes the URL from a string, so those
+	# two URLs *do* change meaning when maplibre is upgraded. Marking them
+	# immutable would hide the new version from returning browsers for a year.
+	@immutable {
+		path /assets/*
+		not path /assets/maplibre-gl-worker.mjs /assets/maplibre-gl-shared.mjs
+	}
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
 
-	@volatile path / /index.html /sw.js /registerSW.js /manifest.webmanifest
+	# Anything whose URL can outlive its contents. An autoUpdate PWA that cannot
+	# revalidate its own service worker is a PWA that never updates.
+	@volatile path / /index.html /sw.js /registerSW.js /manifest.webmanifest /assets/maplibre-gl-worker.mjs /assets/maplibre-gl-shared.mjs
 	header @volatile Cache-Control "no-cache"
 
 	# Go's mime table does not know this extension, and a manifest served as
@@ -24,9 +31,19 @@
 	@webmanifest path *.webmanifest
 	header @webmanifest Content-Type "application/manifest+json"
 
-	# SPA mode: every route is index.html, and the client router takes it from
-	# there. m2-spec — a route that needs a server round-trip to paint is a
-	# route that does not exist underground.
-	try_files {path} /index.html
-	file_server
+	# Hashed build output. A missing file here is a build bug, and it must 404
+	# as one: handing it to the SPA fallback returns index.html with a 200, and
+	# the browser reports "Failed to load module script: non-JavaScript MIME
+	# type of text/html" — which says nothing about the file being absent.
+	handle /assets/* {
+		file_server
+	}
+
+	# SPA mode: every other route is index.html, and the client router takes it
+	# from there. m2-spec — a route that needs a server round-trip to paint is
+	# a route that does not exist underground.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
 }

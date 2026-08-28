@@ -18,7 +18,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # -h forces TCP. On a first run the entrypoint brings up a temporary
+      # server on the unix socket only, for initdb, then stops it and starts
+      # the real one; a socket-based check reports ready against that
+      # temporary server and whatever connects first gets dropped.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $$POSTGRES_DB -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 10

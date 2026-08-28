@@ -28,8 +28,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql
+    # `-h 127.0.0.1` is load-bearing. On a first run the entrypoint starts a
+    # temporary server bound to the unix socket only, to run initdb and any
+    # seed scripts, then shuts it down and starts the real one. A socket-based
+    # `pg_isready` answers yes to that temporary server, so the stack is told
+    # Postgres is ready during the window where it is about to disappear —
+    # and whatever started first gets its connection dropped. Forcing TCP means
+    # the check can only pass once the real server is listening.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $$POSTGRES_DB -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 10

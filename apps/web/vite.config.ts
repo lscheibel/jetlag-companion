@@ -1,8 +1,58 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import mkcert from "vite-plugin-mkcert";
 import { VitePWA } from "vite-plugin-pwa";
+
+const require_ = createRequire(import.meta.url);
+
+/**
+ * MapLibre's tile worker, emitted next to the bundle.
+ *
+ * The worker's URL is computed at runtime rather than written as a literal:
+ *
+ *   const name = url.endsWith("-dev.mjs") ? "…worker-dev.mjs" : "…worker.mjs";
+ *   return new URL(`./${name}`, import.meta.url).href;
+ *
+ * Rollup cannot see through a filename picked by a ternary, so it emits
+ * neither file and rewrites nothing. Development is unaffected — the
+ * `optimizeDeps.exclude` below serves maplibre from node_modules, where the
+ * worker genuinely does sit beside it — which is why this only ever breaks in
+ * a production build, where the chunk lands in assets/ on its own.
+ *
+ * The failure is worse than a 404: the SPA fallback answers the missing file
+ * with index.html, so the browser reports "Failed to load module script: The
+ * server responded with a non-JavaScript MIME type of text/html", and every
+ * vector tile silently never arrives.
+ *
+ * The shared chunk is emitted too. The worker's single import is
+ * `./maplibre-gl-shared.mjs`, resolved relative to itself.
+ */
+function maplibreWorkerAssets(): Plugin {
+	const files = ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"];
+	return {
+		name: "zero-lag:maplibre-worker-assets",
+		apply: "build",
+		generateBundle() {
+			// SPA mode still runs a server build; the worker belongs to neither
+			// it nor the service worker's precache manifest.
+			if (this.environment && this.environment.name !== "client") return;
+			const dist = dirname(
+				require_.resolve("maplibre-gl/dist/maplibre-gl.mjs"),
+			);
+			for (const file of files) {
+				this.emitFile({
+					type: "asset",
+					fileName: `assets/${file}`,
+					source: readFileSync(join(dist, file)),
+				});
+			}
+		},
+	};
+}
 
 export default defineConfig(({ mode }) => {
 	// HTTPS is the default so a phone on the LAN is a secure context.
@@ -54,6 +104,7 @@ export default defineConfig(({ mode }) => {
 		plugins: [
 			tailwindcss(),
 			reactRouter(),
+			maplibreWorkerAssets(),
 			// HTTPS=0 disables it. Turbo only forwards that variable because it
 			// is in passThroughEnv.
 			...(https ? [mkcert()] : []),
