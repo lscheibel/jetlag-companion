@@ -3,11 +3,15 @@ import { join } from "node:path";
 import {
 	BERLIN_FIXTURE_BOUNDARIES,
 	BOUNDARY_SEARCH_LIMIT,
+	type BoundaryCatalog,
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
 	boundariesMatching,
+	boundaryCatalogFromJson,
+	CATALOG_ADMIN_LEVELS,
 	type CatalogAdminLevel,
 	type CatalogBoundary,
+	missingCatalogLevels,
 } from "@zero-lag/catalog";
 import type { BBox } from "@zero-lag/geo";
 import { FIXTURE_SENTINEL } from "./catalog";
@@ -17,9 +21,14 @@ import { FIXTURE_SENTINEL } from "./catalog";
  * the same way the stop catalog is. Not in Zero: the extract is static and
  * the play map only needs a bbox + level read.
  *
- * Full Germany at every admin level is too large to send unfiltered. This
- * loader keeps levels 4, 9 and 10 (Land / Bezirk / Ortsteil) for the whole
- * extract, and the e2e suite uses the fixture when STOP_CATALOG_PATH=fixture.
+ * Full Germany at every admin level is too large to send unfiltered, so only
+ * `CATALOG_ADMIN_LEVELS` — 4, 9 and 10, Land / Bezirk / Ortsteil — is kept.
+ *
+ * Three sources, in order. The compacted artifact from
+ * `npm run catalog:import:boundaries` is what a deployment ships. The raw
+ * extract is the development fallback and costs about 300 MB of parsing for
+ * levels that are then discarded. The Berlin fixture is last, and the e2e
+ * suite asks for it by name with STOP_CATALOG_PATH=fixture.
  */
 
 const JSON_RELATIVE = "assets/catalog/boundaries.catalog.json";
@@ -27,19 +36,9 @@ const SEQ_RELATIVE = "assets/osm/boundaries.geojsonseq";
 
 let loaded: readonly CatalogBoundary[] | null = null;
 
-function tryReadJson(path: string): CatalogBoundary[] | null {
+function tryReadCatalog(path: string): BoundaryCatalog | null {
 	try {
-		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-		if (
-			typeof parsed === "object" &&
-			parsed !== null &&
-			"boundaries" in parsed &&
-			Array.isArray(parsed.boundaries)
-		) {
-			return parsed.boundaries as CatalogBoundary[];
-		}
-		if (Array.isArray(parsed)) return parsed as CatalogBoundary[];
-		return null;
+		return boundaryCatalogFromJson(JSON.parse(readFileSync(path, "utf8")));
 	} catch {
 		return null;
 	}
@@ -71,12 +70,27 @@ export function loadBoundaries(): readonly CatalogBoundary[] {
 			? [override]
 			: [JSON_RELATIVE, join("..", "..", JSON_RELATIVE)];
 	for (const path of jsonPaths) {
-		const rows = tryReadJson(path);
-		if (rows) {
-			console.log(`boundaries: ${rows.length} from ${path}`);
-			loaded = rows;
-			return loaded;
+		const catalog = tryReadCatalog(path);
+		if (!catalog) continue;
+
+		// A widened CATALOG_ADMIN_LEVELS against an artifact built before the
+		// change is a silently empty picker, so say it here rather than let a
+		// host wonder why their Kreis is not in the list.
+		const missing = missingCatalogLevels(catalog);
+		if (missing.length > 0) {
+			console.warn(
+				`boundaries: ${path} was built for levels ${catalog.levels.join(", ")}, ` +
+					`but this build asks for ${CATALOG_ADMIN_LEVELS.join(", ")}. ` +
+					`Level ${missing.join(", ")} will come back empty — ` +
+					"re-run `npm run catalog:import:boundaries`.",
+			);
 		}
+
+		console.log(
+			`boundaries: ${catalog.boundaries.length.toLocaleString()} from ${path}`,
+		);
+		loaded = catalog.boundaries;
+		return loaded;
 	}
 
 	const seqPaths = override?.endsWith(".geojsonseq")
@@ -85,7 +99,11 @@ export function loadBoundaries(): readonly CatalogBoundary[] {
 	for (const path of seqPaths) {
 		const rows = tryReadSeq(path);
 		if (rows && rows.length > 0) {
-			console.log(`boundaries: ${rows.length} admin 4/9/10 from ${path}`);
+			console.log(
+				`boundaries: ${rows.length.toLocaleString()} at levels ` +
+					`${CATALOG_ADMIN_LEVELS.join(", ")} from ${path} ` +
+					"(compact with `npm run catalog:import:boundaries`)",
+			);
 			loaded = rows;
 			return loaded;
 		}

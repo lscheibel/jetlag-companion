@@ -4,7 +4,10 @@ import {
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
 	boundariesMatching,
+	boundaryCatalogFromJson,
 	boundaryContaining,
+	CATALOG_ADMIN_LEVELS,
+	missingCatalogLevels,
 } from "./query";
 
 /** Alexanderplatz, inside the starter map and inside Mitte at both levels. */
@@ -113,6 +116,52 @@ describe("boundariesFromGeojsonseq", () => {
 		expect(rows.map((row) => row.name).sort()).toEqual([
 			"Berlin",
 			"Testbezirk",
+		]);
+	});
+});
+
+describe("boundaryCatalogFromJson", () => {
+	const rows = boundariesFromGeojsonseq(BEZIRK_LINE);
+	const artifact = { levels: CATALOG_ADMIN_LEVELS, boundaries: rows };
+
+	it("round-trips what the compactor writes", () => {
+		const read = boundaryCatalogFromJson(JSON.parse(JSON.stringify(artifact)));
+		expect(read?.boundaries).toEqual(rows);
+		expect(read?.levels).toEqual([...CATALOG_ADMIN_LEVELS]);
+	});
+
+	it("rejects a bare array, which carries no levels to check", () => {
+		expect(boundaryCatalogFromJson(rows)).toBeNull();
+	});
+
+	it("rejects a row at a level this build does not offer", () => {
+		const gemeinde = { ...rows[0], adminLevel: 8 };
+		expect(
+			boundaryCatalogFromJson({ levels: [8], boundaries: [gemeinde] }),
+		).toBeNull();
+	});
+
+	it("rejects the whole artifact when one row has lost its geometry", () => {
+		const broken = { ...rows[0], polygons: [] };
+		expect(
+			boundaryCatalogFromJson({
+				levels: CATALOG_ADMIN_LEVELS,
+				boundaries: [...rows, broken],
+			}),
+		).toBeNull();
+	});
+});
+
+describe("missingCatalogLevels", () => {
+	it("says nothing when the artifact was built with what this build wants", () => {
+		expect(
+			missingCatalogLevels({ levels: CATALOG_ADMIN_LEVELS, boundaries: [] }),
+		).toEqual([]);
+	});
+
+	it("names the levels an older artifact was never told to keep", () => {
+		expect(missingCatalogLevels({ levels: [9, 10], boundaries: [] })).toEqual([
+			4,
 		]);
 	});
 });

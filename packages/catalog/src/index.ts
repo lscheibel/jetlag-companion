@@ -51,15 +51,19 @@ export {
 export { poisFromJson, poisInBBox } from "./osm/poi-query";
 export {
 	BOUNDARY_SEARCH_LIMIT,
+	type BoundaryCatalog,
 	type BoundarySearch,
 	boundariesFromGeojsonseq,
 	boundariesInBBox,
 	boundariesMatching,
+	boundaryCatalogFromJson,
 	boundaryContaining,
 	CATALOG_ADMIN_LEVELS,
 	type CatalogAdminLevel,
 	type CatalogBoundary,
 	catalogBoundaryFromParsed,
+	isCatalogAdminLevel,
+	missingCatalogLevels,
 } from "./osm/query";
 export { BERLIN_FIXTURE_CATALOG } from "./stops/fixture";
 export {

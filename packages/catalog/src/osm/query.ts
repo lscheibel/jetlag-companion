@@ -6,18 +6,47 @@ import {
 	multiPolygonToRegion,
 	regionContains,
 } from "@zero-lag/geo";
+import { z } from "zod";
 import { boundaryLabel } from "./admin-level";
 import { type ParsedBoundary, parseBoundaryLine } from "./boundary";
 
 /**
  * Levels the area picker offers: Land, Bezirk, and Ortsteil, for the whole
  * German extract. Seeker's include/exclude on the play map still uses 9 and 10.
+ *
+ * **Adding a level here is three changes, not one.** `boundaries.catalog.json`
+ * is filtered when it is *built*, so widening this list alone gives you a
+ * picker that queries a level the artifact was never told to keep and comes
+ * back empty:
+ *
+ *   1. add the level here — `CatalogAdminLevel` and `isCatalogAdminLevel`
+ *      both derive from this array, so nothing else in this file needs editing
+ *   2. re-run `npm run catalog:import:boundaries` and ship the new artifact;
+ *      a server holding the old one is the empty-picker case above
+ *   3. confirm the *extract* actually contains the level
+ *
+ * Step 3 is the one that bites, and country boundaries are the example.
+ * `infra/osm/extract-boundaries.sh` filters `r/boundary=administrative` out of
+ * a **Germany** .pbf, so level 2 holds exactly two features: Deutschland, and
+ * the Deutschland-Belgique border relation. There are no countries in there to
+ * offer. Picking countries means extracting from a wider .pbf — europe, planet
+ * — and paying for it in size, not widening this list. Level 6 (Kreis) and 8
+ * (Gemeinde), by contrast, are already in the extract and cost only bytes:
+ * 51 MB and 179 MB of the source seq, against the 174 MB the artifact is now.
+ *
+ * `BoundaryCatalog.levels` records what an artifact was built with and
+ * `missingCatalogLevels` compares it against this array, so a change that
+ * stops after step 1 says so at boot instead of at the picker.
  */
 export const CATALOG_ADMIN_LEVELS = [4, 9, 10] as const;
 export type CatalogAdminLevel = (typeof CATALOG_ADMIN_LEVELS)[number];
 
-function isCatalogAdminLevel(level: number): level is CatalogAdminLevel {
-	return level === 4 || level === 9 || level === 10;
+const CATALOG_ADMIN_LEVEL_SET: ReadonlySet<number> = new Set(
+	CATALOG_ADMIN_LEVELS,
+);
+
+export function isCatalogAdminLevel(level: number): level is CatalogAdminLevel {
+	return CATALOG_ADMIN_LEVEL_SET.has(level);
 }
 
 /**
@@ -60,6 +89,101 @@ export function boundariesFromGeojsonseq(text: string): CatalogBoundary[] {
 		if (row) out.push(row);
 	}
 	return out;
+}
+
+/**
+ * The artifact `npm run catalog:import:boundaries` writes, and what the server
+ * loads at boot. The counterpart to `poisFromJson`.
+ *
+ * `levels` is what the compactor was told to keep, recorded because it is not
+ * necessarily what this build of the code asks for — see the note on
+ * `CATALOG_ADMIN_LEVELS` and `missingCatalogLevels`.
+ */
+export interface BoundaryCatalog {
+	readonly levels: readonly number[];
+	readonly boundaries: CatalogBoundary[];
+}
+
+function isPosition(value: unknown): value is LngLat {
+	return (
+		Array.isArray(value) &&
+		value.length === 2 &&
+		typeof value[0] === "number" &&
+		typeof value[1] === "number"
+	);
+}
+
+/**
+ * Geometry is checked by probe rather than by schema, and the reason is memory
+ * rather than speed.
+ *
+ * zod rebuilds every value it validates. Descending into the artifact's 7.4
+ * million coordinate pairs would therefore hold two copies of the geometry —
+ * about 550 MB of them — live at the same instant, and that instant is boot.
+ * `z.custom` hands the parsed array straight through instead, so the only
+ * copies are the twenty thousand small row objects.
+ *
+ * What that gives up is narrower than it looks. `JSON.parse` has already
+ * proved the file well-formed, the writer is our own compactor, and the ways a
+ * format drifts — a renamed field, a level that is no longer offered, a bbox
+ * that became an object — are all in the scalars, which are still validated in
+ * full. This walks every ring to check nesting and length, and samples each
+ * ring's endpoints; it is O(rings), not O(positions).
+ */
+function looksLikeMultiPolygon(value: unknown): value is MultiPolygon {
+	if (!Array.isArray(value) || value.length === 0) return false;
+	for (const polygon of value) {
+		if (!Array.isArray(polygon) || polygon.length === 0) return false;
+		for (const ring of polygon) {
+			// A closed ring: first position repeated last, so four is the minimum.
+			if (!Array.isArray(ring) || ring.length < 4) return false;
+			if (!isPosition(ring[0]) || !isPosition(ring[ring.length - 1])) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+const catalogBoundarySchema = z.object({
+	id: z.string().min(1),
+	name: z.string(),
+	adminLevel: z.literal(CATALOG_ADMIN_LEVELS),
+	label: z.string(),
+	polygons: z.custom<MultiPolygon>(looksLikeMultiPolygon),
+	bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+});
+
+const boundaryCatalogSchema = z.object({
+	levels: z.array(z.number().int()),
+	boundaries: z.array(catalogBoundarySchema),
+});
+
+/**
+ * All-or-nothing on purpose. The file is machine-written and read once at boot,
+ * so the failure worth designing for is not a single bad row but the wrong file
+ * entirely — a truncated copy, an artifact from a build whose row shape has
+ * moved on. Rejecting the lot lets the caller fall through to the extract or
+ * the fixture and *say so*, which beats casting a half-understood array into
+ * the type system and discovering it at a bbox query.
+ */
+export function boundaryCatalogFromJson(
+	parsed: unknown,
+): BoundaryCatalog | null {
+	const result = boundaryCatalogSchema.safeParse(parsed);
+	return result.success ? result.data : null;
+}
+
+/**
+ * Levels this build asks for that the artifact was not built with. Non-empty
+ * means someone widened `CATALOG_ADMIN_LEVELS` without re-running the
+ * compactor, and those levels will come back empty from every query.
+ */
+export function missingCatalogLevels(
+	catalog: BoundaryCatalog,
+): CatalogAdminLevel[] {
+	const built = new Set(catalog.levels);
+	return CATALOG_ADMIN_LEVELS.filter((level) => !built.has(level));
 }
 
 function bboxesOverlap(a: BBox, b: BBox): boolean {

@@ -18,6 +18,7 @@
 		"db:generate": "turbo run db:generate -F @zero-lag/schema --",
 		"db:migrate": "turbo run db:migrate -F @zero-lag/schema --",
 		"catalog:build": "tsx packages/catalog/src/stops/build-cli.ts",
+		"catalog:import:boundaries": "tsx packages/catalog/src/osm/boundary-import-cli.ts",
 		"catalog:import:pois": "tsx packages/catalog/src/osm/poi-import-cli.ts",
 		"osm:extract": "bash infra/osm/extract-boundaries.sh",
 		"osm:extract:pois": "bash infra/osm/extract-pois.sh",
