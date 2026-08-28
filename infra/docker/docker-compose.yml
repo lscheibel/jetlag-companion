@@ -34,8 +34,8 @@ services:
       # Direct connection, never through pgbouncer.
       ZERO_UPSTREAM_DB: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/zero-lag
       ZERO_REPLICA_FILE: /data/replica.db
-      # Defaults to the server in this compose file. Point APP_ORIGIN at
-      # http://host.docker.internal:3000 when running the app on the host.
+      # Defaults to the server in this compose file. `npm run zero:start` sets
+      # APP_ORIGIN=http://host.docker.internal:3000 for a host-run API.
       ZERO_QUERY_URL: ${APP_ORIGIN:-http://server:3000}/api/zero/query
       ZERO_MUTATE_URL: ${APP_ORIGIN:-http://server:3000}/api/zero/mutate
       # No ZERO_AUTH_SECRET: zero-cache does not validate our tokens. It forwards

@@ -1,4 +1,5 @@
 import type { PoiKind } from "@zero-lag/catalog";
+import { distanceMeters, type LngLat } from "@zero-lag/geo";
 
 /**
  * Fill colours for OSM amenity dots. Distinct from the stop paint (ink / pale
@@ -55,4 +56,46 @@ export function togglePoiKind(
 			? state.kinds.filter((item) => item !== kind)
 			: [...state.kinds, kind],
 	};
+}
+
+/** Turn a kind on without turning any other kind off. */
+export function ensurePoiKind(
+	state: PoiLayerState,
+	kind: PoiKind,
+): PoiLayerState {
+	if (state.kinds.includes(kind)) return state;
+	return { ...state, kinds: [...state.kinds, kind] };
+}
+
+/**
+ * Voronoi generators for a nearest-POI constraint: the picked site, plus every
+ * other same-kind pin that sits inside the game area. Outside pins are ignored
+ * even when they are plotted, so a zoo beyond the fence does not steal a cell.
+ */
+export function closestPoiSites(
+	selected: MapPoi,
+	pois: readonly MapPoi[],
+): {
+	readonly selected: MapPoi;
+	readonly others: readonly MapPoi[];
+} {
+	const others = pois.filter(
+		(poi) =>
+			poi.id !== selected.id && poi.kind === selected.kind && poi.insideArea,
+	);
+	return { selected, others };
+}
+
+/**
+ * Radius the nearest-POI draft starts at: the seeker's distance to the pin,
+ * or null when there is no fix (or they are standing on it).
+ */
+export function defaultClosestPoiRadius(
+	fromYou: LngLat | null,
+	lng: number,
+	lat: number,
+): number | null {
+	if (!fromYou) return null;
+	const meters = distanceMeters(fromYou, [lng, lat]);
+	return meters > 0 ? meters : null;
 }

@@ -1,6 +1,7 @@
 import type { LngLat, MultiPolygon } from "@zero-lag/geo";
 import { useMemo } from "react";
 import { CircleDraftLayer } from "./circle-draft-layer";
+import { yellowBlackLine } from "./draft-paint";
 import { multiPolygonFeature } from "./geojson";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
@@ -9,22 +10,14 @@ const FILL_LAYERS = [
 		id: "constraint-draft-fill",
 		type: "fill" as const,
 		paint: {
-			"fill-color": "#111827",
-			"fill-opacity": 0.12,
+			"fill-color": "#ffe01f",
+			"fill-opacity": 0.1,
+			"fill-outline-color": "rgba(0,0,0,0)",
 		},
 	},
 ];
 
-const OUTLINE_LAYERS = [
-	{
-		id: "constraint-draft-outline",
-		type: "line" as const,
-		paint: {
-			"line-color": "#111827",
-			"line-width": 2,
-		},
-	},
-];
+const OUTLINE_LAYERS = yellowBlackLine("constraint-draft-outline");
 
 interface ConstraintDraftLayerProps {
 	readonly center?: LngLat | null;

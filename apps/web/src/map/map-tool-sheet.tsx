@@ -1,3 +1,4 @@
+import { POI_KIND_LABELS, POI_KINDS, type PoiKind } from "@zero-lag/catalog";
 import type { LngLat } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
@@ -9,6 +10,7 @@ import {
 } from "@zero-lag/ui/components/toggle-button";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
+import { defaultClosestPoiRadius, type MapPoi } from "./poi";
 import {
 	type BoundaryListItem,
 	formatCoordinates,
@@ -36,6 +38,7 @@ interface MapToolSheetProps {
 	readonly onSearchStopZone: (stop: SearchableStop) => void;
 	readonly boundaries: readonly BoundaryListItem[];
 	readonly onSelectBoundary: (id: string | null) => void;
+	readonly pois: readonly MapPoi[];
 }
 
 export function MapToolSheet(props: MapToolSheetProps) {
@@ -44,12 +47,15 @@ export function MapToolSheet(props: MapToolSheetProps) {
 		props.tool.kind === "placingZone" && props.tool.center !== null;
 	const picking =
 		props.tool.kind === "pickingBoundaryConstraint" && !props.tool.selectedId;
+	const pickingClosest =
+		props.tool.kind === "pickingClosestPoiConstraint" && !props.tool.selectedId;
 
 	return (
 		<>
 			<SearchSheet {...props} open={searching} />
 			<ZoneForm {...props} open={zoneOpen} />
 			<BoundaryPickerSheet {...props} open={picking} />
+			<ClosestPoiPickerSheet {...props} open={pickingClosest} />
 		</>
 	);
 }
@@ -282,6 +288,154 @@ function BoundaryPickerSheet(
 			)}
 		</Sheet>
 	);
+}
+
+function ClosestPoiPickerSheet(
+	props: MapToolSheetProps & { readonly open: boolean },
+) {
+	const [query, setQuery] = useState("");
+	const picking =
+		props.tool.kind === "pickingClosestPoiConstraint" ? props.tool : null;
+	const filterKind = picking?.filterKind ?? null;
+	const folded = query.trim().toLocaleLowerCase("de");
+	const kindCounts = POI_KINDS.map((kind) => ({
+		kind,
+		count: props.pois.filter((poi) => poi.kind === kind && poi.insideArea)
+			.length,
+	}));
+	const rows = props.pois.filter((poi) => {
+		if (!filterKind || poi.kind !== filterKind || !poi.insideArea) return false;
+		if (!folded) return true;
+		return poi.name.toLocaleLowerCase("de").includes(folded);
+	});
+
+	function selectKind(kind: PoiKind) {
+		if (!picking) return;
+		props.onToolChange({
+			...picking,
+			filterKind: kind,
+			selectedId: null,
+		});
+	}
+
+	function selectPoi(poi: MapPoi) {
+		if (!picking) return;
+		const from = props.fromYou ? props.origin : null;
+		props.onToolChange({
+			...picking,
+			filterKind: poi.kind,
+			selectedId: poi.id,
+			radiusMeters: defaultClosestPoiRadius(from, poi.lng, poi.lat),
+		});
+	}
+
+	return (
+		<Sheet
+			onClose={props.onCancel}
+			open={props.open}
+			testId="closest-poi-sheet"
+			title="Pick a point of interest"
+		>
+			{filterKind === null ? (
+				<div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+					{kindCounts.map(({ kind, count }) => (
+						<button
+							className={cn(
+								"flex w-full shrink-0 items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+								"border-hairline",
+							)}
+							data-testid={`closest-poi-kind-${kind}`}
+							disabled={count === 0}
+							key={kind}
+							onClick={() => selectKind(kind)}
+							type="button"
+						>
+							<span className="min-w-0 flex-1">
+								<b className="block text-[0.85rem] leading-tight">
+									{POI_KIND_LABELS[kind]}
+								</b>
+								<span className="eyebrow mt-0.5 block text-ink-dim">
+									{count === 0
+										? "None in the game area"
+										: `${count} in the game area`}
+								</span>
+							</span>
+						</button>
+					))}
+				</div>
+			) : (
+				<>
+					<ActionButton
+						onClick={() => {
+							if (!picking) return;
+							props.onToolChange({
+								...picking,
+								filterKind: null,
+								selectedId: null,
+							});
+						}}
+						size="comfortable"
+						tone="secondary"
+					>
+						All kinds
+					</ActionButton>
+					<Field
+						data-testid="closest-poi-search"
+						label="Find a place"
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder={POI_KIND_LABELS[filterKind]}
+						type="search"
+						value={query}
+					/>
+					{rows.length === 0 ? (
+						<p className="text-ink-dim text-sm">
+							{query.trim()
+								? `Nothing named “${query.trim()}”.`
+								: "None in the game area."}
+						</p>
+					) : (
+						<div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+							{rows.map((row) => {
+								const on = row.id === picking?.selectedId;
+								return (
+									<button
+										className={cn(
+											"flex w-full shrink-0 items-center gap-3 rounded-control border bg-surface px-3 py-2.5 text-left",
+											on ? "border-action" : "border-hairline",
+										)}
+										data-testid={`closest-poi-${poiSlug(row.name)}`}
+										key={row.id}
+										onClick={() => selectPoi(row)}
+										type="button"
+									>
+										<span className="min-w-0 flex-1">
+											<b className="block text-[0.85rem] leading-tight">
+												{row.name}
+											</b>
+										</span>
+										<span className="eyebrow text-ink-dim">
+											{on ? "Picked" : "Nearest"}
+										</span>
+									</button>
+								);
+							})}
+						</div>
+					)}
+				</>
+			)}
+		</Sheet>
+	);
+}
+
+function poiSlug(name: string): string {
+	return name
+		.toLocaleLowerCase("de")
+		.replaceAll("ä", "ae")
+		.replaceAll("ö", "oe")
+		.replaceAll("ü", "ue")
+		.replaceAll("ß", "ss")
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");
 }
 
 function searchKey(result: SearchResult): string {

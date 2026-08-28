@@ -241,6 +241,38 @@ export function halfPlaneRegion(
 }
 
 /**
+ * The Voronoi cell of `selected` among `selected` plus `others`: every point
+ * nearer to `selected` than to any other site.
+ *
+ * Built as the intersection of half-planes (one bisector per neighbour) so it
+ * uses the same geodesic edge as the thermometer. Clip to a bounded region —
+ * the game's valid hiding area — rather than to the current search fold, or
+ * other constraints leak into this one. An optional radius then cuts the cell
+ * down to a disc around the selected site.
+ */
+export function closestSiteRegion(
+	selected: LngLat,
+	others: readonly LngLat[],
+	options?: {
+		readonly radiusMeters?: number;
+		readonly clip?: Region;
+		readonly tolerances?: Tolerances;
+	},
+): Region {
+	const tolerances = options?.tolerances;
+	let cell = options?.clip ?? WORLD_REGION;
+	for (const other of others) {
+		cell = intersectRegions(cell, halfPlaneRegion(selected, other, "a"));
+		if (isEmptyRegion(cell)) break;
+	}
+	const radius = options?.radiusMeters;
+	if (radius !== undefined && radius > 0) {
+		cell = intersectRegions(cell, circleRegion(selected, radius));
+	}
+	return normalizeRegion(cell, tolerances);
+}
+
+/**
  * A pie slice. Bearings are compass degrees — 0 is north, increasing clockwise
  * — because that is the only form a player ever reads off a map.
  * The sector runs clockwise from `fromDeg` to `toDeg`.

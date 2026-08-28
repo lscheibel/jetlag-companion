@@ -310,6 +310,13 @@ const CONSTRAINT_TYPES: readonly {
 		kind: "drawingSplitConstraint",
 	},
 	{
+		icon: "crosshair",
+		label: "Nearest",
+		hint: "The cell of a point of interest",
+		testId: "add-closest-poi-constraint",
+		kind: "pickingClosestPoiConstraint",
+	},
+	{
 		icon: "list-bullets",
 		label: "Cuts",
 		hint: "The ones already placed",
@@ -389,6 +396,14 @@ function constraintTool(
 			from: null,
 			to: null,
 			focus: "from",
+		};
+	}
+	if (kind === "pickingClosestPoiConstraint") {
+		return {
+			kind: "pickingClosestPoiConstraint",
+			filterKind: null,
+			selectedId: null,
+			radiusMeters: null,
 		};
 	}
 	return { kind: "listingConstraints" };

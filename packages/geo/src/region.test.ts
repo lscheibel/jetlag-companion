@@ -4,6 +4,7 @@ import {
 	CIRCLE_SEGMENTS,
 	circleLngLat,
 	circleRegion,
+	closestSiteRegion,
 	complementRegion,
 	halfPlaneRegion,
 	intersectRegions,
@@ -176,6 +177,55 @@ describe("halfPlaneRegion", () => {
 		expect(regionArea(halfPlaneRegion(ALEX, ALEX, "a"))).toBe(
 			regionArea(WORLD_REGION),
 		);
+	});
+});
+
+describe("closestSiteRegion", () => {
+	const clip = circleRegion(ALEX, 8_000);
+
+	it("keeps a probe nearer to the selected site and drops one nearer to a neighbour", () => {
+		const cell = closestSiteRegion(ALEX, [ZOO], { clip });
+		expect(regionContains(cell, east(ALEX, 200))).toBe(true);
+		expect(regionContains(cell, east(ZOO, -200))).toBe(false);
+	});
+
+	it("puts its boundary where the two distances are equal", () => {
+		const cell = closestSiteRegion(ALEX, [ZOO], { clip });
+		const midpoint: LngLat = [(ALEX[0] + ZOO[0]) / 2, (ALEX[1] + ZOO[1]) / 2];
+		expect(regionContains(cell, offsetLngLat(midpoint, 400, 0))).toBe(true);
+		expect(regionContains(cell, offsetLngLat(midpoint, -400, 0))).toBe(false);
+	});
+
+	it("ignores a neighbour the caller omitted", () => {
+		const outsider = east(ALEX, 3_000);
+		const without = closestSiteRegion(ALEX, [ZOO], { clip });
+		expect(regionContains(without, outsider)).toBe(true);
+	});
+
+	it("clips the cell to a disc around the selected site", () => {
+		const cell = closestSiteRegion(ALEX, [ZOO], {
+			clip,
+			radiusMeters: 1_000,
+		});
+		expect(regionContains(cell, east(ALEX, 200))).toBe(true);
+		expect(regionContains(cell, east(ALEX, 2_000))).toBe(false);
+	});
+
+	it("treats a coincident neighbour as a no-op", () => {
+		const withTwin = closestSiteRegion(ALEX, [ALEX], { clip });
+		const alone = closestSiteRegion(ALEX, [], { clip });
+		expect(regionHash(withTwin)).toBe(regionHash(alone));
+	});
+
+	it("stays inside the clip", () => {
+		const cell = closestSiteRegion(ALEX, [ZOO], { clip });
+		expect(regionContains(cell, east(ALEX, 20_000))).toBe(false);
+		expect(regionArea(cell)).toBeLessThanOrEqual(regionArea(clip));
+	});
+
+	it("equals the clip when there are no other sites and no radius", () => {
+		const cell = closestSiteRegion(ALEX, [], { clip });
+		expect(regionHash(cell)).toBe(regionHash(normalizeRegion(clip)));
 	});
 });
 

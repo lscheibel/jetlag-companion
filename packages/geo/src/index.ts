@@ -16,6 +16,7 @@ export {
 	canonicalizeRegion,
 	circleLngLat,
 	circleRegion,
+	closestSiteRegion,
 	complementRegion,
 	DEFAULT_TOLERANCES,
 	EMPTY_REGION,

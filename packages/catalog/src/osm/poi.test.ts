@@ -145,6 +145,7 @@ describe("poisInBBox", () => {
 		const names = found.map((row) => row.name);
 		expect(names).toContain("Pergamonmuseum");
 		expect(names).toContain("Zoo Berlin");
+		expect(names).toContain("Tierpark Berlin");
 		expect(names).toContain("Großer Tiergarten");
 		expect(names).not.toContain("Olympiastadion");
 		expect(names).not.toContain("Teufelsberg");

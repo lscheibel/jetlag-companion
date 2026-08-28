@@ -1,3 +1,4 @@
+import type { PoiKind } from "@zero-lag/catalog";
 import { distanceMeters, type LngLat } from "@zero-lag/geo";
 
 /**
@@ -110,6 +111,12 @@ export type MapTool =
 			readonly kind: "pickingBoundaryConstraint";
 			readonly levels: readonly (9 | 10)[];
 			readonly selectedId: string | null;
+	  }
+	| {
+			readonly kind: "pickingClosestPoiConstraint";
+			readonly filterKind: PoiKind | null;
+			readonly selectedId: string | null;
+			readonly radiusMeters: number | null;
 	  }
 	| { readonly kind: "listingConstraints" }
 	| { readonly kind: "searching" };

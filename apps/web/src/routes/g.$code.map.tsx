@@ -6,10 +6,12 @@ import {
 	SCALE_SETTINGS,
 } from "@zero-lag/catalog";
 import {
+	closestSiteRegion,
 	isEmptyRegion,
 	type LngLat,
 	multiPolygonBBox,
 	multiPolygonToRegion,
+	type Region,
 	regionContains,
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
@@ -70,10 +72,16 @@ import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import { buildMapPlayers, visibleMarkers } from "../map/players";
-import { DEFAULT_POI_LAYERS, type MapPoi } from "../map/poi";
+import {
+	closestPoiSites,
+	DEFAULT_POI_LAYERS,
+	defaultClosestPoiRadius,
+	ensurePoiKind,
+	type MapPoi,
+} from "../map/poi";
 import { PoiLayer } from "../map/poi-layer";
 import { PoiPickerSheet } from "../map/poi-picker-sheet";
-import { PoiSheet } from "../map/poi-sheet";
+import { type PoiConstraintKind, PoiSheet } from "../map/poi-sheet";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
 import { StopSheet } from "../map/stop-sheet";
@@ -128,6 +136,14 @@ function pointerMode(tool: MapTool): PointerMode {
 		return { kind: "ring", closed: true, points: tool.ring };
 	}
 	return { kind: "tap" };
+}
+
+function storedPolygons(region: Region): [number, number][][][] {
+	return regionToMultiPolygon(region).map((polygon) =>
+		polygon.map((ring) =>
+			ring.map(([lng, lat]) => [lng, lat] as [number, number]),
+		),
+	);
 }
 
 /**
@@ -381,13 +397,16 @@ function MapScreen() {
 	const poiBbox = areaBBox
 		? expandBBox(areaBBox, SCALE_SETTINGS[scalePreset].marginMeters)
 		: null;
-	const catalogPois = usePois(session, poiBbox, poiLayers.kinds.length > 0);
-	const visiblePois = useMemo<readonly MapPoi[]>(() => {
-		const wanted = new Set(poiLayers.kinds);
+	const catalogPois = usePois(
+		session,
+		poiBbox,
+		poiLayers.kinds.length > 0 || tool.kind === "pickingClosestPoiConstraint",
+	);
+	const allPois = useMemo<readonly MapPoi[]>(() => {
 		const region = area ? multiPolygonToRegion(area) : null;
 		const out: MapPoi[] = [];
 		for (const row of catalogPois) {
-			if (!isPoiKind(row.kind) || !wanted.has(row.kind)) continue;
+			if (!isPoiKind(row.kind)) continue;
 			out.push({
 				id: row.id,
 				name: row.name,
@@ -398,9 +417,32 @@ function MapScreen() {
 			});
 		}
 		return out;
-	}, [catalogPois, poiLayers.kinds, area]);
+	}, [catalogPois, area]);
+	const visiblePois = useMemo<readonly MapPoi[]>(() => {
+		const wanted = new Set(poiLayers.kinds);
+		return allPois.filter((poi) => wanted.has(poi.kind));
+	}, [allPois, poiLayers.kinds]);
 	const selectedPoi =
 		visiblePois.find((poi) => poi.id === selectedPoiId) ?? null;
+	const selectedClosestPoi =
+		tool.kind === "pickingClosestPoiConstraint" && tool.selectedId
+			? (allPois.find((poi) => poi.id === tool.selectedId) ?? null)
+			: null;
+	const closestDraftRegion = useMemo(() => {
+		if (tool.kind !== "pickingClosestPoiConstraint" || !selectedClosestPoi) {
+			return null;
+		}
+		const { others } = closestPoiSites(selectedClosestPoi, allPois);
+		const clip = area ? multiPolygonToRegion(area) : undefined;
+		return closestSiteRegion(
+			[selectedClosestPoi.lng, selectedClosestPoi.lat],
+			others.map((poi) => [poi.lng, poi.lat] as const),
+			{
+				clip,
+				radiusMeters: tool.radiusMeters ?? undefined,
+			},
+		);
+	}, [tool, selectedClosestPoi, allPois, area]);
 	const boundaries = useBoundaries(session, areaBBox, pickingLevels);
 	const visibleBoundaries =
 		tool.kind === "pickingBoundaryConstraint"
@@ -446,7 +488,28 @@ function MapScreen() {
 			setOwnSheetOpen(false);
 		}
 		if (next.kind === "drawingSplitConstraint") setCut(false);
+		if (next.kind === "pickingClosestPoiConstraint" && next.filterKind) {
+			const kind = next.filterKind;
+			setPoiLayers((current) => ensurePoiKind(current, kind));
+		}
 		setTool(next);
+	};
+
+	const addPoiConstraint = (poi: MapPoi, kind: PoiConstraintKind) => {
+		if (kind === "circle") {
+			changeTool({
+				kind: "drawingRadiusConstraint",
+				center: [poi.lng, poi.lat],
+				radiusMeters: defaultRadiusMeters,
+			});
+			return;
+		}
+		changeTool({
+			kind: "pickingClosestPoiConstraint",
+			filterKind: poi.kind,
+			selectedId: poi.id,
+			radiusMeters: defaultClosestPoiRadius(fromYou, poi.lng, poi.lat),
+		});
 	};
 
 	const selectPin = (pinId: string) => {
@@ -579,6 +642,32 @@ function MapScreen() {
 			setTool({ ...tool, selectedId: hit.id });
 			const box = multiPolygonBBox(hit.polygons);
 			if (box) setFlyTarget({ kind: "bounds", bounds: box });
+			return;
+		}
+		if (tool.kind === "pickingClosestPoiConstraint") {
+			const candidates = tool.filterKind
+				? allPois.filter((poi) => poi.kind === tool.filterKind)
+				: allPois;
+			const hit = nearestHitPx(
+				candidates,
+				screen,
+				(poi) => [poi.lng, poi.lat],
+				project,
+				STOP_TAP_PX,
+			);
+			if (!hit) return;
+			webPlatform.haptics.vibrate([10]);
+			setPoiLayers((current) => ensurePoiKind(current, hit.item.kind));
+			setTool({
+				...tool,
+				filterKind: hit.item.kind,
+				selectedId: hit.item.id,
+				radiusMeters: defaultClosestPoiRadius(
+					fromYou,
+					hit.item.lng,
+					hit.item.lat,
+				),
+			});
 		}
 	};
 
@@ -752,7 +841,9 @@ function MapScreen() {
 			name.trim() ||
 			(tool.kind === "pickingBoundaryConstraint"
 				? (selectedBoundary?.name ?? null)
-				: null);
+				: tool.kind === "pickingClosestPoiConstraint"
+					? (selectedClosestPoi?.name ?? null)
+					: null);
 		if (tool.kind === "drawingRadiusConstraint" && tool.center) {
 			void zero.mutate(
 				mutators.constraint.createManual({
@@ -833,6 +924,27 @@ function MapScreen() {
 						nearer: cut ? "b" : "a",
 					},
 					mode: "exclude",
+					ordinal,
+					name: label,
+				}),
+			);
+		} else if (
+			tool.kind === "pickingClosestPoiConstraint" &&
+			closestDraftRegion &&
+			!isEmptyRegion(closestDraftRegion)
+		) {
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: {
+						kind: "polygon",
+						polygons: storedPolygons(closestDraftRegion),
+					},
+					mode,
 					ordinal,
 					name: label,
 				}),
@@ -980,7 +1092,15 @@ function MapScreen() {
 							zoneRadiusMeters={defaultRadiusMeters}
 						/>
 					)}
-					<PoiLayer area={area} pois={visiblePois} selectedId={selectedPoiId} />
+					<PoiLayer
+						area={area}
+						pois={visiblePois}
+						selectedId={
+							tool.kind === "pickingClosestPoiConstraint"
+								? tool.selectedId
+								: selectedPoiId
+						}
+					/>
 					<SearchZoneLayer zone={zone} />
 					<PinLayer
 						disabled={tool.kind !== "none" || isHidingHider}
@@ -1008,6 +1128,12 @@ function MapScreen() {
 							polygons={selectedBoundary?.polygons ?? null}
 						/>
 					)}
+					{tool.kind === "pickingClosestPoiConstraint" &&
+						closestDraftRegion && (
+							<ConstraintDraftLayer
+								polygons={regionToMultiPolygon(closestDraftRegion)}
+							/>
+						)}
 					{tool.kind === "drawingPolygonConstraint" && (
 						<DrawLayer ring={tool.ring} />
 					)}
@@ -1238,6 +1364,14 @@ function MapScreen() {
 												setTool({ ...tool, selectedId: id });
 											}}
 											onSplitChange={setTool}
+											onClosestPoiChange={setTool}
+											closestPoiCenter={
+												selectedClosestPoi
+													? [selectedClosestPoi.lng, selectedClosestPoi.lat]
+													: null
+											}
+											fromYou={fromYou}
+											fallbackRadiusMeters={defaultRadiusMeters}
 											onUndoPolygonVertex={() => {
 												if (tool.kind !== "drawingPolygonConstraint") return;
 												setTool({
@@ -1301,6 +1435,7 @@ function MapScreen() {
 					role.roundId !== null
 				}
 				stops={searchableStops}
+				pois={allPois}
 				onCancel={cancelTool}
 				onClearZone={clearZone}
 				onSaveZone={saveZone}
@@ -1354,6 +1489,7 @@ function MapScreen() {
 			/>
 			<PoiSheet
 				fromYou={fromYou}
+				onAddConstraint={canEditConstraints ? addPoiConstraint : undefined}
 				onClose={() => setSelectedPoiId(null)}
 				open={selectedPoi !== null}
 				poi={selectedPoi}

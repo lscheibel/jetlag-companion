@@ -14,6 +14,9 @@ import { formatZone, stepZoneMeters } from "../setup/game-size";
 import { CoordinateFields } from "./coordinate-fields";
 import type { MapTool } from "./toolkit";
 
+type SplitTool = Extract<MapTool, { kind: "drawingSplitConstraint" }>;
+type ClosestPoiTool = Extract<MapTool, { kind: "pickingClosestPoiConstraint" }>;
+
 /**
  * The quieter half of a two-button row on the map.
  *
@@ -23,8 +26,6 @@ import type { MapTool } from "./toolkit";
  * pair reads as one row rather than as two sizes of button.
  */
 export const COMPACT_SECONDARY = "shrink-0";
-
-type SplitTool = Extract<MapTool, { kind: "drawingSplitConstraint" }>;
 
 interface MapBarProps {
 	readonly tool: MapTool;
@@ -39,6 +40,10 @@ interface MapBarProps {
 	readonly onCommitConstraint: (name: string) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
 	readonly onSplitChange: (next: SplitTool) => void;
+	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
+	readonly closestPoiCenter: LngLat | null;
+	readonly fromYou: LngLat | null;
+	readonly fallbackRadiusMeters: number;
 	readonly cut: boolean;
 	readonly onCutChange: (cut: boolean) => void;
 }
@@ -61,6 +66,10 @@ export function MapBar({
 	onCommitConstraint,
 	onSelectBoundary,
 	onSplitChange,
+	onClosestPoiChange,
+	closestPoiCenter,
+	fromYou,
+	fallbackRadiusMeters,
 	cut,
 	onCutChange,
 }: MapBarProps) {
@@ -70,7 +79,8 @@ export function MapBar({
 		tool.kind === "drawingRadiusConstraint" ||
 		tool.kind === "drawingPolygonConstraint" ||
 		tool.kind === "drawingSplitConstraint" ||
-		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId)
+		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId) ||
+		(tool.kind === "pickingClosestPoiConstraint" && tool.selectedId)
 	) {
 		return (
 			<ConstraintDraft
@@ -81,6 +91,10 @@ export function MapBar({
 				onRadiusStep={onRadiusStep}
 				onSelectBoundary={onSelectBoundary}
 				onSplitChange={onSplitChange}
+				onClosestPoiChange={onClosestPoiChange}
+				closestPoiCenter={closestPoiCenter}
+				fromYou={fromYou}
+				fallbackRadiusMeters={fallbackRadiusMeters}
 				onUndoPolygonVertex={onUndoPolygonVertex}
 				tool={tool}
 			/>
@@ -126,6 +140,9 @@ export function sheetOwnsBar(tool: MapTool): boolean {
 	if (tool.kind === "pickingBoundaryConstraint" && !tool.selectedId) {
 		return true;
 	}
+	if (tool.kind === "pickingClosestPoiConstraint" && !tool.selectedId) {
+		return true;
+	}
 	return false;
 }
 
@@ -138,6 +155,10 @@ function ConstraintDraft({
 	onRadiusStep,
 	onSelectBoundary,
 	onSplitChange,
+	onClosestPoiChange,
+	closestPoiCenter,
+	fromYou,
+	fallbackRadiusMeters,
 	onUndoPolygonVertex,
 }: {
 	readonly cut: boolean;
@@ -148,16 +169,22 @@ function ConstraintDraft({
 	readonly onRadiusStep: (direction: 1 | -1) => void;
 	readonly onSelectBoundary: (id: string | null) => void;
 	readonly onSplitChange: (next: SplitTool) => void;
+	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
+	readonly closestPoiCenter: LngLat | null;
+	readonly fromYou: LngLat | null;
+	readonly fallbackRadiusMeters: number;
 	readonly onUndoPolygonVertex: () => void;
 }) {
 	const [name, setName] = useState("");
 	const split = tool.kind === "drawingSplitConstraint" ? tool : null;
 	const vertexCount =
 		tool.kind === "drawingPolygonConstraint" ? tool.ring.length : null;
+	const closest = tool.kind === "pickingClosestPoiConstraint" ? tool : null;
 	const ready =
 		(tool.kind === "drawingRadiusConstraint" && tool.center !== null) ||
 		(tool.kind === "drawingPolygonConstraint" && tool.ring.length >= 3) ||
 		(tool.kind === "pickingBoundaryConstraint" && tool.selectedId !== null) ||
+		(closest !== null && closest.selectedId !== null) ||
 		(split !== null &&
 			split.from !== null &&
 			split.to !== null &&
@@ -165,7 +192,9 @@ function ConstraintDraft({
 	const pickAnother =
 		tool.kind === "pickingBoundaryConstraint" && ready
 			? () => onSelectBoundary(null)
-			: null;
+			: closest !== null && ready
+				? () => onClosestPoiChange({ ...closest, selectedId: null })
+				: null;
 
 	function setSplitPoint(which: "from" | "to", point: LngLat) {
 		if (!split) return;
@@ -288,6 +317,62 @@ function ConstraintDraft({
 						testId="constraint-radius"
 						value={formatZone(tool.radiusMeters)}
 					/>
+				)}
+				{closest && (
+					<>
+						<ToggleModePair>
+							<ToggleButton
+								onClick={() =>
+									onClosestPoiChange({ ...closest, radiusMeters: null })
+								}
+								pressed={closest.radiusMeters === null}
+								shape="bar"
+								testId="closest-poi-radius-off"
+							>
+								Whole cell
+							</ToggleButton>
+							<ToggleButton
+								onClick={() => {
+									if (closest.radiusMeters !== null) return;
+									const meters =
+										fromYou && closestPoiCenter
+											? distanceMeters(fromYou, closestPoiCenter)
+											: fallbackRadiusMeters;
+									onClosestPoiChange({
+										...closest,
+										radiusMeters: meters > 0 ? meters : fallbackRadiusMeters,
+									});
+								}}
+								pressed={closest.radiusMeters !== null}
+								shape="bar"
+								testId="closest-poi-radius-on"
+							>
+								Limit radius
+							</ToggleButton>
+						</ToggleModePair>
+						{closest.radiusMeters !== null && (
+							<NumberStepper
+								canDecrease={
+									stepZoneMeters(closest.radiusMeters, -1) <
+									closest.radiusMeters
+								}
+								canIncrease={
+									stepZoneMeters(closest.radiusMeters, 1) > closest.radiusMeters
+								}
+								label="Radius"
+								onStep={(direction) => {
+									const current = closest.radiusMeters;
+									if (current === null) return;
+									onClosestPoiChange({
+										...closest,
+										radiusMeters: stepZoneMeters(current, direction),
+									});
+								}}
+								testId="closest-poi-radius"
+								value={formatZone(closest.radiusMeters)}
+							/>
+						)}
+					</>
 				)}
 				{ready && (
 					<Field

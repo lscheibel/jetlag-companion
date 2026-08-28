@@ -56,9 +56,10 @@ imports nothing but `packages/geo`, and browser capability APIs (`navigator.*`,
 
 ## Running it
 
-Postgres and `zero-cache` come up in Docker; the app runs on the host. The
-`APP_ORIGIN` override is what lets `zero-cache`, inside the container, call back
-to a server running outside it.
+Postgres and `zero-cache` come up in Docker; the app runs on the host.
+`npm run zero:start` points `zero-cache` at `http://host.docker.internal:3000`
+so it can call back to that host server. Full-stack Compose (`npm run docker:up`)
+keeps the in-network default of `http://server:3000`.
 
 ```bash
 npm install
@@ -69,7 +70,7 @@ npm run db:push
 ```
 
 ```bash
-APP_ORIGIN=http://host.docker.internal:3000 npm run zero:start
+npm run zero:start
 ```
 
 ```bash

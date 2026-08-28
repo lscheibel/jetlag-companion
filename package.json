@@ -30,7 +30,7 @@
 		"docker:down": "docker compose -f infra/docker/docker-compose.yml down",
 		"docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
 		"check": "biome check --write .",
-		"zero:start": "docker compose -f infra/docker/docker-compose.yml up -d postgres zero-cache",
+		"zero:start": "APP_ORIGIN=${APP_ORIGIN:-http://host.docker.internal:3000} docker compose -f infra/docker/docker-compose.yml up -d postgres zero-cache",
 		"test": "turbo run test",
 		"test:e2e": "npm run test:e2e --workspace @zero-lag/e2e"
 	},

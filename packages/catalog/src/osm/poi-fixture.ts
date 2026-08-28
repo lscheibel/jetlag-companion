@@ -80,6 +80,13 @@ export const BERLIN_FIXTURE_POIS: readonly CatalogPoi[] = [
 		lat: 52.508,
 	},
 	{
+		id: "way/1017",
+		name: "Tierpark Berlin",
+		kind: "zoo",
+		lng: 13.49,
+		lat: 52.505,
+	},
+	{
 		id: "way/1011",
 		name: "Blub",
 		kind: "theme_park",
