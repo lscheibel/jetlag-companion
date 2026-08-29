@@ -85,6 +85,31 @@ export function meta(): Route.MetaDescriptors {
 	];
 }
 
+/**
+ * The icon set, hand-written rather than injected.
+ *
+ * `vite-plugin-pwa` normally writes these tags itself, and with
+ * `pwaAssets.config` enabled it knows exactly which files were generated. But
+ * it injects through `transformIndexHtml`, and in SPA mode there is no
+ * index.html to transform — `react-router build` prerenders the document from
+ * `Layout` below. The plugin still emits the assets and the service worker;
+ * only the tags are lost. That is why the built head carries no `rel="icon"`
+ * at all today, and every browser has been finding /favicon.ico by the
+ * root-path convention alone — which works for that one file and nothing else.
+ *
+ * The 2023 set: the .ico for browsers that read nothing better, the SVG for
+ * everything current, and the touch icon for an iOS home screen. The
+ * filenames belong to pwa-assets.config.ts — after `npm run
+ * generate-pwa-assets`, check what it wrote against this list.
+ */
+export function links(): Route.LinkDescriptors {
+	return [
+		{ rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+		{ rel: "icon", href: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
+		{ rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" },
+	];
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
