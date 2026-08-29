@@ -1,0 +1,712 @@
+<title>Zero Lag Dead Ends</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Zero Lag — Dead Ends ═══════════════════════════════════════════════
+   Four proposals for the screen behind root.tsx's ErrorBoundary, which is
+   still the stock React Router template. Page chrome follows the viewer's
+   theme; every phone sits on a stage carrying the app's own role tokens,
+   verbatim from packages/ui/src/styles/tokens.css.                       */
+
+/* ── page chrome: light is the bare root, per the three-state rule ────── */
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --yellow-ink:#12160B;
+    --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --yellow-ink:#12160B;
+  --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+}
+
+/* ── motion tokens, from packages/ui/src/styles/motion.css ────────────── */
+:root{
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --ease-travel:cubic-bezier(.32,.72,.28,1);
+  --ease-breathe:cubic-bezier(.45,0,.55,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-breathe:1900ms; --dur-pulse:3200ms; --dur-sweep:4500ms; --stagger:60ms;
+}
+
+/* ── the stage: app role tokens, light ────────────────────────────────── */
+.stage{
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec;
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --danger:#c7300f;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c; --map-eliminated:rgb(8 17 28 / .16);
+  --edge-danger:#A62A15;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .stage{
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c;
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-ink:#12160b; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --danger:#ff5a3c;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6; --map-eliminated:rgb(5 8 14 / .74);
+  }
+}
+:root[data-theme="dark"] .stage{
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c;
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-ink:#12160b; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --danger:#ff5a3c;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6; --map-eliminated:rgb(5 8 14 / .74);
+}
+
+/* ── reset & page ─────────────────────────────────────────────────────── */
+*{box-sizing:border-box}
+h1,h2,h3,h4,p,ul,ol,dl,dd,figure{margin:0}
+ul{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+body{
+  background:var(--paper); color:var(--text);
+  font-family:"Archivo",system-ui,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 6rem;
+}
+:focus-visible{outline:3px solid var(--blue); outline-offset:3px; border-radius:6px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1rem,4vw,2.5rem)}
+.mono{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-family:"Azeret Mono",ui-monospace,Menlo,monospace;
+  font-size:.66rem;line-height:1.2;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-3);
+}
+.display{font-family:"Bricolage Grotesque","Archivo",system-ui,sans-serif;font-weight:800;letter-spacing:-.025em;line-height:1.02;text-wrap:balance}
+
+/* ── masthead ─────────────────────────────────────────────────────────── */
+.masthead{padding:clamp(3rem,8vw,5.5rem) 0 2rem}
+.masthead .eyebrow{margin-bottom:1rem}
+.masthead h1{font-size:clamp(2.4rem,6.5vw,4.1rem);max-width:16ch}
+.masthead h1 mark{background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;border-radius:6px}
+.lede{margin-top:1.4rem;max-width:64ch;color:var(--text-2);font-size:1.05rem}
+.lede code{font-family:"Azeret Mono",Menlo,monospace;font-size:.86em;background:var(--paper-3);padding:.1em .35em;border-radius:5px;color:var(--text)}
+.bars{display:flex;gap:4px;margin-top:1.8rem;max-width:420px}
+.bars i{height:8px;flex:1;border-radius:999px}
+
+/* theme control — the app's own model: two themes plus follow-the-system */
+.themebar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:2.2rem;padding-top:1.6rem;border-top:1px solid var(--rule-2)}
+.seg{display:inline-flex;background:var(--paper-3);border-radius:999px;padding:3px;gap:2px}
+.seg button{
+  font-family:"Azeret Mono",Menlo,monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.5rem .9rem;border-radius:999px;color:var(--text-2);
+  transition:background var(--dur-tap) var(--ease-travel), color var(--dur-tap) var(--ease-travel);
+}
+.seg button[aria-pressed="true"]{background:var(--paper-2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+/* ── proposal rows ────────────────────────────────────────────────────── */
+.proposal{
+  display:grid;grid-template-columns:340px minmax(0,1fr);
+  gap:clamp(1.5rem,4vw,3.5rem);align-items:start;
+  padding:clamp(2.5rem,6vw,4rem) 0;border-top:1px solid var(--rule);
+}
+@media (max-width:860px){.proposal{grid-template-columns:1fr}}
+
+.rail h2{font-size:clamp(1.6rem,3.4vw,2.15rem);margin-top:.5rem;max-width:20ch}
+.rail .num{
+  font-family:"Azeret Mono",Menlo,monospace;font-size:.78rem;letter-spacing:.16em;
+  color:var(--text-3);display:flex;align-items:center;gap:.7rem;
+}
+.rail .num::after{content:"";height:1px;flex:1;background:var(--rule);max-width:80px}
+.rail>p{margin-top:1rem;color:var(--text-2);max-width:62ch}
+.rail>p strong{color:var(--text);font-weight:600}
+
+.facts{margin-top:1.6rem;display:grid;gap:0;border-top:1px solid var(--rule-2)}
+.facts div{display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--rule-2);align-items:baseline}
+.facts dt{font-family:"Azeret Mono",Menlo,monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+.facts dd{color:var(--text-2);font-size:.92rem}
+.facts dd b{color:var(--text);font-weight:600}
+@media (max-width:520px){.facts div{grid-template-columns:1fr;gap:.15rem}}
+
+.copydeck{margin-top:1.5rem;background:var(--paper-2);border:1px solid var(--rule-2);border-radius:14px;padding:1rem 1.1rem}
+.copydeck .eyebrow{margin-bottom:.6rem}
+.copydeck ul{display:grid;gap:.45rem}
+.copydeck li{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:.8rem;font-size:.88rem;align-items:baseline}
+.copydeck li span:first-child{font-family:"Azeret Mono",Menlo,monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+@media (max-width:520px){.copydeck li{grid-template-columns:1fr;gap:.1rem}}
+
+.cost{margin-top:1.3rem;display:flex;gap:.7rem;align-items:flex-start;font-size:.88rem;color:var(--text-2);
+  border-left:3px solid var(--red);padding-left:.9rem}
+.cost b{color:var(--text);font-weight:600}
+
+/* ── the phone ────────────────────────────────────────────────────────── */
+.phone{
+  width:340px;max-width:100%;
+  border-radius:38px;padding:9px;background:var(--paper-3);
+  border:1px solid var(--rule);box-shadow:var(--lift);
+  position:sticky;top:2rem;
+}
+@media (max-width:860px){.phone{position:static;margin-inline:auto}}
+.screen{
+  border-radius:30px;overflow:hidden;height:640px;
+  display:flex;flex-direction:column;
+  background:var(--ground);color:var(--ink);
+  font-family:"Archivo",system-ui,sans-serif;
+}
+.screen .e{font-family:"Azeret Mono",Menlo,monospace;font-size:.63rem;line-height:1.2;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.screen .m{font-family:"Azeret Mono",Menlo,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.screen .d{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.025em;line-height:1.03;text-wrap:balance}
+
+/* status bar */
+.sbar{display:flex;justify-content:space-between;padding:.7rem 1.3rem .1rem;font-size:.66rem;color:var(--ink);opacity:.85}
+
+/* frame pieces, mirroring components/screen.tsx */
+.head{display:flex;align-items:center;gap:.75rem;padding:.6rem 1rem .75rem;flex-shrink:0}
+.back{
+  width:44px;height:44px;margin-left:-.25rem;border-radius:16px;flex-shrink:0;
+  display:grid;place-items:center;color:var(--ink);
+}
+.back:hover{background:var(--surface-raised)}
+.head h3{font-size:1.25rem;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05;min-width:0}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:.75rem;overflow:hidden;padding:0 1rem 1rem}
+.acts{
+  flex-shrink:0;display:flex;flex-direction:column;gap:.5rem;
+  padding:1rem 1rem calc(1rem + 4px);
+  background:linear-gradient(to top,var(--ground) 68%,transparent);
+}
+.acts .note{text-align:center;color:var(--ink-dim);font-size:.72rem;line-height:1.35}
+
+/* the press, from motion.css: an edge box with a face that drops onto it */
+.btn{position:relative;display:flex;flex-direction:column;padding-bottom:5px;border-radius:20px;width:100%}
+.btn::before{content:"";position:absolute;inset:5px 0 0 0;border-radius:inherit}
+.btn>span{
+  position:relative;display:flex;flex:1 1 auto;align-items:center;justify-content:center;
+  border-radius:inherit;min-height:60px;padding:0 1.25rem;font-size:1.125rem;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.02em;
+  overflow:hidden;
+}
+.btn.primary::before{background:var(--action-press)}
+.btn.primary>span{background:var(--action);color:var(--action-ink)}
+.btn.secondary{padding-bottom:0}
+.btn.secondary>span{border:2px solid var(--hairline-strong);background:var(--surface);color:var(--ink)}
+.btn.quiet{padding-bottom:0}
+.btn.quiet>span{background:var(--surface-raised);color:var(--ink);min-height:44px;font-size:.9rem}
+.btn.beacon>span::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 38%,rgb(255 255 255 / .55) 50%,transparent 62%);
+  transform:translateX(-120%);
+  animation:sheen 4.5s ease-in-out infinite;
+}
+@keyframes sheen{0%,72%{transform:translateX(-120%)}92%,100%{transform:translateX(120%)}}
+
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:18px;padding:.75rem}
+.sunken{background:var(--surface-sunken);border:1px solid var(--hairline);border-radius:18px}
+
+/* ── 01 · end of the line ─────────────────────────────────────────────── */
+@keyframes march{to{stroke-dashoffset:-26}}
+.marching{stroke-dasharray:2 11;animation:march 1.6s linear infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
+.breathing{animation:breathe var(--dur-breathe) var(--ease-breathe) infinite}
+
+/* ── 02 · departure board ─────────────────────────────────────────────── */
+.board{display:grid;gap:0;padding:.25rem .75rem .75rem}
+.brow{
+  display:grid;grid-template-columns:minmax(0,1fr) 2.2rem 5.2rem;gap:.5rem;
+  align-items:center;padding:.7rem 0;border-bottom:1px solid var(--hairline);
+  font-family:"Azeret Mono",Menlo,monospace;font-size:.72rem;
+}
+.brow:last-child{border-bottom:0}
+.bhead{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:.4rem;border-bottom:1px solid var(--hairline-strong)}
+.bdest{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bplat{text-align:center;color:var(--ink-dim)}
+.bstat{text-align:right;font-weight:700;letter-spacing:.04em;font-size:.66rem}
+.flap{display:inline-block;transform-origin:center top;animation:flap .5s var(--ease-out-soft) both}
+.flap:nth-child(2){animation-delay:.06s}.flap:nth-child(3){animation-delay:.12s}
+.flap:nth-child(4){animation-delay:.18s}.flap:nth-child(5){animation-delay:.24s}
+.flap:nth-child(6){animation-delay:.3s}.flap:nth-child(7){animation-delay:.36s}
+.flap:nth-child(8){animation-delay:.42s}.flap:nth-child(9){animation-delay:.48s}
+@keyframes flap{0%{transform:rotateX(-90deg);opacity:0}100%{transform:rotateX(0);opacity:1}}
+.plate{
+  display:inline-flex;align-items:center;gap:.5rem;background:var(--action);color:var(--action-ink);
+  border-radius:8px;padding:.3rem .6rem;font-family:"Azeret Mono",Menlo,monospace;
+  font-size:.7rem;font-weight:700;letter-spacing:.14em;
+}
+
+/* ── 03 · off the map ─────────────────────────────────────────────────── */
+@keyframes sweep{to{transform:rotate(360deg)}}
+.sweeping{animation:sweep 18s linear infinite;transform-origin:144px 128px}
+@keyframes pulsering{0%{opacity:.5;transform:scale(.72)}70%{opacity:0}100%{opacity:0;transform:scale(1.5)}}
+.pulsing{animation:pulsering var(--dur-pulse) var(--ease-out-soft) infinite;transform-origin:144px 128px}
+
+/* ── closing ──────────────────────────────────────────────────────────── */
+.closing{border-top:3px solid var(--text);padding-top:2.5rem;margin-top:1rem}
+.closing h2{font-size:clamp(1.7rem,4vw,2.4rem);max-width:22ch}
+.shared{margin-top:2rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
+.shared section{border-top:1px solid var(--rule);padding-top:1rem}
+.shared h3{font-size:1.02rem;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.02em;margin-top:.55rem}
+.shared p{margin-top:.5rem;color:var(--text-2);font-size:.9rem}
+.shared code{font-family:"Azeret Mono",Menlo,monospace;font-size:.85em;color:var(--text)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Zero Lag · Design proposals · 29 August 2026</div>
+    <h1 class="display">Four ways to say <mark>nothing is here</mark></h1>
+    <p class="lede">
+      The screen behind <code>root.tsx</code>'s <code>ErrorBoundary</code> is still the
+      React Router starter: a centred <code>&lt;h1&gt;404&lt;/h1&gt;</code> in the browser's default
+      face, on no background, with no way out. It is the one screen in the app that
+      has never been designed. These are four takes on it, drawn in the shipped role
+      tokens, both themes live.
+    </p>
+    <div class="bars" aria-hidden="true">
+      <i style="background:var(--blue)"></i>
+      <i style="background:var(--green)"></i>
+      <i style="background:var(--yellow)"></i>
+      <i style="background:var(--red)"></i>
+    </div>
+    <div class="themebar">
+      <span class="eyebrow">Theme</span>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+      <span class="eyebrow" style="color:var(--text-3)">Two themes, plus follow-the-system — as shipped</span>
+    </div>
+  </header>
+
+  <!-- ══ 01 ══════════════════════════════════════════════════════════ -->
+  <div class="proposal">
+    <div class="phone">
+      <div class="screen stage">
+        <div class="sbar"><span class="m">21:47</span><span class="m">78%</span></div>
+        <div class="head">
+          <button class="back" type="button" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+          </button>
+        </div>
+        <div class="body">
+          <div class="e">Nothing at this address</div>
+
+          <svg viewBox="0 0 288 62" width="100%" height="62" aria-label="A transit line that stops short of the stop you asked for" style="margin:.4rem 0 .2rem">
+            <line x1="16" y1="31" x2="180" y2="31" stroke="var(--transit-u)" stroke-width="11" stroke-linecap="round"/>
+            <line class="marching" x1="188" y1="31" x2="268" y2="31" stroke="var(--ink-faint)" stroke-width="5" stroke-linecap="round"/>
+            <g fill="var(--ground)" stroke="var(--transit-u)" stroke-width="4">
+              <circle cx="34" cy="31" r="6"/><circle cx="83" cy="31" r="6"/>
+              <circle cx="132" cy="31" r="6"/><circle cx="176" cy="31" r="6"/>
+            </g>
+            <circle class="breathing" cx="268" cy="31" r="9" fill="none" stroke="var(--ink-faint)" stroke-width="3" stroke-dasharray="5 6"/>
+          </svg>
+
+          <h2 class="d" style="font-size:2.05rem;margin-top:.3rem">End of the line.</h2>
+          <p style="color:var(--ink-dim);font-size:.92rem;line-height:1.45">
+            This link points at a stop that is not on the network. It may have been
+            typed by hand, or it belonged to a game that has since finished.
+          </p>
+
+          <div class="card">
+            <div class="e" style="margin-bottom:.35rem">You asked for</div>
+            <div class="m" style="font-size:.82rem;word-break:break-all;color:var(--ink)">/g/HFJ4K2/scoreboard</div>
+          </div>
+
+          <div style="flex:1"></div>
+        </div>
+        <div class="acts">
+          <p class="note">Any game you have joined is still waiting for you.</p>
+          <button class="btn primary beacon" type="button"><span>Back to the start</span></button>
+          <button class="btn quiet" type="button"><span>Go back one step</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail">
+      <div class="num">01</div>
+      <h2 class="display">End of the line</h2>
+      <p>
+        The most literal reading of the app's own vernacular. A dead URL is a stop that
+        is not on the network, so the screen draws the network: a U-Bahn line with four
+        stations, then the track thinning to a marching dashed stub and a hollow ring
+        where the stop you asked for would have been. <strong>The number 404 never
+        appears</strong> — the diagram carries the whole message, and the words underneath
+        are the two causes in plain language.
+      </p>
+      <dl class="facts">
+        <div><dt>Reads as</dt><dd>Berlin U-Bahn line diagram, in <b>transit-u</b> blue</dd></div>
+        <div><dt>Motion</dt><dd>Marching dash on the stub (<b>zl-march</b>, already in motion.css) and a breathing ring</dd></div>
+        <div><dt>New assets</dt><dd>One inline SVG, about 12 elements. Nothing else</dd></div>
+        <div><dt>Back control</dt><dd>Header caret <i>and</i> a quiet second action — this screen is not a step in a flow, so the caret alone is a guess</dd></div>
+      </dl>
+      <div class="copydeck">
+        <div class="eyebrow">Copy</div>
+        <ul>
+          <li><span>Eyebrow</span><span>Nothing at this address</span></li>
+          <li><span>Head</span><span>End of the line.</span></li>
+          <li><span>Body</span><span>This link points at a stop that is not on the network. It may have been typed by hand, or it belonged to a game that has since finished.</span></li>
+          <li><span>Note</span><span>Any game you have joined is still waiting for you.</span></li>
+          <li><span>Action</span><span>Back to the start · Go back one step</span></li>
+        </ul>
+      </div>
+      <p class="cost">
+        <b>What it costs:</b> the metaphor is doing the explaining, and a player who does not
+        read the diagram as a transit line gets a headline that could mean the game ended.
+        The body copy has to carry more weight than it does in the other three.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ 02 ══════════════════════════════════════════════════════════ -->
+  <div class="proposal">
+    <div class="phone">
+      <div class="screen stage">
+        <div class="sbar"><span class="m">21:47</span><span class="m">78%</span></div>
+        <div class="head">
+          <button class="back" type="button" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+          </button>
+        </div>
+        <div class="body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+            <div class="e">Service information</div>
+            <span class="plate">SVC 404</span>
+          </div>
+
+          <h2 class="d" style="font-size:1.85rem;margin-top:.35rem">This service is not running.</h2>
+
+          <div class="sunken" style="margin-top:.35rem">
+            <div class="board">
+              <div class="brow bhead">
+                <span>Destination</span><span style="text-align:center">Pl</span><span style="text-align:right">Status</span>
+              </div>
+              <div class="brow">
+                <span class="bdest" style="color:var(--ink)">
+                  <span class="flap">/</span><span class="flap">g</span><span class="flap">/</span><span class="flap">H</span><span class="flap">F</span><span class="flap">J</span><span class="flap">4</span><span class="flap">K</span><span class="flap">2</span>
+                </span>
+                <span class="bplat">—</span>
+                <span class="bstat" style="color:var(--danger)">CANCELLED</span>
+              </div>
+              <div class="brow">
+                <span class="bdest" style="color:var(--ink-dim)">/j/HFJ4K2</span>
+                <span class="bplat">—</span>
+                <span class="bstat" style="color:var(--danger)">CANCELLED</span>
+              </div>
+              <div class="brow">
+                <span class="bdest" style="color:var(--ink)">Start screen</span>
+                <span class="bplat">1</span>
+                <span class="bstat" style="color:var(--live)">NOW</span>
+              </div>
+            </div>
+          </div>
+
+          <p style="color:var(--ink-dim);font-size:.88rem;line-height:1.45;margin-top:.2rem">
+            Nothing is departing from the address you opened. The start screen is,
+            from platform one.
+          </p>
+          <div style="flex:1"></div>
+        </div>
+        <div class="acts">
+          <button class="btn primary beacon" type="button"><span>Take the next one</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail">
+      <div class="num">02</div>
+      <h2 class="display">Departure board</h2>
+      <p>
+        Azeret Mono doing all the work. The requested address is a service that has been
+        cancelled, and the way out is the next departure sitting on the row below it,
+        green and marked <span class="mono" style="color:var(--green);font-weight:700">NOW</span>.
+        This is the one proposal that <strong>wears the number</strong> — but as a
+        service code on a signage plate, which is how a transit system would actually
+        print it. It stops being a stack trace leaking into the UI and becomes
+        something a player could read out over the phone.
+      </p>
+      <dl class="facts">
+        <div><dt>Reads as</dt><dd>Split-flap departure board; <b>surface-sunken</b> panel, hairline rules</dd></div>
+        <div><dt>Motion</dt><dd>One flap on arrival — each character of the dead address rotates in on a 60 ms stagger, then stops. No loop</dd></div>
+        <div><dt>New assets</dt><dd>None. A grid, three rows, and the existing plate treatment</dd></div>
+        <div><dt>Colour</dt><dd>The only screen where <b>danger</b> and <b>live</b> appear together, and the contrast is the message</dd></div>
+      </dl>
+      <div class="copydeck">
+        <div class="eyebrow">Copy</div>
+        <ul>
+          <li><span>Eyebrow</span><span>Service information · SVC 404</span></li>
+          <li><span>Head</span><span>This service is not running.</span></li>
+          <li><span>Board</span><span>Destination / Pl / Status · CANCELLED · NOW</span></li>
+          <li><span>Body</span><span>Nothing is departing from the address you opened. The start screen is, from platform one.</span></li>
+          <li><span>Action</span><span>Take the next one</span></li>
+        </ul>
+      </div>
+      <p class="cost">
+        <b>What it costs:</b> the most personality and the least clarity. A board is a
+        thing you scan for your own row, and here every row is the app talking about
+        itself. It is also the hardest to make work at 320 px with a long address —
+        the destination cell has to ellipsise, which is exactly the character the player
+        would want to see. <b>"Take the next one"</b> is charming until somebody reads it
+        as rejoining a game.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ 03 ══════════════════════════════════════════════════════════ -->
+  <div class="proposal">
+    <div class="phone">
+      <div class="screen stage">
+        <div class="sbar"><span class="m">21:47</span><span class="m">78%</span></div>
+        <div class="head">
+          <button class="back" type="button" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+          </button>
+        </div>
+        <div class="body">
+          <div style="border-radius:18px;overflow:hidden;border:1px solid var(--hairline)">
+            <svg viewBox="0 0 288 256" width="100%" aria-label="An empty stretch of map with nothing on it">
+              <rect width="288" height="256" fill="var(--map-land)"/>
+              <path d="M0 196 Q70 176 118 200 T288 186 L288 256 L0 256 Z" fill="var(--map-water)"/>
+              <rect x="14" y="26" width="70" height="46" rx="3" fill="var(--map-block)"/>
+              <rect x="96" y="18" width="52" height="62" rx="3" fill="var(--map-block)"/>
+              <rect x="162" y="30" width="86" height="40" rx="3" fill="var(--map-block)"/>
+              <rect x="22" y="92" width="46" height="58" rx="3" fill="var(--map-block)"/>
+              <rect x="196" y="86" width="66" height="70" rx="3" fill="var(--map-block)"/>
+              <ellipse cx="108" cy="126" rx="44" ry="30" fill="var(--map-park)"/>
+              <g fill="var(--map-station)" opacity=".55">
+                <circle cx="46" cy="80" r="3"/><circle cx="128" cy="90" r="3"/>
+                <circle cx="216" cy="76" r="3"/><circle cx="70" cy="164" r="3"/>
+                <circle cx="238" cy="168" r="3"/>
+              </g>
+              <rect width="288" height="256" fill="var(--map-eliminated)"/>
+              <circle class="pulsing" cx="144" cy="128" r="46" fill="none" stroke="var(--ink-faint)" stroke-width="2"/>
+              <circle class="sweeping" cx="144" cy="128" r="36" fill="none" stroke="var(--ink-faint)" stroke-width="2.5" stroke-dasharray="7 8"/>
+              <text x="144" y="128" text-anchor="middle" dominant-baseline="central"
+                    fill="var(--ink-dim)" font-family="Bricolage Grotesque, sans-serif"
+                    font-weight="800" font-size="30">?</text>
+            </svg>
+          </div>
+
+          <h2 class="d" style="font-size:1.95rem;margin-top:.35rem">There is no such place.</h2>
+          <p style="color:var(--ink-dim);font-size:.9rem;line-height:1.45">
+            The address you opened does not point anywhere in the app. Check the link
+            you were sent, or start again from the front.
+          </p>
+          <div style="flex:1"></div>
+        </div>
+        <div class="acts">
+          <button class="btn primary beacon" type="button"><span>Back to the start</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail">
+      <div class="num">03</div>
+      <h2 class="display">Off the map</h2>
+      <p>
+        The app is a map app, so the empty screen is an empty map: real
+        <b class="mono" style="font-weight:600">map-land</b>, blocks, water and a park, with
+        five stations on it — then the whole thing under the
+        <b class="mono" style="font-weight:600">map-eliminated</b> scrim the seeker map already
+        uses for ruled-out ground, and a slowly rotating dashed ring around a question
+        mark where you tried to go. It borrows the game's own visual grammar for
+        <strong>"searched here, nothing"</strong>.
+      </p>
+      <dl class="facts">
+        <div><dt>Reads as</dt><dd>The seeker map with everything ruled out</dd></div>
+        <div><dt>Motion</dt><dd>An 18 s rotation and a 3.2 s pulse ring — both already tokens (<b>--dur-sweep</b>, <b>--dur-pulse</b>)</dd></div>
+        <div><dt>New assets</dt><dd>One decorative map SVG, roughly 18 elements. It is drawn, not a live MapLibre canvas — no tiles, no worker, works offline</dd></div>
+        <div><dt>Strength</dt><dd>The only proposal that looks like <i>this</i> app rather than like transit signage in general</dd></div>
+      </dl>
+      <div class="copydeck">
+        <div class="eyebrow">Copy</div>
+        <ul>
+          <li><span>Head</span><span>There is no such place.</span></li>
+          <li><span>Body</span><span>The address you opened does not point anywhere in the app. Check the link you were sent, or start again from the front.</span></li>
+          <li><span>Action</span><span>Back to the start</span></li>
+        </ul>
+      </div>
+      <p class="cost">
+        <b>What it costs:</b> the metaphor can lie. "Place", "area" and the eliminated scrim
+        all mean specific things during a round, and a player who hits this screen mid-game
+        may read it as <i>the hider is not here</i> rather than <i>this URL is wrong</i>.
+        The copy above deliberately avoids the words <i>game area</i> and <i>zone</i>
+        for that reason — if this direction wins, that constraint has to hold.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ 04 ══════════════════════════════════════════════════════════ -->
+  <div class="proposal">
+    <div class="phone">
+      <div class="screen stage">
+        <div class="sbar"><span class="m">21:47</span><span class="m">78%</span></div>
+        <div class="head">
+          <button class="back" type="button" aria-label="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+          </button>
+          <div style="min-width:0">
+            <div class="e" style="margin-bottom:.15rem">Zero Lag</div>
+            <h3>That link did not work</h3>
+          </div>
+        </div>
+        <div class="body">
+          <div class="card" style="display:flex;flex-direction:column;gap:.5rem">
+            <div class="m" style="font-size:.82rem;word-break:break-all;color:var(--ink);font-weight:600">
+              /g/HFJ4K2/scoreboard
+            </div>
+            <p style="color:var(--ink-dim);font-size:.83rem;line-height:1.45">
+              There is no page at this address. Links to a finished game stop working,
+              and one wrong character is enough to miss.
+            </p>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;gap:.6rem;border-left:3px solid var(--transit-u);
+                      background:color-mix(in oklab, var(--transit-u) 11%, transparent);
+                      border-radius:12px;padding:.6rem .75rem">
+            <span style="color:var(--transit-u);font-weight:700;font-size:.9rem;line-height:1.3">i</span>
+            <div style="min-width:0">
+              <div style="font-size:.85rem;font-weight:600;line-height:1.25">Joining by code instead?</div>
+              <div style="color:var(--ink-dim);font-size:.78rem;line-height:1.4;margin-top:.1rem">
+                Codes have no I, O, zero or one in them.
+              </div>
+            </div>
+          </div>
+          <div style="flex:1"></div>
+        </div>
+        <div class="acts">
+          <p class="note">Nothing you have joined was lost.</p>
+          <button class="btn primary beacon" type="button"><span>Back to the start</span></button>
+          <button class="btn quiet" type="button"><span>Join by code</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail">
+      <div class="num">04</div>
+      <h2 class="display">The plate you already have</h2>
+      <p>
+        No new idea at all — deliberately. This is
+        <span class="mono" style="font-size:.85em">setup/unknown-code.tsx</span> with the
+        code swapped for a path: the same <b class="mono" style="font-weight:600">Screen</b> /
+        <b class="mono" style="font-weight:600">ScreenHeader</b> /
+        <b class="mono" style="font-weight:600">ScreenActions</b> frame, the same
+        <b class="mono" style="font-weight:600">Surface</b> quoting what you asked for, the same
+        <b class="mono" style="font-weight:600">InlineNotice</b>, the same beacon on the one
+        action. A player who mistypes a join code and a player who opens a dead link land
+        on <strong>the same screen twice</strong>, which is the argument for it.
+      </p>
+      <dl class="facts">
+        <div><dt>Reads as</dt><dd>An ordinary Zero Lag screen. That is the point</dd></div>
+        <div><dt>Motion</dt><dd>Body enter, action sheen. Nothing bespoke</dd></div>
+        <div><dt>New assets</dt><dd>Zero. Shipped components only, about 40 lines</dd></div>
+        <div><dt>Degrades</dt><dd>The only one that survives the non-404 branch — a thrown error keeps the frame and swaps the two lines of copy</dd></div>
+      </dl>
+      <div class="copydeck">
+        <div class="eyebrow">Copy</div>
+        <ul>
+          <li><span>Title</span><span>That link did not work</span></li>
+          <li><span>Body</span><span>There is no page at this address. Links to a finished game stop working, and one wrong character is enough to miss.</span></li>
+          <li><span>Notice</span><span>Joining by code instead? Codes have no I, O, zero or one in them.</span></li>
+          <li><span>Note</span><span>Nothing you have joined was lost.</span></li>
+          <li><span>Action</span><span>Back to the start · Join by code</span></li>
+        </ul>
+      </div>
+      <p class="cost">
+        <b>What it costs:</b> it is forgettable, and this is a screen people screenshot.
+        It also spends its second action on <i>Join by code</i>, which is a real guess about
+        why somebody is here — worth it if most dead links are mistyped invitations, wrong
+        if most are stale links to finished games.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ closing ══════════════════════════════════════════════════════ -->
+  <div class="closing">
+    <div class="eyebrow">Whichever wins</div>
+    <h2 class="display">Four questions none of the four settles</h2>
+
+    <div class="shared">
+      <section>
+        <div class="eyebrow">One component, two jobs</div>
+        <h3>The thrown-error branch</h3>
+        <p>
+          <code>ErrorBoundary</code> catches a 404 <i>and</i> anything that throws, plus a dev
+          stack trace. Three of these are designed for the 404 only. Either the boundary
+          splits in two, or the winning direction needs a second state — and 01, 02 and 03
+          all have art that would be a lie over a crash.
+        </p>
+      </section>
+      <section>
+        <div class="eyebrow">Where back goes</div>
+        <h3>Two exits, not one</h3>
+        <p>
+          The header caret is history, which on a cold-opened bad link is the page before
+          the app. Every proposal therefore also offers <b>Back to the start</b>, an explicit
+          <code>navigate("/")</code>. On a screen reached by accident, one exit is not enough.
+        </p>
+      </section>
+      <section>
+        <div class="eyebrow">A rule already broken</div>
+        <h3>Saying "404" at all</h3>
+        <p>
+          The direction is no technical vocabulary in user-facing text. 01, 03 and 04 drop
+          the number; 02 keeps it as a printed service code. Keeping it has one real
+          benefit — it is the word a player would use when reporting the problem.
+        </p>
+      </section>
+      <section>
+        <div class="eyebrow">Not this screen's job</div>
+        <h3>Bad codes are handled</h3>
+        <p>
+          <code>UnknownCode</code> already catches a join code that resolves to nothing, with
+          the code quoted and a retry. This screen only ever sees an address that is not a
+          route — which is why 04's <i>Join by code</i> action is a question and not a given.
+        </p>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var buttons = document.querySelectorAll("[data-theme-set]");
+  buttons.forEach(function(b){
+    b.addEventListener("click", function(){
+      var choice = b.getAttribute("data-theme-set");
+      if (choice === "system") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", choice);
+      buttons.forEach(function(o){
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+    });
+  });
+})();
+</script>

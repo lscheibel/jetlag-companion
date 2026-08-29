@@ -11,6 +11,8 @@ import {
 import "./index.css";
 import type { Route } from "./+types/root";
 import { logBuildVersion } from "./build-version";
+import { Crashed } from "./error/crashed";
+import { NotFound } from "./error/not-found";
 import { Wordmark } from "./setup/wordmark";
 
 // Module scope, so it runs once when the bundle loads rather than on a render.
@@ -58,31 +60,16 @@ export function HydrateFallback() {
 	);
 }
 
+/**
+ * Two screens behind one export, because the boundary catches two unrelated
+ * things: an address no route claims, and the app breaking on an address that
+ * was fine. They read differently and are owed different pictures — see the
+ * comment in error/crashed.tsx.
+ */
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-	let message = "Oops!";
-	let details = "An unexpected error occurred.";
-	let stack: string | undefined;
-
-	if (isRouteErrorResponse(error)) {
-		message = error.status === 404 ? "404" : "Error";
-		details =
-			error.status === 404
-				? "The requested page could not be found."
-				: error.statusText || details;
-	} else if (import.meta.env.DEV && error instanceof Error) {
-		details = error.message;
-		stack = error.stack;
-	}
-
-	return (
-		<main className="container mx-auto p-4 pt-16">
-			<h1>{message}</h1>
-			<p data-testid="error-details">{details}</p>
-			{stack && (
-				<pre className="w-full overflow-x-auto p-4">
-					<code>{stack}</code>
-				</pre>
-			)}
-		</main>
+	return isRouteErrorResponse(error) && error.status === 404 ? (
+		<NotFound />
+	) : (
+		<Crashed error={error} />
 	);
 }
