@@ -322,7 +322,7 @@ export async function createGame(
 	await phone.page.getByTestId("setup-transit-continue").click();
 	await phone.page.getByTestId("setup-size-continue").click();
 	await expect(phone.page.getByTestId("setup-teams")).toBeVisible();
-	for (const team of teams) await fillSetupTeam(phone, team.name, team.side);
+	await replaceSetupTeams(phone, teams);
 	await phone.page.getByTestId("setup-teams-continue").click();
 	await phone.page.getByTestId("setup-open-lobby").click();
 
@@ -480,6 +480,28 @@ async function fillSetupTeam(
 	await phone.page.getByTestId(`side-${side}`).click();
 	await phone.page.getByTestId("team-editor-done").click();
 	await expect(phone.page.getByTestId(`team-${name}`)).toBeVisible();
+}
+
+/** A new game already has two sides; tests that name their own replace them. */
+async function replaceSetupTeams(
+	phone: Phone,
+	teams: readonly SetupTeamSpec[],
+): Promise<void> {
+	await waitForSync(phone);
+	await expect(phone.page.getByTestId("setup-team-row").first()).toBeVisible();
+	await clearSetupTeams(phone);
+	for (const team of teams) await fillSetupTeam(phone, team.name, team.side);
+}
+
+async function clearSetupTeams(phone: Phone): Promise<void> {
+	for (;;) {
+		const rows = phone.page.getByTestId("setup-team-row");
+		const count = await rows.count();
+		if (count === 0) return;
+		await rows.nth(0).getByRole("button").first().click();
+		await phone.page.locator("[data-testid^='delete-']").click();
+		await expect(rows).toHaveCount(count - 1);
+	}
 }
 
 /**

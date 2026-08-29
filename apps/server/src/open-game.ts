@@ -1,4 +1,5 @@
 import type { BuiltMap } from "@zero-lag/catalog";
+import { starterTeams } from "@zero-lag/schema";
 import { eq } from "drizzle-orm";
 import { type db, drizzleSchema } from "./db";
 import { appendEvent, generateJoinCode } from "./game-log";
@@ -12,6 +13,11 @@ export type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export interface OpenGameInput {
 	readonly displayName: string;
 	readonly deviceId: string;
+	/**
+	 * Scene factories compose their own roster. A real game starts with a
+	 * hiding team and a seeking team already on the board.
+	 */
+	readonly starterTeams?: boolean;
 }
 
 export interface OpenedGame {
@@ -102,6 +108,33 @@ export async function openGame(
 		endedAt: null,
 	});
 
+	const seeded = (input.starterTeams === false ? [] : starterTeams()).map(
+		(team, index) => ({
+			...team,
+			teamId: crypto.randomUUID(),
+			createdAt: now + index,
+		}),
+	);
+	const roles = seeded.map((team) => ({
+		teamId: team.teamId,
+		role: team.role,
+	}));
+	for (const team of seeded) {
+		await tx.insert(drizzleSchema.team).values({
+			id: team.teamId,
+			gameId,
+			name: team.name,
+			color: team.color,
+			emoji: team.emoji,
+			createdAt: team.createdAt,
+		});
+		await tx.insert(drizzleSchema.roundTeamRole).values({
+			roundId,
+			teamId: team.teamId,
+			role: team.role,
+		});
+	}
+
 	await appendEvent(tx, {
 		gameId,
 		type: "game.created",
@@ -120,11 +153,20 @@ export async function openGame(
 		actorPlayerId: playerId,
 		payload: { displayName: input.displayName },
 	});
+	for (const team of seeded) {
+		await appendEvent(tx, {
+			gameId,
+			type: "team.created",
+			actorPlayerId: playerId,
+			actorTeamId: team.teamId,
+			payload: { name: team.name, color: team.color, emoji: team.emoji },
+		});
+	}
 	await appendEvent(tx, {
 		gameId,
 		type: "round.created",
 		actorPlayerId: playerId,
-		payload: { roundId, ordinal: 1, roles: [] },
+		payload: { roundId, ordinal: 1, roles },
 	});
 
 	return { gameId, playerId, roundId, code, mapConfigId, map };

@@ -29,15 +29,13 @@ await page.getByTestId("setup-transit-continue").click();
 await page.getByTestId("hiding-time").waitFor();
 await page.getByTestId("setup-size-continue").click();
 await page.getByTestId("setup-teams").waitFor();
-for (const [name, side] of [
-	["Fuchsbau", "hider"],
-	["Eule", "seeker"],
-]) {
-	await page.getByTestId("create-team").click();
-	await page.getByTestId("team-name-input").fill(name);
-	await page.getByTestId(`side-${side}`).click();
-	await page.getByTestId("team-editor-done").click();
-}
+await page.getByTestId("team-Vermillion Foxes").waitFor();
+await page.getByTestId("edit-Vermillion Foxes").click();
+await page.getByTestId("team-name-input").fill("Fuchsbau");
+await page.getByTestId("team-editor-done").click();
+await page.getByTestId("edit-Cobalt Octopuses").click();
+await page.getByTestId("team-name-input").fill("Eule");
+await page.getByTestId("team-editor-done").click();
 await page.getByTestId("setup-teams-continue").click();
 await page.getByTestId("setup-review").waitFor();
 await page.getByTestId("setup-open-lobby").click();

@@ -1,3 +1,4 @@
+import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Icon } from "@zero-lag/ui/components/icon";
 import { Notice } from "@zero-lag/ui/components/notice";
 import { TeamBadge } from "@zero-lag/ui/components/team-badge";
@@ -76,8 +77,8 @@ function SetupTeams() {
 				className="px-1 text-ink-dim text-xs leading-snug"
 				data-testid="setup-teams"
 			>
-				Add the teams this game will have. Names, sides and faces — not who is
-				on them.
+				These are the teams this game will have. Names, sides and faces — not
+				who is on them.
 			</p>
 
 			<motion.div
@@ -132,32 +133,49 @@ interface SetupTeamRowProps {
 	onOpen: () => void;
 }
 
+/** Square icon ActionButton, matching the compact row height. */
+const SQUARE_ACTION =
+	"shrink-0 [&_.zl-press-face]:size-tap [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
+
 function SetupTeamRow({ team, onOpen }: SetupTeamRowProps) {
 	const reduced = useReducedMotion();
 
 	return (
 		<motion.div variants={reduced ? fadeOnly : listItem}>
-			<button
-				className={cn(
-					"flex w-full items-center gap-2.5 rounded-tile border border-hairline border-l-[5px] bg-surface px-3 py-2.5 text-left",
-					"transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:translate-x-0.5 active:scale-[0.99]",
-				)}
-				data-testid={`team-${team.name}`}
-				onClick={onOpen}
+			<div
+				className="flex w-full items-center gap-2.5 rounded-tile border border-hairline border-l-[5px] bg-surface px-3 py-2.5"
+				data-testid="setup-team-row"
 				style={{ borderLeftColor: team.color }}
-				type="button"
 			>
-				<TeamBadge team={team} variant="mark" />
-				<span className="min-w-0 flex-1">
-					<span className="block font-display font-extrabold text-[0.95rem] tracking-tight">
-						{team.name}
+				<button
+					className={cn(
+						"flex min-w-0 flex-1 items-center gap-2.5 text-left",
+						"transition-transform duration-[--dur-tap] ease-[--ease-pop] hover:translate-x-0.5 active:scale-[0.99]",
+					)}
+					data-testid={`team-${team.name}`}
+					onClick={onOpen}
+					type="button"
+				>
+					<TeamBadge team={team} variant="mark" />
+					<span className="min-w-0 flex-1">
+						<span className="block font-display font-extrabold text-[0.95rem] tracking-tight">
+							{team.name}
+						</span>
+						<span className="text-ink-dim text-xs">{sideWord(team.role)}</span>
 					</span>
-					<span className="text-ink-dim text-xs">{sideWord(team.role)}</span>
-				</span>
-				<span className="text-ink-faint">
-					<Icon name="caret-right" size="sm" />
-				</span>
-			</button>
+				</button>
+				<ActionButton
+					aria-label={`Edit ${team.name}`}
+					className={SQUARE_ACTION}
+					data-testid={`edit-${team.name}`}
+					inline
+					onClick={onOpen}
+					size="compact"
+					tone="quiet"
+				>
+					<Icon name="pencil-line" size="sm" />
+				</ActionButton>
+			</div>
 		</motion.div>
 	);
 }

@@ -14,14 +14,15 @@ import { type LobbyTeamView, sideWord, suggestSide } from "./model";
 import {
 	COLOR_OPTIONS,
 	EMOJI_OPTIONS,
+	identityName,
 	suggestIdentity,
 	withTaken,
 } from "./palette";
 
 /**
  * The empty string is only for a team that already exists with no side — the
- * control then has nothing lit. A **new** team starts on `suggestSide`, so
- * Create is a name away.
+ * control then has nothing lit. A **new** team starts on `suggestSide`, named
+ * from its colour and face, so Create is a tap away.
  */
 type SideChoice = TeamRole | "";
 
@@ -103,13 +104,22 @@ export function TeamDrawer({
 	const editable = team === null || mine || (amHost && empty);
 
 	const value = draft ?? {
-		name: team?.name ?? "",
+		name: team?.name ?? identityName(suggestion.color, suggestion.emoji),
 		color: team?.color ?? suggestion.color,
 		emoji: team?.emoji ?? suggestion.emoji,
 		role: team?.role ?? (team === null ? suggestSide(teams) : null),
 	};
-	const patch = (change: Partial<typeof value>) =>
-		setDraft({ ...value, ...change });
+	const patch = (change: Partial<typeof value>) => {
+		const next = { ...value, ...change };
+		if (
+			team === null &&
+			(change.color !== undefined || change.emoji !== undefined) &&
+			value.name === identityName(value.color, value.emoji)
+		) {
+			next.name = identityName(next.color, next.emoji);
+		}
+		setDraft(next);
+	};
 
 	const name = value.name.trim();
 

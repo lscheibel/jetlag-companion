@@ -30,10 +30,24 @@ async function openTeamsStep(phone: Phone) {
 	await waitForSync(phone);
 }
 
+test("a new game already has a hiding team and a seeking team", async ({
+	browser,
+}) => {
+	const host = await openPhone(browser, "Host");
+	await openTeamsStep(host);
+
+	await expect(host.page.getByTestId("setup-teams-continue")).toBeEnabled();
+	await expect(host.page.getByTestId("team-Vermillion Foxes")).toBeVisible();
+	await expect(host.page.getByTestId("team-Cobalt Octopuses")).toBeVisible();
+	await expect(host.page.getByTestId("edit-Vermillion Foxes")).toBeVisible();
+	await expect(host.page.getByTestId("edit-Cobalt Octopuses")).toBeVisible();
+
+	await host.close();
+});
+
 test("the wizard can add, rename and remove a team", async ({ browser }) => {
 	const host = await openPhone(browser, "Host");
 	await openTeamsStep(host);
-	await expect(host.page.getByTestId("setup-teams-continue")).toBeDisabled();
 
 	await host.page.getByTestId("create-team").click();
 	await expect(host.page.getByTestId("side-hider")).toHaveAttribute(
@@ -54,7 +68,7 @@ test("the wizard can add, rename and remove a team", async ({ browser }) => {
 	await host.page.getByTestId("delete-Vixens").click();
 	await expect(host.page.getByTestId("team-Vixens")).toHaveCount(0);
 
-	await expect(host.page.getByTestId("setup-teams-continue")).toBeDisabled();
+	await expect(host.page.getByTestId("setup-teams-continue")).toBeEnabled();
 
 	await host.close();
 });
@@ -65,36 +79,22 @@ test("review lists the teams, and the lobby menu opens the step", async ({
 	const host = await openPhone(browser, "Host");
 	await openTeamsStep(host);
 
-	await host.page.getByTestId("create-team").click();
-	await host.page.getByTestId("team-name-input").fill("Owls");
-	await host.page.getByTestId("side-seeker").click();
-	await host.page.getByTestId("team-editor-done").click();
-	await expect(host.page.getByTestId("team-Owls")).toBeVisible();
-
-	await expect(host.page.getByTestId("setup-teams-continue")).toBeDisabled();
-
-	await host.page.getByTestId("create-team").click();
-	await expect(host.page.getByTestId("side-hider")).toHaveAttribute(
-		"aria-pressed",
-		"true",
-	);
-	await host.page.getByTestId("team-name-input").fill("Foxes");
-	await host.page.getByTestId("side-hider").click();
-	await host.page.getByTestId("team-editor-done").click();
-	await expect(host.page.getByTestId("team-Foxes")).toBeVisible();
+	await expect(host.page.getByTestId("setup-teams-continue")).toBeEnabled();
 
 	await host.page.getByTestId("setup-teams-continue").click();
-	await expect(host.page.getByTestId("setup-review")).toContainText("Owls");
+	await expect(host.page.getByTestId("setup-review")).toContainText(
+		"Vermillion Foxes",
+	);
 
 	await host.page.getByTestId("setup-open-lobby").click();
 	await expect(host.page.getByTestId("lobby")).toBeVisible();
-	await expect(host.page.getByTestId("team-Owls")).toBeVisible();
+	await expect(host.page.getByTestId("team-Vermillion Foxes")).toBeVisible();
 
 	await host.page.getByTestId("lobby-menu").click();
 	await host.page.getByTestId("open-teams").click();
 	await expect(host.page.getByTestId("setup-teams")).toBeVisible();
 	await expect(host.page.getByTestId("stepper")).toHaveCount(0);
-	await expect(host.page.getByTestId("team-Owls")).toBeVisible();
+	await expect(host.page.getByTestId("team-Vermillion Foxes")).toBeVisible();
 
 	await host.page.getByTestId("setup-teams-continue").click();
 	await expect(host.page.getByTestId("lobby")).toBeVisible();

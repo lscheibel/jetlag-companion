@@ -3,6 +3,7 @@ import {
 	normalizeRegion,
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
+import { TEAM_COLORS, TEAM_EMOJI } from "@zero-lag/schema";
 import { eq } from "drizzle-orm";
 import { issueGameToken } from "../auth";
 import { db, drizzleSchema } from "../db";
@@ -14,23 +15,6 @@ import {
 	openGame,
 } from "../open-game";
 import { type Scene, sceneById, scenePath, YOU } from "./scenes";
-
-/**
- * Duplicated from the lobby palette rather than imported: the web app is not
- * a dependency of the server, and eight swatches are not a package.
- */
-const TEAM_COLORS = [
-	"#D55E00",
-	"#0072B2",
-	"#009E73",
-	"#CC79A7",
-	"#E69F00",
-	"#56B4E9",
-	"#F0E442",
-	"#4B4B4B",
-] as const;
-
-const TEAM_EMOJI = ["🦊", "🐙", "🦉", "🐝", "🦈", "🐢", "🦩", "🐉"] as const;
 
 export interface SpawnedScene {
 	readonly gameId: string;
@@ -48,7 +32,11 @@ export async function spawnScene(
 	if (!scene) return null;
 
 	const opened = await db.transaction(async (tx) => {
-		const game = await openGame(tx, { displayName: YOU, deviceId });
+		const game = await openGame(tx, {
+			displayName: YOU,
+			deviceId,
+			starterTeams: false,
+		});
 		await applyScene(tx, game, scene);
 		return game;
 	});

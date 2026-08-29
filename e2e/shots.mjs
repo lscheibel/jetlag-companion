@@ -56,21 +56,19 @@ await page.keyboard.press("Escape");
 
 await page.getByTestId("setup-size-continue").click();
 await page.getByTestId("setup-teams").waitFor();
+await page.getByTestId("team-Vermillion Foxes").waitFor();
 await page.waitForTimeout(400);
 await shot(page, "c4c-teams");
 
-for (const [name, side] of [
-	["Fuchsbau", "hider"],
-	["Eule", "seeker"],
-]) {
-	await page.getByTestId("create-team").click();
-	await page.getByTestId("team-name-input").fill(name);
-	await page.waitForTimeout(200);
-	if (name === "Fuchsbau") await shot(page, "b1-team-drawer");
-	await page.getByTestId(`side-${side}`).click();
-	await page.getByTestId("team-editor-done").click();
-	await page.waitForTimeout(500);
-}
+await page.getByTestId("edit-Vermillion Foxes").click();
+await page.getByTestId("team-name-input").fill("Fuchsbau");
+await page.waitForTimeout(200);
+await shot(page, "b1-team-drawer");
+await page.getByTestId("team-editor-done").click();
+await page.getByTestId("edit-Cobalt Octopuses").click();
+await page.getByTestId("team-name-input").fill("Eule");
+await page.getByTestId("team-editor-done").click();
+await page.waitForTimeout(500);
 
 await page.getByTestId("setup-teams-continue").click();
 await page.getByTestId("setup-review").waitFor();
