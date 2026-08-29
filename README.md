@@ -11,14 +11,6 @@ n seeker teams against m hider teams, one to three players per team.
 - [m4-spec.md](m4-spec.md) — the game area builder
 - [m5-spec.md](m5-spec.md) — the game lifecycle
 
-**Status: M3.** M0 built the contracts — sync topology, the event log,
-first-to-the-server-wins, the constraint engine with radar as its proof, the
-platform adapter, the area pack format. M1 spent them on the lobby. M2 puts a
-coordinate on a screen: everyone in a game can always see who is playing, and
-only some people can see where. M3 turns those coordinates into tools: local
-geodesic measurement, offline area-pack search, team-private pins and suspected
-search zones, coordinate copy, rotation, tilt, and 3D buildings.
-
 Pins and search zones are durable, optimistic team-authored state. Measurements
 remain entirely local and produce no row, event, or socket frame.
 
