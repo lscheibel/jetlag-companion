@@ -51,7 +51,7 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(600);
 for (const [i, wait] of [0, 900, 900, 900].entries()) {
 	await page.waitForTimeout(wait);
-	await page.locator('[data-testid="read-briefing"]').screenshot({
+	await page.locator('[data-testid="mark-ready"]').screenshot({
 		path: `${OUT}/sheen-${i}.png`,
 	});
 }

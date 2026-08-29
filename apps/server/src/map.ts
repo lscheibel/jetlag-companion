@@ -100,9 +100,9 @@ export function mapEventPayload(mapConfigId: string, map: BuiltMap) {
 export function starterMap(): BuiltMap {
 	return buildMap(
 		{
-			// A player-facing name: this is what the lobby header and the briefing
-			// call the game, and "starter map" is builder vocabulary rather than
-			// anything a player agreed to play on.
+			// A player-facing name: this is what the lobby header calls the game,
+			// and "starter map" is builder vocabulary rather than anything a
+			// player agreed to play on.
 			name: "All of Berlin",
 			scalePreset: "city",
 			selection: drawnSelection([

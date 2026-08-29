@@ -27,6 +27,14 @@ interface StopSheetProps {
 }
 
 /**
+ * Letters, digits, punctuation — everything a station name is made of except
+ * the gaps. Spaces, tabs and the rest of Unicode whitespace do not count.
+ */
+export function stationNameCharacterCount(name: string): number {
+	return name.replace(/\s/g, "").length;
+}
+
+/**
  * Tap a station. Lines live here, not as map labels — a hub with ICE numbers
  * and buses is a long card, not a pile of text on the board.
  */
@@ -39,6 +47,7 @@ export function StopSheet({
 }: StopSheetProps) {
 	const shown = useHeldValue(open, stop);
 	const groups = shown ? groupLinesByMode(shown.lines) : [];
+	const characterCount = shown ? stationNameCharacterCount(shown.name) : 0;
 
 	return (
 		<Sheet
@@ -65,6 +74,12 @@ export function StopSheet({
 			title={shown?.name}
 		>
 			<div className="space-y-3">
+				{shown && (
+					<p className="text-sm" data-testid="stop-name-characters">
+						<span className="num">{characterCount}</span>
+						{characterCount === 1 ? " character" : " characters"}
+					</p>
+				)}
 				{shown && (
 					<DistanceToYou from={fromYou} lat={shown.lat} lng={shown.lng} />
 				)}

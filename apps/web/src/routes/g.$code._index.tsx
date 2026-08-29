@@ -22,7 +22,6 @@ import {
 	useLobbyRejection,
 } from "../lobby/actions";
 import { BlockerCards } from "../lobby/blockers";
-import { hasSeenBriefing } from "../lobby/briefing-seen";
 import { HostBanner } from "../lobby/host-banner";
 import { InviteSheet } from "../lobby/invite-sheet";
 import { LobbyHeader } from "../lobby/lobby-header";
@@ -95,7 +94,6 @@ function Lobby() {
 
 	const blockers = startBlockers(lobby.teams, lobby.people);
 	const roundPending = lobby.round?.status === "pending";
-	const seenBriefing = hasSeenBriefing(session.gameId, session.playerId);
 	const { ready, total } = readyCount(lobby.people);
 	const iAmReady = lobby.me?.readyAt != null;
 	const everybodyIn = total > 0 && canStart(lobby.teams, lobby.people);
@@ -286,30 +284,18 @@ function Lobby() {
 					 * Ready is said here, on the board, rather than on a screen of its
 					 * own: everybody's tick is already visible beside their name, so a
 					 * second screen listing the same ticks was a second place to look at
-					 * the same fact. Saying it without having seen the area is still not
-					 * a thing worth allowing, so the button reads the briefing first.
+					 * the same fact.
 					 */}
-					{seenBriefing ? (
-						<ActionButton
-							beacon={!iAmReady}
-							data-testid={iAmReady ? "unready" : "mark-ready"}
-							disabled={!lobby.myTeam}
-							hint={`${ready}/${total}`}
-							onClick={() => setReady(!iAmReady)}
-							tone={iAmReady ? "secondary" : "primary"}
-						>
-							{iAmReady ? "Actually, not yet" : "I'm ready"}
-						</ActionButton>
-					) : (
-						<ActionButton
-							beacon
-							data-testid="read-briefing"
-							disabled={!lobby.myTeam}
-							onClick={() => void navigate(`/g/${session.code}/briefing`)}
-						>
-							Read the briefing
-						</ActionButton>
-					)}
+					<ActionButton
+						beacon={!iAmReady}
+						data-testid={iAmReady ? "unready" : "mark-ready"}
+						disabled={!lobby.myTeam}
+						hint={`${ready}/${total}`}
+						onClick={() => setReady(!iAmReady)}
+						tone={iAmReady ? "secondary" : "primary"}
+					>
+						{iAmReady ? "Actually, not yet" : "I'm ready"}
+					</ActionButton>
 
 					{/*
 					 * The whistle, and only the host has it. Held rather than tapped —
@@ -338,7 +324,6 @@ function Lobby() {
 			<LobbyMenu
 				amHost={lobby.amHost}
 				leaving={leaving}
-				onBriefing={() => void navigate(`/g/${session.code}/briefing`)}
 				onClose={() => setOverlay({ kind: "none" })}
 				onGameArea={() => void navigate(editorHomePath(session.code, "lobby"))}
 				onHidingZone={() =>

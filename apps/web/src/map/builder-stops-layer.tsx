@@ -6,7 +6,6 @@ import {
 	type MultiPolygon,
 	multiPolygonBBox,
 	type Region,
-	regionContains,
 } from "@zero-lag/geo";
 import { useTheme } from "@zero-lag/ui/hooks/use-theme";
 import { useMemo } from "react";
@@ -15,6 +14,7 @@ import {
 	type FeatureData,
 	multiPolygonFeature,
 } from "./geojson";
+import { stopInNarrowedArea } from "./remaining-stops";
 import type { SearchableStop } from "./toolkit";
 import { useGeoJsonLayer } from "./use-geojson-layer";
 
@@ -126,7 +126,7 @@ export function BuilderStopsLayer({
 		return {
 			type: "FeatureCollection",
 			features: stops.map((stop) => {
-				const inPlay = stopLooksInPlay(stop, fold);
+				const inPlay = stopInNarrowedArea(stop, fold);
 				return {
 					type: "Feature",
 					properties: {
@@ -152,12 +152,6 @@ export function BuilderStopsLayer({
 	useGeoJsonLayer(`${id}-zone-source`, zoneData, zoneLayers);
 	useGeoJsonLayer(id, data, layers);
 	return null;
-}
-
-function stopLooksInPlay(stop: SearchableStop, fold: Region | null): boolean {
-	if (!stop.insideArea) return false;
-	if (!fold) return true;
-	return regionContains(fold, [stop.lng, stop.lat]);
 }
 
 /** How far past the setup bbox a stop can travel before it is nearly gone. */

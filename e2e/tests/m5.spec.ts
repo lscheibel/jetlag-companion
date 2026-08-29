@@ -9,7 +9,6 @@ import {
 	eventTypes,
 	gameIdForCode,
 	hiderOutcomes,
-	houseRulesText,
 	pausesForRound,
 	photoRow,
 	positionCountForTeam,
@@ -202,21 +201,7 @@ test("1. a full round, end to end", async ({ browser }) => {
 	await joinTeam(dev, "Sharks");
 	await joinTeam(eli, "Turtles");
 
-	// House rules are written on the briefing, by the host, and read there by
-	// everybody else — the screen that says them is the screen that takes them.
-	await ana.page.goto(`/g/${code}/briefing`);
-	await ana.page.getByTestId("rules-input").fill("no image searching stations");
-	await ana.page.getByTestId("save-rules").click();
 	const gameId = await gameIdForCode(code);
-	await expect
-		.poll(() => houseRulesText(gameId))
-		.toBe("no image searching stations");
-	await ben.page.goto(`/g/${code}/briefing`);
-	await expect(ben.page.getByTestId("rules-text")).toContainText(
-		"no image searching stations",
-	);
-	await openLobby(ana, code);
-	await openLobby(ben, code);
 
 	await startHiding(phones, code, "30");
 	await expectPhase(phones, "hiding");

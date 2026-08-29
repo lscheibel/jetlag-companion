@@ -561,23 +561,12 @@ export async function toggleHost(phone: Phone): Promise<void> {
 /**
  * Ready is per person, so every phone says it for itself — on the lobby, next
  * to everybody else's tick. m1-spec §11.
- *
- * The briefing gates it: saying you are ready without having seen the area is
- * not a thing worth allowing, so the first tap reads it.
  */
 export async function readyUp(phone: Phone, code: string): Promise<void> {
 	await phone.page.goto(`/g/${code}`);
-	const briefing = phone.page.getByTestId("read-briefing");
 	const ready = phone.page.getByTestId("mark-ready");
-	// The lobby paints after Zero hydrates. Checking visibility once would
-	// race the load and wait for a button that only exists after the briefing.
-	await expect(briefing.or(ready)).toBeVisible();
-	if (await briefing.isVisible()) {
-		await briefing.click();
-		await phone.page.getByTestId("mark-ready").click();
-	} else {
-		await ready.click();
-	}
+	await expect(ready).toBeVisible();
+	await ready.click();
 	await expect(phone.page.getByTestId(`ready-state-${phone.name}`)).toHaveText(
 		"ready",
 	);

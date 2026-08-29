@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { type DevSceneSummary, listDevScenes, spawnDevScene } from "../api";
-import { markBriefingSeen } from "../lobby/briefing-seen";
 import { saveSession } from "../session";
 
 const GROUP_LABEL: Record<DevSceneSummary["group"], string> = {
@@ -42,7 +41,6 @@ export function SceneMenu() {
 		try {
 			const session = await spawnDevScene(id);
 			saveSession(session);
-			markBriefingSeen(session.gameId, session.playerId);
 			await navigate(session.path);
 		} catch {
 			setError("Could not open that scene.");

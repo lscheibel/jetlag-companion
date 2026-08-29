@@ -19,7 +19,7 @@ import type { LobbyPerson } from "./model";
  * buttons that grew every time a host looked at the board. Last seen is a
  * status, not a control — it is the one fact the row's dot cannot say out
  * loud. Stepping down from host is here too, on your own sheet, so it is not
- * sitting next to the briefing in the game menu.
+ * sitting in the game menu next to leaving.
  */
 
 /** Square icon ActionButton, matching the primary Move height. */

@@ -7,9 +7,9 @@ import type { LobbyPerson, LobbyTeamView } from "./model";
 /**
  * The lobby, derived once.
  *
- * Four screens read the same thing — the board, the players list, the ready
- * check and the briefing — and three separate versions of "who is on which
- * team" is how two of them end up disagreeing about whether a game can start.
+ * The board, the player sheet and the ready check all read the same thing —
+ * and three separate versions of "who is on which team" is how two of them
+ * end up disagreeing about whether a game can start.
  */
 
 export interface LobbyRound {

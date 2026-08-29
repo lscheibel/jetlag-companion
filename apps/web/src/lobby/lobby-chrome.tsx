@@ -55,7 +55,6 @@ export function LobbyChrome({
 					<LobbyMenu
 						amHost={lobby.amHost}
 						leaving={leaving}
-						onBriefing={() => void navigate(`/g/${session.code}/briefing`)}
 						onClose={() => setOverlay("none")}
 						onGameArea={() =>
 							void navigate(editorHomePath(session.code, "lobby"))

@@ -84,6 +84,7 @@ import {
 import { PoiLayer } from "../map/poi-layer";
 import { PoiPickerSheet } from "../map/poi-picker-sheet";
 import { type PoiConstraintKind, PoiSheet } from "../map/poi-sheet";
+import { remainingStopCount } from "../map/remaining-stops";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
 import { StopSheet } from "../map/stop-sheet";
@@ -353,6 +354,10 @@ function MapScreen() {
 			? pickedHiderTeamId
 			: (hiderTeams[0]?.id ?? null);
 	const searchArea = useSearchArea(hiderTeamId);
+	const stopsRemaining = remainingStopCount(
+		searchableStops,
+		searchArea.surviving ?? null,
+	);
 	const scopedConstraints = constraints.filter(
 		(row) => row.hiderTeamId === hiderTeamId,
 	);
@@ -1397,6 +1402,7 @@ function MapScreen() {
 											onRadiusChange={setTool}
 											onClosestPoiChange={setTool}
 											radiusCenters={radiusDraftCenters}
+											remainingStopCount={stopsRemaining}
 											closestPoiCenter={
 												selectedClosestPoi
 													? [selectedClosestPoi.lng, selectedClosestPoi.lat]

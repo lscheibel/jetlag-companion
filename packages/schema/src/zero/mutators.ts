@@ -713,10 +713,9 @@ export const mutators = defineMutators({
 		 * How long the hiders get, set before the whistle rather than at it.
 		 *
 		 * `startHiding` can carry a duration of its own, but a number that only
-		 * exists at the moment of starting is a number nobody can read in the
-		 * briefing beforehand — and the briefing is what a player says they are
-		 * ready for. Pending rounds only: the clock a round is already running on
-		 * is not a setting.
+		 * exists at the moment of starting is a number nobody can read beforehand.
+		 * Pending rounds only: the clock a round is already running on is not a
+		 * setting.
 		 */
 		setHidingDuration: defineMutator(
 			z.object({

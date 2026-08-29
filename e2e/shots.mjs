@@ -112,26 +112,10 @@ await page.waitForTimeout(900);
 await shot(page, "a3-invite");
 await page.keyboard.press("Escape");
 
-await page.goto(`https://localhost:5173/g/${code}/briefing`);
-await page.getByTestId("briefing").waitFor();
-await page
-	.getByTestId("rules-input")
-	.fill("No image searching station names.\nBuses count as transit.");
-await page.getByTestId("save-rules").click();
-await page.waitForTimeout(900);
-await shot(page, "c3-briefing-host");
-await page.getByTestId("screen-back").click();
-await page.getByTestId("lobby").waitFor();
-await page.waitForTimeout(600);
 await page.getByTestId("lobby-menu").click();
 await page.waitForTimeout(900);
 await shot(page, "lobby-menu");
 await page.keyboard.press("Escape");
-
-await ben.goto(`https://localhost:5173/g/${code}/briefing`);
-await ben.getByTestId("briefing").waitFor();
-await ben.waitForTimeout(900);
-await shot(ben, "c3-briefing");
 
 await page.goto(`https://localhost:5173/g/${code}/ready`);
 await page.getByTestId("ready-check").waitFor();

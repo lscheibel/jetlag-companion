@@ -57,6 +57,7 @@ interface MapBarProps {
 	readonly fallbackRadiusMeters: number;
 	readonly cut: boolean;
 	readonly onCutChange: (cut: boolean) => void;
+	readonly remainingStopCount: number;
 }
 
 /**
@@ -85,6 +86,7 @@ export function MapBar({
 	fallbackRadiusMeters,
 	cut,
 	onCutChange,
+	remainingStopCount,
 }: MapBarProps) {
 	if (sheetOwnsBar(tool)) return null;
 
@@ -128,6 +130,7 @@ export function MapBar({
 				<HiderChip
 					hiders={hiders}
 					onOpen={onOpenHiderSheet}
+					remainingStopCount={remainingStopCount}
 					selectedId={selectedHiderId}
 				/>
 				<ActionButton

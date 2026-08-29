@@ -18,7 +18,6 @@ interface LobbyMenuProps {
 	open: boolean;
 	onClose: () => void;
 	amHost: boolean;
-	onBriefing: () => void;
 	onClaimHost: () => void;
 	onGameArea: () => void;
 	onTransit: () => void;
@@ -32,7 +31,6 @@ export function LobbyMenu({
 	open,
 	onClose,
 	amHost,
-	onBriefing,
 	onClaimHost,
 	onGameArea,
 	onTransit,
@@ -70,19 +68,6 @@ export function LobbyMenu({
 			testId="lobby-menu-sheet"
 			title="This game"
 		>
-			{/*
-			 * The briefing stays reachable after it has been read once: it is the
-			 * only place the area, the clock and the house rules are said together,
-			 * and "what were we playing again" is a question people ask twice.
-			 */}
-			<ActionButton
-				data-testid="open-briefing"
-				onClick={onBriefing}
-				tone="secondary"
-			>
-				The briefing
-			</ActionButton>
-
 			{amHost && seeking && round && !allFound && (
 				<ActionButton
 					data-testid="end-round"
@@ -103,8 +88,7 @@ export function LobbyMenu({
 
 			{/*
 			 * Claiming the hat lives here. Stepping down is on your own player
-			 * sheet — a host reaching for the briefing should not land on it.
-			 * More than one at a time is a normal Tuesday. m1-spec §6.
+			 * sheet. More than one at a time is a normal Tuesday. m1-spec §6.
 			 */}
 			{!amHost && (
 				<ActionButton

@@ -63,16 +63,11 @@ await ben.getByTestId("join-Fuchsbau").click();
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${OUT}/lobby-before-ready.png` });
 
-await page.getByTestId("read-briefing").click();
-await page.getByTestId("briefing").waitFor();
 await page.getByTestId("mark-ready").click();
-await page.getByTestId("lobby").waitFor();
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${OUT}/lobby-host-ready.png` });
 
-await ben.getByTestId("read-briefing").click();
 await ben.getByTestId("mark-ready").click();
-await ben.getByTestId("lobby").waitFor();
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${OUT}/lobby-everybody-in.png` });
 

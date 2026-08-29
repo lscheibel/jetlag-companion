@@ -10,6 +10,7 @@ export type HiderOption = TeamIdentity & { readonly id: string };
 interface HiderChipProps {
 	readonly hiders: readonly HiderOption[];
 	readonly selectedId: string | null;
+	readonly remainingStopCount: number;
 	readonly onOpen: () => void;
 }
 
@@ -18,7 +19,12 @@ interface HiderChipProps {
  * deduction per opponent, so the bar says which and the sheet is how you
  * switch.
  */
-export function HiderChip({ hiders, selectedId, onOpen }: HiderChipProps) {
+export function HiderChip({
+	hiders,
+	selectedId,
+	remainingStopCount,
+	onOpen,
+}: HiderChipProps) {
 	const selected =
 		hiders.find((hider) => hider.id === selectedId) ?? hiders[0] ?? null;
 	if (!selected) return null;
@@ -31,8 +37,19 @@ export function HiderChip({ hiders, selectedId, onOpen }: HiderChipProps) {
 			type="button"
 		>
 			<TeamBadge size="lg" team={selected} variant="mark" />
-			<span className="min-w-0 truncate font-display font-extrabold text-[0.95rem] tracking-tight">
-				{selected.name}
+			<span className="min-w-0 flex-1">
+				<span className="block truncate font-display font-extrabold text-[0.95rem] tracking-tight">
+					{selected.name}
+				</span>
+				<span
+					className="block truncate text-ink-dim text-xs"
+					data-testid="remaining-stops"
+				>
+					<span className="num">
+						{remainingStopCount.toLocaleString("en")}
+					</span>
+					{remainingStopCount === 1 ? " stop remaining" : " stops remaining"}
+				</span>
 			</span>
 		</button>
 	);
