@@ -182,3 +182,22 @@ export function stepZoneMeters(current: number, direction: 1 | -1): number {
 		HIDING_ZONE_MAX_M,
 	);
 }
+
+/**
+ * A number a host typed for a radius. Metres, optionally with `m` or `km`.
+ * Empty or unreadable input is `null` so the field can revert.
+ */
+export function parseZoneMeters(raw: string): number | null {
+	const trimmed = raw.trim().toLowerCase().replaceAll(",", "");
+	if (trimmed === "") return null;
+	const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(m|km)?$/.exec(trimmed);
+	if (!match) return null;
+	const amount = Number(match[1]);
+	if (!Number.isFinite(amount) || amount <= 0) return null;
+	const meters = match[2] === "km" ? amount * 1_000 : amount;
+	return Math.round(meters);
+}
+
+export function clampZoneMeters(meters: number): number {
+	return clamp(meters, HIDING_ZONE_MIN_M, HIDING_ZONE_MAX_M);
+}

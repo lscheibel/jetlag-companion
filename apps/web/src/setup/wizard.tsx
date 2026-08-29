@@ -83,6 +83,7 @@ export interface SetupState {
 	chooseSize(size: GameSize): void;
 	stepDuration(direction: 1 | -1): void;
 	stepZone(direction: 1 | -1): void;
+	setZone(meters: number): void;
 	restoreDuration(): void;
 	restoreZone(): void;
 	/** Everything the review step needs to write, in one object. */
@@ -253,6 +254,15 @@ export function SetupProvider({ children }: { children: ReactNode }) {
 					hidingRadiusMeters: clamp(
 						(current.hidingRadiusMeters ?? band.hidingRadiusMeters) +
 							direction * HIDING_ZONE_STEP_M,
+						HIDING_ZONE_MIN_M,
+						HIDING_ZONE_MAX_M,
+					),
+				})),
+			setZone: (meters) =>
+				setDraft((current) => ({
+					...current,
+					hidingRadiusMeters: clamp(
+						meters,
 						HIDING_ZONE_MIN_M,
 						HIDING_ZONE_MAX_M,
 					),

@@ -19,7 +19,7 @@ import { FoldLayer } from "../setup/area/layers";
 import { useAreaToolNav } from "../setup/area/tool-nav";
 import { AddCutToggle } from "../setup/area/tool-strip";
 import { useAreaEditor } from "../setup/area/use-editor";
-import { formatZone } from "../setup/game-size";
+import { formatZone, parseZoneMeters } from "../setup/game-size";
 
 const RADIUS_MIN = 50;
 const RADIUS_STEP = 100;
@@ -91,13 +91,19 @@ export default function SetupAreaCircle() {
 				<NumberStepper
 					canDecrease={radius > RADIUS_MIN}
 					label="Radius"
+					onCommit={(raw) => {
+						const parsed = parseZoneMeters(raw);
+						if (parsed === null) return;
+						setRadius(Math.max(RADIUS_MIN, parsed));
+					}}
 					onStep={(direction) =>
 						setRadius((current) =>
 							Math.max(RADIUS_MIN, current + direction * RADIUS_STEP),
 						)
 					}
 					testId="area-circle-radius"
-					value={formatZone(radius)}
+					unit="m"
+					value={String(radius)}
 				/>
 			</div>
 			<ScreenActions

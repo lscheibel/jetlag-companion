@@ -95,12 +95,11 @@ describe("defaultClosestPoiRadius", () => {
 });
 
 describe("radiusPoiCenters", () => {
-	it("takes every same-kind pin, including those outside the area", () => {
+	it("keeps same-kind in-area pins and drops those outside the fence", () => {
 		expect(radiusPoiCenters("zoo", [ZOO, TIERPARK, OUTSIDE_ZOO, PARK])).toEqual(
 			[
 				[ZOO.lng, ZOO.lat],
 				[TIERPARK.lng, TIERPARK.lat],
-				[OUTSIDE_ZOO.lng, OUTSIDE_ZOO.lat],
 			],
 		);
 	});

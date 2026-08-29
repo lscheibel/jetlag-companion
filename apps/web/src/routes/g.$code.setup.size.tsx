@@ -18,6 +18,7 @@ import {
 	HIDING_DURATION_MIN_MS,
 	HIDING_ZONE_MAX_M,
 	HIDING_ZONE_MIN_M,
+	parseZoneMeters,
 	SIZE_BANDS,
 } from "../setup/game-size";
 import { persistSetup } from "../setup/persist";
@@ -151,6 +152,11 @@ export default function SetupSize() {
 				canDecrease={setup.hidingRadiusMeters > HIDING_ZONE_MIN_M}
 				canIncrease={setup.hidingRadiusMeters < HIDING_ZONE_MAX_M}
 				label="Hiding zone"
+				onCommit={(raw) => {
+					const parsed = parseZoneMeters(raw);
+					if (parsed === null) return;
+					setup.setZone(parsed);
+				}}
 				onStep={setup.stepZone}
 				suggested={
 					setup.zoneOverridden
@@ -161,7 +167,8 @@ export default function SetupSize() {
 						: null
 				}
 				testId="hiding-zone"
-				value={formatZone(setup.hidingRadiusMeters)}
+				unit="m"
+				value={String(Math.round(setup.hidingRadiusMeters))}
 			/>
 
 			<SizeSheet

@@ -11,7 +11,11 @@ import {
 } from "@zero-lag/ui/components/toggle-button";
 import { useState } from "react";
 import { HiderChip, type HiderOption } from "../game/hider-selector";
-import { formatZone, stepZoneMeters } from "../setup/game-size";
+import {
+	clampZoneMeters,
+	parseZoneMeters,
+	stepZoneMeters,
+} from "../setup/game-size";
 import { CoordinateFields } from "./coordinate-fields";
 import {
 	type MapTool,
@@ -352,9 +356,18 @@ function ConstraintDraft({
 							stepZoneMeters(radius.radiusMeters, 1) > radius.radiusMeters
 						}
 						label="Radius"
+						onCommit={(raw) => {
+							const parsed = parseZoneMeters(raw);
+							if (parsed === null) return;
+							onRadiusChange({
+								...radius,
+								radiusMeters: clampZoneMeters(parsed),
+							});
+						}}
 						onStep={onRadiusStep}
 						testId="constraint-radius"
-						value={formatZone(radius.radiusMeters)}
+						unit="m"
+						value={String(Math.round(radius.radiusMeters))}
 					/>
 				)}
 				{closest && (
@@ -399,6 +412,14 @@ function ConstraintDraft({
 									stepZoneMeters(closest.radiusMeters, 1) > closest.radiusMeters
 								}
 								label="Radius"
+								onCommit={(raw) => {
+									const parsed = parseZoneMeters(raw);
+									if (parsed === null) return;
+									onClosestPoiChange({
+										...closest,
+										radiusMeters: clampZoneMeters(parsed),
+									});
+								}}
 								onStep={(direction) => {
 									const current = closest.radiusMeters;
 									if (current === null) return;
@@ -408,7 +429,8 @@ function ConstraintDraft({
 									});
 								}}
 								testId="closest-poi-radius"
-								value={formatZone(closest.radiusMeters)}
+								unit="m"
+								value={String(Math.round(closest.radiusMeters))}
 							/>
 						)}
 					</>

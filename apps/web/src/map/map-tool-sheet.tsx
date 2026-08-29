@@ -437,7 +437,8 @@ function RadiusPoiKindSheet(
 		props.tool.kind === "drawingRadiusConstraint" ? props.tool : null;
 	const kindCounts = POI_KINDS.map((kind) => ({
 		kind,
-		count: props.pois.filter((poi) => poi.kind === kind).length,
+		count: props.pois.filter((poi) => poi.kind === kind && poi.insideArea)
+			.length,
 	}));
 
 	function selectKind(kind: PoiKind) {
@@ -481,7 +482,9 @@ function RadiusPoiKindSheet(
 								{POI_KIND_LABELS[kind]}
 							</b>
 							<span className="eyebrow mt-0.5 block text-ink-dim">
-								{count === 0 ? "None nearby" : `${count} nearby`}
+								{count === 0
+									? "None in the game area"
+									: `${count} in the game area`}
 							</span>
 						</span>
 					</button>

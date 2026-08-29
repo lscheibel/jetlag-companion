@@ -101,14 +101,14 @@ export function defaultClosestPoiRadius(
 }
 
 /**
- * Circles for a radius constraint on every POI of a kind. Pins just outside
- * the fence still count: a buffer that overlaps the area should still cut.
+ * Circles for a radius constraint on every POI of a kind. Same fence as
+ * nearest-cell sites: only pins inside the valid hiding area.
  */
 export function radiusPoiCenters(
 	kind: PoiKind,
 	pois: readonly MapPoi[],
 ): readonly LngLat[] {
 	return pois
-		.filter((poi) => poi.kind === kind)
+		.filter((poi) => poi.kind === kind && poi.insideArea)
 		.map((poi) => [poi.lng, poi.lat] as const);
 }

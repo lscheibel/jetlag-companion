@@ -58,13 +58,25 @@ export function NumberStepper({
 	const [roll, setRoll] = useState<{ direction: 1 | -1; nonce: number } | null>(
 		null,
 	);
+	/**
+	 * What is in the field while it is being typed. Committed on blur / Enter,
+	 * discarded on Escape, so a min of 100 m does not swallow the "1" of "1200".
+	 */
+	const [draft, setDraft] = useState<string | null>(null);
 
 	function step(direction: 1 | -1) {
+		setDraft(null);
 		setRoll((previous) => ({
 			direction,
 			nonce: (previous?.nonce ?? 0) + 1,
 		}));
 		onStep(direction);
+	}
+
+	function commitDraft() {
+		if (draft === null || !onCommit) return;
+		onCommit(draft);
+		setDraft(null);
 	}
 
 	return (
@@ -82,11 +94,29 @@ export function NumberStepper({
 				{onCommit ? (
 					<div className="flex items-center gap-1.5">
 						<input
+							autoComplete="off"
 							className="num w-full min-w-0 bg-transparent font-medium text-ink text-xl outline-none"
 							data-testid={testId && `${testId}-value`}
+							enterKeyHint="done"
 							inputMode="numeric"
-							onChange={(event) => onCommit(event.target.value)}
-							value={value}
+							onBlur={commitDraft}
+							onChange={(event) => setDraft(event.target.value)}
+							onFocus={(event) => {
+								setDraft(value);
+								event.currentTarget.select();
+							}}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									commitDraft();
+									event.currentTarget.blur();
+								}
+								if (event.key === "Escape") {
+									setDraft(null);
+									event.currentTarget.blur();
+								}
+							}}
+							value={draft ?? value}
 						/>
 						{unit && (
 							<span className="shrink-0 font-mono text-ink-faint text-xs">
