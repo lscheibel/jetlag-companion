@@ -34,7 +34,8 @@
 		"check": "biome check --write .",
 		"zero:start": "APP_ORIGIN=${APP_ORIGIN:-http://host.docker.internal:3000} docker compose -f infra/docker/docker-compose.yml up -d postgres zero-cache",
 		"test": "turbo run test",
-		"test:e2e": "npm run test:e2e --workspace @zero-lag/e2e"
+		"test:e2e": "npm run test:e2e --workspace @zero-lag/e2e",
+		"generate:og": "node e2e/og-shot.mjs apps/web/public/og.png"
 	},
 	"dependencies": {
 		"@zero-lag/env": "*",
