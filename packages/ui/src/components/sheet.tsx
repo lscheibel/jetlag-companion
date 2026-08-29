@@ -75,7 +75,7 @@ export function Sheet({
 			{open && (
 				<motion.div
 					animate="shown"
-					className="fixed inset-0 z-50 flex flex-col justify-end"
+					className="pointer-events-auto fixed inset-0 z-50 flex flex-col justify-end"
 					exit="leaving"
 					initial="hidden"
 					key="sheet"

@@ -1277,22 +1277,18 @@ function MapScreen() {
 							{tool.kind === "measure" && (
 								<motion.div key="measure" {...cardMotion}>
 									<MeasureCard
-										onCancel={cancelTool}
-										onSeedMeasure={() => {
-											if (
-												tool.measure.kind === "path" &&
-												ownFix &&
-												ownFix.source !== "unavailable"
-											) {
-												setTool({
-													kind: "measure",
-													measure: {
-														kind: "path",
-														points: [[ownFix.lng, ownFix.lat]],
-													},
-												});
-											}
+										fromYou={fromYou}
+										onAddPoint={(point) => {
+											if (tool.measure.kind !== "path") return;
+											setTool({
+												kind: "measure",
+												measure: {
+													kind: "path",
+													points: [...tool.measure.points, point],
+												},
+											});
 										}}
+										onCancel={cancelTool}
 										onUndoMeasure={() => {
 											if (tool.measure.kind !== "path") return;
 											setTool({

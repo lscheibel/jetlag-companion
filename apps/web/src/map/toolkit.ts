@@ -182,6 +182,24 @@ export function pathSegments(points: readonly LngLat[]): readonly number[] {
 	});
 }
 
+export function sameLngLat(a: LngLat, b: LngLat): boolean {
+	return a[0] === b[0] && a[1] === b[1];
+}
+
+/**
+ * A "to me" vertex is only useful when the path already has somewhere to
+ * measure from, and the last vertex is not already the GPS fix — a
+ * zero-length last segment is a tap that did nothing.
+ */
+export function canMeasureToYou(
+	points: readonly LngLat[],
+	you: LngLat | null,
+): boolean {
+	if (you === null || points.length === 0) return false;
+	const last = points[points.length - 1];
+	return last !== undefined && !sameLngLat(last, you);
+}
+
 export function formatCoordinates(point: LngLat): string {
 	return `${point[1].toFixed(5)}, ${point[0].toFixed(5)}`;
 }

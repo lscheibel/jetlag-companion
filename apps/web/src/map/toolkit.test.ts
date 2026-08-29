@@ -1,6 +1,7 @@
 import { BERLIN_FIXTURE_CATALOG } from "@zero-lag/catalog";
 import { describe, expect, it } from "vitest";
 import {
+	canMeasureToYou,
 	distanceFromYou,
 	formatCoordinates,
 	formatDistance,
@@ -48,6 +49,22 @@ describe("distance formatting", () => {
 
 	it("formats the distance from a GPS origin", () => {
 		expect(distanceFromYou([13.4, 52.52], 13.4, 52.52)).toBe("0 m");
+	});
+});
+
+describe("canMeasureToYou", () => {
+	const you = [13.4132, 52.5219] as const;
+
+	it("needs a vertex and a GPS fix that is not already the last vertex", () => {
+		expect(canMeasureToYou([], you)).toBe(false);
+		expect(canMeasureToYou([[13.4, 52.5]], null)).toBe(false);
+		expect(canMeasureToYou([you], you)).toBe(false);
+		expect(canMeasureToYou([[13.4, 52.5], you], you)).toBe(false);
+	});
+
+	it("is true once the path has a last vertex that is not you", () => {
+		expect(canMeasureToYou([[13.4, 52.5]], you)).toBe(true);
+		expect(canMeasureToYou([you, [13.4, 52.5]], you)).toBe(true);
 	});
 });
 

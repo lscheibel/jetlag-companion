@@ -4,11 +4,12 @@ import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Icon, type IconName } from "@zero-lag/ui/components/icon";
 import { ColorPicker } from "@zero-lag/ui/components/picker";
-import { Sheet } from "@zero-lag/ui/components/sheet";
+import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { Switch } from "@zero-lag/ui/components/switch";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { COLOR_OPTIONS } from "../lobby/palette";
 import { CoordinateFields } from "./coordinate-fields";
 import { COMPACT_SECONDARY } from "./map-bar";
@@ -16,6 +17,7 @@ import type { MapPin } from "./pin-layer";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
+	canMeasureToYou,
 	formatDistance,
 	type MapTool,
 	pathSegments,
@@ -68,66 +70,187 @@ export function GpsHelpSheet({ open, issue, onClose }: GpsHelpSheetProps) {
 
 interface MeasureCardProps {
 	readonly tool: Extract<MapTool, { kind: "measure" }>;
+	readonly fromYou: LngLat | null;
 	readonly onCancel: () => void;
 	readonly onUndoMeasure: () => void;
-	readonly onSeedMeasure: () => void;
+	readonly onAddPoint: (point: LngLat) => void;
 }
+
+type MeasureInsert = "me" | "coordinates";
 
 /** Measure totals on the map, not under it. The pin/search sheets stay sheets. */
 export function MeasureCard({
 	tool,
+	fromYou,
 	onCancel,
 	onUndoMeasure,
-	onSeedMeasure,
+	onAddPoint,
 }: MeasureCardProps) {
+	const [insert, setInsert] = useState<MeasureInsert | null>(null);
 	const measure = tool.measure;
-	const segments = measure.kind === "path" ? pathSegments(measure.points) : [];
+	const path = measure.kind === "path" ? measure.points : null;
+	const segments = path ? pathSegments(path) : [];
 	const total = segments.reduce((sum, segment) => sum + segment, 0);
-	const emptyPath = measure.kind === "path" && measure.points.length === 0;
+	const emptyPath = path !== null && path.length === 0;
+	const showToMe = path !== null && canMeasureToYou(path, fromYou);
+	const insertTitle =
+		insert === "me"
+			? "To me"
+			: emptyPath
+				? "From coordinates"
+				: "To coordinates";
+
 	return (
-		<Surface
-			className="pointer-events-auto w-full px-3 py-2.5"
-			data-testid="measure-card"
-			raised
-		>
-			<div className="flex items-start gap-2">
-				<div className="min-w-0 flex-1">
-					<span className="eyebrow block">
-						{measure.kind === "path" ? "Along the path" : "Radius"}
-					</span>
-					<p
-						className="font-medium font-mono text-lg leading-none"
-						data-testid="measure-total"
-					>
-						{formatDistance(
-							measure.kind === "path" ? total : measure.radiusMeters,
-						)}
-					</p>
+		<>
+			<Surface
+				className="pointer-events-auto w-full px-3 py-2.5"
+				data-testid="measure-card"
+				raised
+			>
+				<div className="flex items-start gap-2">
+					<div className="min-w-0 flex-1">
+						<span className="eyebrow block">
+							{measure.kind === "path" ? "Along the path" : "Radius"}
+						</span>
+						<p
+							className="font-medium font-mono text-lg leading-none"
+							data-testid="measure-total"
+						>
+							{formatDistance(
+								measure.kind === "path" ? total : measure.radiusMeters,
+							)}
+						</p>
+					</div>
+					{measure.kind === "path" && (
+						<ActionButton
+							className={COMPACT_SECONDARY}
+							disabled={measure.points.length === 0}
+							inline
+							onClick={onUndoMeasure}
+							size="compact"
+							tone="secondary"
+						>
+							Undo
+						</ActionButton>
+					)}
 				</div>
-				{measure.kind === "path" && (
-					<ActionButton
-						className={COMPACT_SECONDARY}
-						disabled={measure.points.length === 0}
-						inline
-						onClick={onUndoMeasure}
-						size="compact"
-						tone="secondary"
-					>
-						Undo
+				<div className="mt-2 flex flex-col gap-2">
+					{emptyPath && (
+						<ActionButton
+							data-testid="measure-from-me"
+							disabled={!fromYou}
+							onClick={() => {
+								if (!fromYou) return;
+								onAddPoint(fromYou);
+							}}
+							size="compact"
+							tone="secondary"
+						>
+							From me
+						</ActionButton>
+					)}
+					{showToMe && (
+						<ActionButton
+							data-testid="measure-to-me"
+							onClick={() => setInsert("me")}
+							size="compact"
+							tone="secondary"
+						>
+							To me
+						</ActionButton>
+					)}
+					{path !== null && (
+						<ActionButton
+							data-testid="measure-coordinates"
+							onClick={() => setInsert("coordinates")}
+							size="compact"
+							tone="secondary"
+						>
+							{emptyPath ? "From coordinates" : "To coordinates"}
+						</ActionButton>
+					)}
+					<ActionButton onClick={onCancel} size="compact">
+						Done
 					</ActionButton>
-				)}
-			</div>
-			<div className="mt-2 flex flex-col gap-2">
-				{emptyPath && (
-					<ActionButton onClick={onSeedMeasure} size="compact" tone="secondary">
-						From me
-					</ActionButton>
-				)}
-				<ActionButton onClick={onCancel} size="compact">
-					Done
-				</ActionButton>
-			</div>
-		</Surface>
+				</div>
+			</Surface>
+			<MeasureInsertSheet
+				initial={insert === "me" ? fromYou : null}
+				onClose={() => setInsert(null)}
+				onInsert={(point) => {
+					setInsert(null);
+					onAddPoint(point);
+				}}
+				open={insert !== null}
+				title={insertTitle}
+			/>
+		</>
+	);
+}
+
+function MeasureInsertSheet({
+	open,
+	title,
+	initial,
+	onClose,
+	onInsert,
+}: {
+	readonly open: boolean;
+	readonly title: string;
+	readonly initial: LngLat | null;
+	readonly onClose: () => void;
+	readonly onInsert: (point: LngLat) => void;
+}) {
+	const shownTitle = useHeldValue(open, title);
+	const shownInitial = useHeldValue(open, initial);
+	if (typeof document === "undefined") return null;
+	return createPortal(
+		<Sheet
+			onClose={onClose}
+			open={open}
+			testId="measure-insert-sheet"
+			title={shownTitle}
+		>
+			<MeasureInsertForm
+				initial={shownInitial}
+				key={shownTitle}
+				onInsert={onInsert}
+			/>
+		</Sheet>,
+		document.body,
+	);
+}
+
+function MeasureInsertForm({
+	initial,
+	onInsert,
+}: {
+	readonly initial: LngLat | null;
+	readonly onInsert: (point: LngLat) => void;
+}) {
+	const [point, setPoint] = useState<LngLat | null>(initial);
+	return (
+		<form
+			className="flex flex-col gap-3"
+			onSubmit={(event) => {
+				event.preventDefault();
+				if (!point) return;
+				onInsert(point);
+			}}
+		>
+			<CoordinateFields
+				onPoint={setPoint}
+				point={point}
+				testIdPrefix="measure"
+			/>
+			<ActionButton
+				data-testid="measure-insert"
+				disabled={!point}
+				type="submit"
+			>
+				Add point
+			</ActionButton>
+		</form>
 	);
 }
 
