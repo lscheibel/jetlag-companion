@@ -123,8 +123,15 @@ the first thing a team *writes*, and the two need different rules.
 | --- | --- |
 | Roster: name, team, role, online-ness | everyone in the game, always |
 | Live position and battery | own team always; **hiders** additionally receive every other team's |
-| The durable position log | own team; the reveal decides the rest, and that is M14's |
+| The durable position log | same as live position — it draws the trails behind the markers |
 | **Pins, notes, search zones** | **the team that authored them, and nobody else** |
+
+The log's row is amended: it read _"own team; the reveal decides the rest, and
+that is M14's"_ while nothing live read the log. The map now draws movement
+trails from it, so it follows the row above it — own team always, plus every
+other team's to a hider on a running round. Seekers still never receive hider
+rows. The reveal, and hider tracks after the round, are still M14's (m2-spec §4,
+_Trails_).
 
 **No role exception, and that is deliberate.** A hider sees every seeker's
 position and does not see a single seeker pin.

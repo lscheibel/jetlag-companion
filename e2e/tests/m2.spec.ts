@@ -3,7 +3,9 @@ import {
 	closeDb,
 	eventSeqs,
 	gameIdForCode,
+	playerIdForName,
 	positionCountForTeam,
+	positionIdsForTeam,
 	teamIdForName,
 } from "./db";
 import {
@@ -65,6 +67,46 @@ async function setUpRound(
 		.selectOption({ label: `${hider.name} hides` });
 	await host.page.getByTestId("create-round").click();
 	await expect(host.page.getByTestId("my-role")).toHaveText(/hider|seeker/);
+}
+
+/**
+ * The rows a phone's own store actually holds, named rather than counted.
+ *
+ * A count proves nothing leaked. Naming the rows is what proves the right ones
+ * arrived, which is the half of the trail rule that widening the query added —
+ * and it does not race the sampling interval the way comparing two counts read
+ * a moment apart does.
+ */
+async function syncedPositionIds(phone: Phone): Promise<string[]> {
+	const ids = await phone.page
+		.getByTestId("position-log-captured")
+		.getByRole("listitem")
+		.evaluateAll((nodes) =>
+			nodes.map((node) => node.getAttribute("data-testid") ?? ""),
+		);
+	return ids.map((id) => id.replace(/^position-/, ""));
+}
+
+/**
+ * Walk somewhere else and log it, so a player has a track rather than a point.
+ *
+ * The wait is for the position watch to deliver the new place — `sample` logs
+ * whatever the watch last handed it, so clicking straight after
+ * `setGeolocation` would write the old fix a second time.
+ */
+async function walkAndSample(
+	phone: Phone,
+	to: { longitude: number; latitude: number },
+): Promise<void> {
+	const before =
+		(await phone.page.getByTestId("position-last-captured").textContent()) ??
+		"";
+	await phone.context.setGeolocation(to);
+	await expect(phone.page.getByTestId("position-last-captured")).not.toHaveText(
+		before,
+		{ timeout: 30_000 },
+	);
+	await phone.page.getByTestId("sample-position").click();
 }
 
 test("1. a hider watches three seeker teams move", async ({ browser }) => {
@@ -609,12 +651,179 @@ test("11. a seeker's store holds no hider position rows while the round runs", a
 		"synced: 0",
 		{ timeout: 45_000 },
 	);
-	const syncedByAna = await ana.page
-		.getByTestId("position-log-captured")
-		.getByRole("listitem")
-		.count();
+
+	// Her own team's rows, by id — and not one of the hiders', ever.
 	const seekerTeamId = await teamIdForName(code, "Seekers");
-	expect(syncedByAna).toBe(await positionCountForTeam(seekerTeamId));
+	const seekerRows = await positionIdsForTeam(seekerTeamId);
+	const hiderRows = await positionIdsForTeam(hiderTeamId);
+	expect(hiderRows.length).toBeGreaterThan(0);
+
+	const syncedByAna = await syncedPositionIds(ana);
+	expect(syncedByAna.filter((id) => hiderRows.includes(id))).toEqual([]);
+	expect(syncedByAna.some((id) => seekerRows.includes(id))).toBe(true);
+
+	for (const phone of [ana, ben]) await phone.close();
+});
+
+/**
+ * The other half of test 11, and the reason the query was widened. m2-spec §4,
+ * _Trails_.
+ *
+ * A hider is entitled to every seeker's live position, and a trail is that
+ * same position half a minute at a time — so the durable log has to reach them,
+ * or seekers are the only players on this map with any history behind them.
+ */
+test("13. a hider's store holds the seekers' position rows while the round runs", async ({
+	browser,
+}) => {
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben", {
+		geolocation: { longitude: 13.3327, latitude: 52.5073 },
+	});
+
+	const code = await createGame(ana);
+	await joinGame(ben, code);
+	for (const phone of [ana, ben]) await waitForSync(phone);
+
+	await setUpRound(ana, code, [
+		{ name: "Hiders", phones: [ana], side: "hider" },
+		{ name: "Seekers", phones: [ben], side: "seeker" },
+	]);
+	await openDebug(ben, code);
+	await openDebug(ana, code);
+
+	for (const phone of [ben, ana]) {
+		await phone.page.getByTestId("sample-position").click();
+	}
+
+	const seekerTeamId = await teamIdForName(code, "Seekers");
+	await expect
+		.poll(() => positionCountForTeam(seekerTeamId), { timeout: 45_000 })
+		.toBeGreaterThan(0);
+	const seekerRows = await positionIdsForTeam(seekerTeamId);
+
+	// Every seeker row, by id, in the hider's store.
+	await expect
+		.poll(
+			async () => {
+				const synced = await syncedPositionIds(ana);
+				return seekerRows.every((id) => synced.includes(id));
+			},
+			{ timeout: 45_000 },
+		)
+		.toBe(true);
+
+	for (const phone of [ana, ben]) await phone.close();
+});
+
+/**
+ * Seeker teams play against each other. Widening the log for hiders must not
+ * widen it sideways. m2-spec §7 and §4, _Trails_.
+ */
+test("14. one seeker team's store holds nothing of another's", async ({
+	browser,
+}) => {
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben", {
+		geolocation: { longitude: 13.3327, latitude: 52.5073 },
+	});
+	const cara = await openPhone(browser, "Cara", {
+		geolocation: { longitude: 13.45, latitude: 52.49 },
+	});
+
+	const code = await createGame(ana);
+	for (const phone of [ben, cara]) await joinGame(phone, code);
+	for (const phone of [ana, ben, cara]) await waitForSync(phone);
+
+	await setUpRound(ana, code, [
+		{ name: "Hiders", phones: [ana], side: "hider" },
+		{ name: "Alpha", phones: [ben], side: "seeker" },
+		{ name: "Bravo", phones: [cara], side: "seeker" },
+	]);
+	for (const phone of [cara, ben, ana]) await openDebug(phone, code);
+	for (const phone of [cara, ben, ana]) {
+		await phone.page.getByTestId("sample-position").click();
+	}
+
+	const alphaTeamId = await teamIdForName(code, "Alpha");
+	const bravoTeamId = await teamIdForName(code, "Bravo");
+	for (const teamId of [alphaTeamId, bravoTeamId]) {
+		await expect
+			.poll(() => positionCountForTeam(teamId), { timeout: 45_000 })
+			.toBeGreaterThan(0);
+	}
+
+	// Alpha has its own track...
+	const alphaRows = await positionIdsForTeam(alphaTeamId);
+	await expect
+		.poll(
+			async () => {
+				const synced = await syncedPositionIds(ben);
+				return alphaRows.every((id) => synced.includes(id));
+			},
+			{ timeout: 45_000 },
+		)
+		.toBe(true);
+
+	// ...and not one row of Bravo's, which is a rival rather than a teammate.
+	const bravoRows = await positionIdsForTeam(bravoTeamId);
+	const syncedByBen = await syncedPositionIds(ben);
+	expect(bravoRows.length).toBeGreaterThan(0);
+	expect(syncedByBen.filter((id) => bravoRows.includes(id))).toEqual([]);
+
+	for (const phone of [ana, ben, cara]) await phone.close();
+});
+
+/**
+ * And the same rule, on the map that reads it. m2-spec §4, _Trails_.
+ *
+ * The line itself is WebGL and cannot be scraped, so the layer publishes the
+ * player ids it drew. Ids only: a list of coordinates in the accessibility
+ * tree would be the leak the query is written to prevent.
+ */
+test("15. a hider's map draws the seeker's trail, and the seeker's map does not draw the hider's", async ({
+	browser,
+}) => {
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben", {
+		geolocation: { longitude: 13.3327, latitude: 52.5073 },
+	});
+
+	const code = await createGame(ana);
+	await joinGame(ben, code);
+	for (const phone of [ana, ben]) await waitForSync(phone);
+
+	await setUpRound(ana, code, [
+		{ name: "Hiders", phones: [ana], side: "hider" },
+		{ name: "Seekers", phones: [ben], side: "seeker" },
+	]);
+	for (const phone of [ben, ana]) await openDebug(phone, code);
+
+	// Two logged points each, in two different places: a trail, not a dot.
+	for (const phone of [ben, ana]) {
+		await phone.page.getByTestId("sample-position").click();
+	}
+	await walkAndSample(ben, { longitude: 13.34, latitude: 52.51 });
+	await walkAndSample(ana, { longitude: 13.42, latitude: 52.53 });
+
+	const anaId = await playerIdForName(code, "Ana");
+	const benId = await playerIdForName(code, "Ben");
+
+	await openMap(ana, code);
+	await expect(ana.page.getByTestId("my-role")).toHaveText("hider");
+	// The hider sees where the seeker has been, and their own track.
+	await expect(ana.page.getByTestId("player-trails")).toContainText(benId, {
+		timeout: 45_000,
+	});
+	await expect(ana.page.getByTestId("player-trails")).toContainText(anaId);
+
+	await openMap(ben, code);
+	await expect(ben.page.getByTestId("my-role")).toHaveText("seeker");
+	await expect(ben.page.getByTestId("player-trails")).toContainText(benId, {
+		timeout: 45_000,
+	});
+	// And never the hider's, because the rows are not in the seeker's store.
+	await expect(ben.page.getByTestId("player-trails")).not.toContainText(anaId);
 
 	for (const phone of [ana, ben]) await phone.close();
 });

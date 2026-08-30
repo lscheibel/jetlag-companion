@@ -567,11 +567,20 @@ const hidingCommitmentRelationships = relationships(
 
 const positionSnapshotRelationships = relationships(
 	positionSnapshot,
-	({ many }) => ({
+	({ many, one }) => ({
 		teamMembers: many({
 			sourceField: ["teamId"],
 			destField: ["teamId"],
 			destSchema: teamMember,
+		}),
+		/**
+		 * Reached only to ask what the game's rounds are doing, which is what
+		 * decides whether a hider may read this row. m2-spec §4 as amended.
+		 */
+		game: one({
+			sourceField: ["gameId"],
+			destField: ["id"],
+			destSchema: game,
 		}),
 	}),
 );

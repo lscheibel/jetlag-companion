@@ -130,6 +130,8 @@ Players who have left or been removed (`leftAt` set, m1-spec §7) get no marker,
 
 **The durable log is not a map source, and it is not a live surface at all.** It is a replay artifact. Nothing during a running game reads it — not the map, not a roster, not a hider's wider view — and that is not a restriction M2 is imposing but a description of what the log is for.
 
+> **Amended.** The map now draws movement **trails** from the log, so it is a live source after all. The rest of this section stands: what changed is that a marker alone turned out not to answer "which way did they go", and the log is the only record of that. See _Trails_ below.
+
 Worth stating plainly, because m0-spec twice says the log feeds M8's suggestions and it does not. Every input M8 needs is somewhere else: a location question is evaluated against **the live position of the player answering it** (build plan, M8), and a thermometer's two reference points are recorded on the `question` row as `askPosition` and `endPosition` (m0-spec §5). The log is written during play and read after it. Both m0-spec sentences have been corrected.
 
 That dissolves the question of whether hiders should see everyone's track. During the game nobody reads it; once the game is over, the round is revealed and a replay shows everything to everyone. **The log's visibility is decided once, at reveal, and it belongs to M14.** `queries.positionLog()` keeps its own-team filter meanwhile, because the strict version cannot leak while nothing depends on the loose one.
@@ -137,6 +139,46 @@ That dissolves the question of whether hiders should see everyone's track. Durin
 A hider who was offline for five minutes has genuinely lost those five minutes of seeker movement. The ephemeral channel is lossy by design, and reconstructing a trail from the durable log would put a position on a hider's screen that the channel had already decided not to send them.
 
 **Markers jump; they do not interpolate.** Fan-out is every 2 s, and smoothing between two fixes would paint a position nobody reported. Everything else in this app is careful to distinguish what was measured from what was inferred (m0-spec §7), and a marker gliding smoothly down a street it may not have taken is the same lie in a prettier form.
+
+### Trails
+
+_This subsection amends what §4 says above about the log's visibility._
+
+A marker says where somebody is. It does not say which way they came, and on this map that is most of the information: a seeker team walking north-east out of a station is a different fact from a seeker team standing in it. Presence cannot supply it — it is lossy on purpose and carries one fix — so the trail is drawn from the log, one sampled vertex at a time.
+
+**The sampling interval drops from 30 s to 5 s**, because it is now the trail's resolution as well as the replay's. At half a minute a walk around a block is three points and a straight line through the buildings between them — the polyline stops being coarse and starts being wrong about the shape of the route. `game.positionIntervalMs` was always a knob rather than a constant (m0-spec §8); this moves its default, and nothing else about §10's table changes.
+
+**The log's live visibility is presence's rule, not the strict own-team one, and not M14's reveal.** `queries.positionLog()` returns own-team rows always, plus every row in the game to a hider on a running round — exactly the set §8 already sends that hider live. A seeker never receives a hider row and seeker teams stay hidden from each other, which is the invariant test 11 exists to defend and which is unchanged.
+
+Two consequences follow, and both are deliberate.
+
+**A hider who was offline for five minutes gets those five minutes back.** §4 said above that they should not, on the grounds that the channel had "decided not to send them". That was wrong about what the channel does: a dropped frame is a delivery accident, not a visibility decision, and the entitlement was never in question — the hider was allowed to see every one of those positions at the moment they happened. Losing them to a tunnel is a property of the transport, and there is no reason to reproduce it in a source that does not have it.
+
+**A trail is the last fifteen minutes, and it fades out behind you.** Long enough to hold the leg somebody is on — a couple of stops and the walk either side of them — and short enough that a two-hour round does not end with eight players' whole afternoons drawn over each other. The fade runs to nothing at the window's edge, so the cut is never a visible end: a trail dissolves rather than stopping.
+
+**The fade is dated without ever comparing two clocks.** This is the trap in the feature, and it is m0-spec §7's invariant in a new place. A point's age is `now - capturedAt`, and `capturedAt` is the *sender's* clock — the same subtraction §5 amended M0 for. What is done instead: the head of each trail is dated by the server-measured staleness §5 already computes, and every other point is aged as _the head's age, plus how long before the head it was captured_. That second term is a difference between two timestamps from one phone. No reader's clock ever meets a sender's, and a player whose head cannot be dated gets no trail — which is a player with no marker either.
+
+It also gets the stale case right for free. A phone that went quiet twenty minutes ago has a head twenty minutes old, so its whole trail is past the window and gone, rather than a bright track implying somebody is still walking it.
+
+**And it is drawn low in the stack.** A trail sits just above the board — buildings, the game area, elimination shading — and below every station, POI, zone, pin, measurement and draft. Those are all things somebody needs to read or act on now; history is never what should be covering one of them up. Above the board rather than under it, because a hairline beneath a translucent wash is a hairline nobody can follow. m3-spec §9's one declared order, not React's mount order, is what decides this.
+
+Because MapLibre paints one opacity per feature, a trail is cut into sixteen bands and drawn as a run of features, each sharing its end vertex with the next so the line stays continuous. Sixteen is where the step between neighbours stops being visible in a hairline.
+
+**The reveal is still M14's.** Trails end at the running round: a `pending` round has no track, an `ended` one is history, and the moment roles swap the hider's extra rows leave the client's store because the query is re-evaluated rather than latched. Scrubbing a round, replaying it, and showing hider tracks to seekers afterwards are all still M14's, and none of them is what this is.
+
+**Blindness covers trails, through the same switch.** §9's toggle filters the marker set, and the trail set _is_ the marker set — a hider who stops seeing a rival's marker stops seeing where it came from, in the same tap, with no second rule to keep in step.
+
+**Trails pass through the measured points, and are curved between them.** The live fix is appended as the last vertex so the line reaches the marker rather than stopping a whole interval behind it. Between two fixes the trail is a centripetal Catmull-Rom curve rather than a straight segment.
+
+This is a deliberate exception to _"markers jump; they do not interpolate"_ above, and it is worth being exact about what it costs. The curve between two fixes is drawn, not observed — nobody reported walking it. What makes the exception survivable is that the spline is **interpolating**: every measured point is still on the line, so the trail never moves a fix, and the invented part is confined to the shape of the join. The alternative was a chain of mitre joints, which reads as a series of sharp decisions the player did not make either — at a five-second cadence a shallow turn is genuinely shallow, and the polyline was overstating it. Neither drawing is the truth; the curve is the one that misleads less.
+
+The exception does **not** extend to markers. A marker is a claim about where somebody is now, and sliding one between two fixes puts a player somewhere they were never reported to be at a moment when somebody is deciding whether to get off the train. A trail is a claim about where somebody has been, and the fixes in it are all still there to be read.
+
+Centripetal rather than uniform, because a uniform spline loops and cusps wherever two fixes are close together and the next is far — which is precisely what standing on a platform and then boarding looks like. At α = 0.5 the curve cannot self-intersect between two points, so a phone that sat still does not sprout a flourish.
+
+**And it is drawn quietly.** A trail is context for a marker rather than something to read. Everything else on this map that matters is a solid stroke at full contrast, and a history painted at that weight competes with all of it at once — so a trail is 1 px of team colour on 3 px of backing, a hairline with a halo.
+
+The backing is the same two-tone reasoning as the in-hand tools (m3-spec §9) applied to a colour that is not ours to choose: team colours are picked to tell teams apart, not to sit on a basemap, and some of the palette disappears into Positron's pale ground while some disappears into Dark's. The colour carries the identity and the backing does the separating, which leaves the theme knowing about exactly one of the two layers.
 
 ---
 
@@ -455,7 +497,7 @@ Tests 2 and 11 are the pair that matters most: they are the only two that fail l
 14. **Broadcasting follows the screen; logging follows the round** (§10). This refines m1-spec §9 rather than contradicting it — the lobby still tracks nothing.
 15. **A cold offline start shows the app, own position and an honest banner, with no map and no mirror of Zero** (§11). This closes m0-spec's open question.
 16. **The valid hiding area is drawn as an outline with no meaning attached.** It is already synced, a map with no game area on it is disorienting, and M13 owns everything about shading and elimination (§12).
-17. **The durable position log is a replay artifact.** Nothing in a running game reads it, so there is no in-game visibility question to answer; the reveal decides it, and that is M14's. This corrects m0-spec §3 and §8, which said M8's suggestions read it (§4).
+17. **The durable position log is a replay artifact.** Nothing in a running game reads it, so there is no in-game visibility question to answer; the reveal decides it, and that is M14's. This corrects m0-spec §3 and §8, which said M8's suggestions read it (§4). **Amended:** the map draws live trails from the log, and its live visibility is §8's presence rule — own team always, plus everybody to a hider on a running round. Seekers still never receive hider rows, and the reveal is still M14's (§4, _Trails_).
 18. **A stale battery is dropped; a stale position is kept.** A position from forty minutes ago is a fact about the world; a battery level from forty minutes ago is a fact about a phone that has been running ever since (§7).
 19. **Players who have left the game get no marker**, however recently they were seen (§4).
 20. **Accuracy is a ring for your own position and a number for everybody else's** (§5). One circle about the phone in your hand is legible; four overlapping washes are not, and _"±1500 m"_ says in six characters what a district-sized ring says badly.

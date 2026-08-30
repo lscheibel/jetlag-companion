@@ -36,6 +36,16 @@ const LAYER_ORDER = [
 	"hiding-zone-fill",
 	"hiding-zone-outline-case",
 	"hiding-zone-outline",
+	/**
+	 * Low, and deliberately so. A trail is the least urgent thing on this map:
+	 * a station, a zone, a cut, a measurement and a pin are all things somebody
+	 * needs to read or act on now, and history should never be what covers one
+	 * of them up. It sits above the board — buildings, the area, elimination —
+	 * because a hairline under a translucent wash is a hairline nobody can
+	 * follow, and below everything anybody is doing.
+	 */
+	"player-trails-case",
+	"player-trails",
 	"builder-stops-zone-fill",
 	"builder-stops-zone-outline",
 	"play-stops-zone-fill",

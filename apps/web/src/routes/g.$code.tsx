@@ -62,7 +62,7 @@ function Connected({ session }: { session: Session }) {
 	 * is a screen whose optimistic writes refuse themselves.
 	 */
 	const [games] = useQuery(queries.game());
-	const positionIntervalMs = games[0]?.positionIntervalMs ?? 30_000;
+	const positionIntervalMs = games[0]?.positionIntervalMs ?? 5_000;
 
 	const role = useMyRole(session.playerId);
 	const location = useLocation();

@@ -177,6 +177,19 @@ export async function positionCountForTeam(teamId: string): Promise<number> {
 	return Number(result.rows[0]?.count ?? "0");
 }
 
+/**
+ * The row ids a team wrote, so a synced store can be asserted by name rather
+ * than by count. A count is enough to prove nothing leaked; naming the rows is
+ * what proves the *right* ones arrived. m2-spec §4, _Trails_.
+ */
+export async function positionIdsForTeam(teamId: string): Promise<string[]> {
+	const result = await db().query<{ id: string }>(
+		'SELECT id FROM "positionSnapshot" WHERE "teamId" = $1 ORDER BY "capturedAt"',
+		[teamId],
+	);
+	return result.rows.map((row) => row.id);
+}
+
 export async function teamIdForName(
 	code: string,
 	name: string,

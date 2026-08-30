@@ -1,6 +1,6 @@
 import { TeamBadge } from "@zero-lag/ui/components/team-badge";
 import { MapMarker } from "./map-canvas";
-import type { MapPlayer } from "./players";
+import { type MapPlayer, NO_TEAM_COLOR } from "./players";
 import { positionLabel, type Staleness } from "./staleness";
 
 /**
@@ -48,7 +48,7 @@ export function PlayerMarker({ player, onSelect }: PlayerMarkerProps) {
 			>
 				<span
 					className="size-3 rounded-full border-2 border-white shadow"
-					style={{ backgroundColor: player.team?.color ?? "#6b7280" }}
+					style={{ backgroundColor: player.team?.color ?? NO_TEAM_COLOR }}
 				/>
 				<span className="rounded bg-white/90 px-1.5 py-0.5 text-xs shadow">
 					<span className="font-semibold">{player.displayName}</span>

@@ -74,7 +74,8 @@ import {
 import { PinDraftMarker, PinLayer } from "../map/pin-layer";
 import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
-import { buildMapPlayers, visibleMarkers } from "../map/players";
+import { PlayerTrailsLayer } from "../map/player-trails-layer";
+import { buildMapPlayers, NO_TEAM_COLOR, visibleMarkers } from "../map/players";
 import {
 	boardStopModes,
 	closestPoiSites,
@@ -203,6 +204,11 @@ function constraintFlyTarget(geometry: ConstraintGeometry): FlyTarget | null {
  * renders what it is given. There is deliberately no visibility check anywhere
  * below this comment: anything the client has to remember to hide is a leak
  * waiting for a refactor. m2-spec §7.
+ *
+ * That now covers two things rather than one. Markers come from presence;
+ * trails come from the durable log, which m2-spec §4 called a replay artifact
+ * and which is a live source here. Both are filtered by the same rule in the
+ * same two places, and neither is filtered again in this file.
  */
 export default function MapRoute() {
 	return (
@@ -232,6 +238,9 @@ function MapScreen() {
 	const [constraints] = useQuery(queries.constraints());
 	const [commitments] = useQuery(queries.commitments());
 	const [outcomes] = useQuery(queries.hiderOutcomes());
+	// Trails, not replay: the server hands over own team plus — for a hider on a
+	// running round — everybody, which is the same set the channel sends live.
+	const [positionLog] = useQuery(queries.positionLog());
 
 	const [camera, setCamera] = useState<Camera>(FREE);
 	const [status, setStatus] = useState<MapStatus>("loading");
@@ -324,6 +333,30 @@ function MapScreen() {
 		role.teamId,
 	);
 	const others = shown.filter((player) => !player.isSelf);
+	/**
+	 * The trail set is the marker set, so blindness is one switch rather than
+	 * two: a hider who stops seeing a rival's marker stops seeing where it came
+	 * from in the same tap. m2-spec §9.
+	 *
+	 * Your own head is the local watch rather than the copy of it that came back
+	 * around through presence — it is fresher, and it is there with the socket
+	 * down, which is the same reason your marker is drawn from it. m2-spec §4.
+	 *
+	 * Its age is the one number the fade is allowed to start from. For everybody
+	 * else that is the server-measured staleness §5 already computes; for
+	 * yourself it is your own clock minus your own fix, which is one clock and
+	 * therefore legal where the general case is not. m0-spec §7.
+	 */
+	const trailPlayers = shown.map((player) => ({
+		playerId: player.playerId,
+		color: player.team?.color ?? NO_TEAM_COLOR,
+		head: player.isSelf ? ownFix : player.fix,
+		headAgeMs: player.isSelf
+			? ownFix
+				? Math.max(0, now - ownFix.capturedAt)
+				: null
+			: player.ageMs,
+	}));
 	const selected = others.find((player) => player.playerId === selectedId);
 	const searchableStops = useMemo<readonly SearchableStop[]>(
 		() =>
@@ -388,6 +421,13 @@ function MapScreen() {
 
 	const liveRound =
 		[...rounds].reverse().find((round) => round.status !== "ended") ?? null;
+	/**
+	 * Trails are this round's track. Logging follows the round (m2-spec §10), so
+	 * a `pending` round has nothing to draw and last round's rows belong to last
+	 * round — M14 owns going back to them.
+	 */
+	const trailRoundId =
+		liveRound && liveRound.status !== "pending" ? liveRound.id : null;
 	const hiderTeams = teams.filter((team) =>
 		liveRound?.roles.some(
 			(assignment) =>
@@ -1345,6 +1385,11 @@ function MapScreen() {
 					/>
 					<MapFlyTo target={flyTarget} />
 					<NorthReset />
+					<PlayerTrailsLayer
+						players={trailPlayers}
+						roundId={trailRoundId}
+						rows={positionLog}
+					/>
 					<OwnPosition
 						fix={ownFix}
 						headingDeg={headingDeg}

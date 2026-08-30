@@ -70,8 +70,14 @@ export const game = pgTable(
 		 * so the allocation happens inside the mutator's own transaction.
 		 */
 		eventSeq: integer("eventSeq").notNull().default(0),
-		/** m0-spec §8: the interval wants to be a knob rather than a constant. */
-		positionIntervalMs: integer("positionIntervalMs").notNull().default(30_000),
+		/**
+		 * m0-spec §8: the interval wants to be a knob rather than a constant.
+		 *
+		 * It is also the trail's resolution, which is what moved it from 30 s to
+		 * 5 s: at half a minute a walk round a block is three points and a
+		 * straight line through the buildings between them. m2-spec §4, _Trails_.
+		 */
+		positionIntervalMs: integer("positionIntervalMs").notNull().default(5_000),
 		createdAt: epochMs("createdAt").notNull(),
 		startedAt: epochMs("startedAt"),
 		endedAt: epochMs("endedAt"),

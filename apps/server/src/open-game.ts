@@ -52,7 +52,7 @@ export async function openGame(
 		createdByPlayerId: playerId,
 		mapConfigId: null,
 		eventSeq: 0,
-		positionIntervalMs: 30_000,
+		positionIntervalMs: 5_000,
 		createdAt: now,
 		startedAt: null,
 		endedAt: null,

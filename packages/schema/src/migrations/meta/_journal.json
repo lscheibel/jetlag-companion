@@ -15,6 +15,13 @@
       "when": 1788101377987,
       "tag": "0001_add_constraint_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788122218404,
+      "tag": "0002_lower_position_interval",
+      "breakpoints": true
     }
   ]
 }

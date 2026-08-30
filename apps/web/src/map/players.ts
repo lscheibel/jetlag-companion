@@ -31,6 +31,9 @@ export interface MapPlayer {
 	readonly isSelf: boolean;
 }
 
+/** A player with no team still gets a marker and a trail, in a neutral grey. */
+export const NO_TEAM_COLOR = "#6b7280";
+
 export interface RosterPlayer {
 	readonly id: string;
 	readonly displayName: string;

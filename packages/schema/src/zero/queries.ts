@@ -176,19 +176,48 @@ export const queries = defineQueries({
 	}),
 
 	/**
-	 * M0 syncs a player only their own team's track.
+	 * The log is a live map source — it draws movement trails — so its visibility
+	 * is the same rule as presence rather than the stricter own-team-only one M2
+	 * shipped. m0-spec §8, amending m2-spec §4.
 	 *
-	 * §8 gives hiders a wider view of *live* presence, and that is delivered on
-	 * the ephemeral channel where it is specified. Widening the durable log to
-	 * match is M14's business, when replay actually needs it; until then the
-	 * strict filter is the one that cannot leak by accident.
+	 * Own team always. Plus every row in the game while the caller is a hider on
+	 * a running round, which is exactly what the ephemeral channel already sends
+	 * them live. A seeker never receives a hider row, and seeker teams stay
+	 * hidden from each other.
+	 *
+	 * The `hider` test is re-evaluated by Zero rather than latched: when roles
+	 * swap or the round ends, the `exists` fails and the extra rows are dropped
+	 * from the client's store. Between rounds this is own-team only again.
+	 *
+	 * M14 still owns the reveal — scrubbing, and hider tracks after the round.
 	 */
 	positionLog: defineQuery(({ ctx }) => {
 		const { gameId, playerId } = requireContext(ctx);
 		return zql.positionSnapshot
 			.where("gameId", gameId)
-			.where(({ exists }) =>
-				exists("teamMembers", (member) => member.where("playerId", playerId)),
+			.where(({ exists, or }) =>
+				or(
+					exists("teamMembers", (member) => member.where("playerId", playerId)),
+					exists("game", (game) =>
+						game.where(({ exists }) =>
+							exists("rounds", (round) =>
+								round
+									.where("status", "IN", ["hiding", "seeking"])
+									.where(({ exists }) =>
+										exists("roles", (role) =>
+											role
+												.where("role", "hider")
+												.where(({ exists }) =>
+													exists("teamMembers", (member) =>
+														member.where("playerId", playerId),
+													),
+												),
+										),
+									),
+							),
+						),
+					),
+				),
 			)
 			.orderBy("capturedAt", "asc");
 	}),
