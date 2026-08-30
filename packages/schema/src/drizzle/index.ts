@@ -16,6 +16,7 @@ import type {
 	ClientFix,
 	ConstraintGeometry,
 	ConstraintMode,
+	ConstraintOrigin,
 	ConstraintSource,
 	EventType,
 	GameStatus,
@@ -431,6 +432,12 @@ export const constraint = pgTable(
 		/** Set iff source === 'answer'. */
 		answerId: text("answerId"),
 		geometry: jsonb("geometry").$type<ConstraintGeometry>().notNull(),
+		/**
+		 * The tool state that produced `geometry`, so a seeker can reopen the cut
+		 * in the tool that made it. Null on answer-derived rows and on rows
+		 * written before the edit button existed.
+		 */
+		origin: jsonb("origin").$type<ConstraintOrigin>(),
 		mode: text("mode").$type<ConstraintMode>().notNull(),
 		/**
 		 * A seeker-typed label so the list is not three identical

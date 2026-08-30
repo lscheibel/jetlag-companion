@@ -18,6 +18,7 @@ import {
 	regionToMultiPolygon,
 } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
+import { type ConstraintGeometry, radiusCenters } from "@zero-lag/rules";
 import { mutators, queries } from "@zero-lag/schema";
 import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
@@ -98,6 +99,7 @@ import { StopSheet } from "../map/stop-sheet";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
+	constraintEditTool,
 	type MapTool,
 	nearestAtPx,
 	nearestHitPx,
@@ -158,12 +160,38 @@ function pointerMode(tool: MapTool): PointerMode {
 	return { kind: "tap" };
 }
 
+type FlyTarget =
+	| { readonly kind: "point"; readonly point: LngLat }
+	| {
+			readonly kind: "bounds";
+			readonly bounds: readonly [number, number, number, number];
+	  };
+
 function storedPolygons(region: Region): [number, number][][][] {
 	return regionToMultiPolygon(region).map((polygon) =>
 		polygon.map((ring) =>
 			ring.map(([lng, lat]) => [lng, lat] as [number, number]),
 		),
 	);
+}
+
+type ConstraintWrite = Parameters<typeof mutators.constraint.createManual>[0];
+type ConstraintDraft = Pick<ConstraintWrite, "geometry" | "origin" | "mode">;
+
+/** Where to look to see a cut being reopened. */
+function constraintFlyTarget(geometry: ConstraintGeometry): FlyTarget | null {
+	if (geometry.kind === "polygon") {
+		const box = multiPolygonBBox(geometry.polygons);
+		return box ? { kind: "bounds", bounds: box } : null;
+	}
+	if (geometry.kind === "radius") {
+		const center = radiusCenters(geometry)[0];
+		return center ? { kind: "point", point: center } : null;
+	}
+	if (geometry.kind === "halfPlane") {
+		return { kind: "point", point: geometry.a };
+	}
+	return { kind: "point", point: geometry.center };
 }
 
 /**
@@ -221,14 +249,7 @@ function MapScreen() {
 		readonly label: string;
 	} | null>(null);
 	const [draftRadius, setDraftRadius] = useState<number | null>(null);
-	const [flyTarget, setFlyTarget] = useState<
-		| { readonly kind: "point"; readonly point: LngLat }
-		| {
-				readonly kind: "bounds";
-				readonly bounds: readonly [number, number, number, number];
-		  }
-		| null
-	>(null);
+	const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
 	/**
 	 * MapLibre does not re-fetch a style that failed, so coming back from a
 	 * tunnel is a remount rather than a recovery. Bumping this is the only thing
@@ -240,6 +261,10 @@ function MapScreen() {
 	);
 	const [hiderSheetOpen, setHiderSheetOpen] = useState(false);
 	const [cut, setCut] = useState(false);
+	/** Set while a draft is a rewrite of an existing row rather than a new one. */
+	const [editingConstraintId, setEditingConstraintId] = useState<string | null>(
+		null,
+	);
 	const [gpsHelpOpen, setGpsHelpOpen] = useState(false);
 	const [constraintPickerOpen, setConstraintPickerOpen] = useState(false);
 	const [seekerOverlay, setSeekerOverlay] = useState<
@@ -387,7 +412,8 @@ function MapScreen() {
 			id: row.id,
 			source: row.source,
 			mode: row.mode,
-			kind: row.geometry.kind,
+			geometry: row.geometry,
+			origin: row.origin ?? null,
 			enabled: row.enabled,
 			name: row.name ?? null,
 		}),
@@ -526,13 +552,14 @@ function MapScreen() {
 	const cancelTool = () => {
 		webPlatform.haptics.vibrate([15]);
 		setTool({ kind: "none" });
+		setEditingConstraintId(null);
 		setDraftPoint(null);
 		setDraftRadius(null);
 		setConstraintPickerOpen(false);
 		setSeekerOverlay("none");
 	};
 
-	const changeTool = (next: MapTool) => {
+	const changeTool = (next: MapTool, editingId: string | null = null) => {
 		if (next.kind === "placingPin") {
 			if (
 				tool.kind === "measure" &&
@@ -562,6 +589,12 @@ function MapScreen() {
 			const kind = next.poiKind;
 			setPoiLayers((current) => ensurePoiType(current, kind));
 		}
+		/*
+		 * Reaching for a different tool abandons the cut being edited: the next
+		 * commit is a new one. A tool changing its own state — the boundary
+		 * sheet's levels, "pick another" — is the same draft, and keeps it.
+		 */
+		if (next.kind !== tool.kind) setEditingConstraintId(editingId);
 		setTool(next);
 	};
 
@@ -929,12 +962,113 @@ function MapScreen() {
 		cancelTool();
 	};
 
+	/**
+	 * What the fold sees, and the tool state that produced it. The two are
+	 * written together: `geometry` is deliberately lossy about its author — a
+	 * Bezirk, a drawn ring and a nearest cell are all one `polygon` — so the
+	 * tool's own state rides along, and the row can be reopened in the tool
+	 * that drew it rather than in a guess at it.
+	 */
+	const constraintDraft = (): ConstraintDraft | null => {
+		const mode = cut ? "exclude" : "include";
+		if (
+			tool.kind === "drawingRadiusConstraint" &&
+			radiusDraftCenters.length > 0
+		) {
+			return {
+				geometry: {
+					kind: "radius",
+					centers: radiusDraftCenters.map(
+						(center) => [center[0], center[1]] as [number, number],
+					),
+					radius: tool.radiusMeters,
+				},
+				origin: {
+					tool: "drawingRadiusConstraint",
+					centers: tool.centers.map(
+						(center) => [center[0], center[1]] as [number, number],
+					),
+					radiusMeters: tool.radiusMeters,
+					poiKind: tool.poiKind,
+				},
+				mode,
+			};
+		}
+		if (tool.kind === "drawingPolygonConstraint" && tool.ring.length >= 3) {
+			const region = buildValidHidingArea(tool.ring);
+			if (isEmptyRegion(region)) return null;
+			return {
+				geometry: { kind: "polygon", polygons: storedPolygons(region) },
+				origin: {
+					tool: "drawingPolygonConstraint",
+					ring: tool.ring.map(
+						(point) => [point[0], point[1]] as [number, number],
+					),
+				},
+				mode,
+			};
+		}
+		if (tool.kind === "pickingBoundaryConstraint" && selectedBoundary) {
+			return {
+				geometry: {
+					kind: "polygon",
+					polygons: selectedBoundary.polygons.map((polygon) =>
+						polygon.map((ring) =>
+							ring.map(([lng, lat]) => [lng, lat] as [number, number]),
+						),
+					),
+				},
+				origin: {
+					tool: "pickingBoundaryConstraint",
+					boundaryId: selectedBoundary.id,
+				},
+				mode,
+			};
+		}
+		if (tool.kind === "drawingSplitConstraint" && tool.from && tool.to) {
+			return {
+				geometry: {
+					kind: "halfPlane",
+					a: [tool.from[0], tool.from[1]],
+					b: [tool.to[0], tool.to[1]],
+					nearer: cut ? "b" : "a",
+				},
+				origin: {
+					tool: "drawingSplitConstraint",
+					from: [tool.from[0], tool.from[1]],
+					to: [tool.to[0], tool.to[1]],
+				},
+				// A split always cuts; the pair picks which side falls away.
+				mode: "exclude",
+			};
+		}
+		if (
+			tool.kind === "pickingClosestPoiConstraint" &&
+			selectedClosestPoi &&
+			closestDraftRegion &&
+			!isEmptyRegion(closestDraftRegion)
+		) {
+			return {
+				geometry: {
+					kind: "polygon",
+					polygons: storedPolygons(closestDraftRegion),
+				},
+				origin: {
+					tool: "pickingClosestPoiConstraint",
+					poiId: selectedClosestPoi.id,
+					filterKind: tool.filterKind,
+					radiusMeters: tool.radiusMeters,
+				},
+				mode,
+			};
+		}
+		return null;
+	};
+
 	const commitConstraint = (name: string) => {
 		if (!role.teamId || !role.roundId || !hiderTeamId) return;
-		const ordinal =
-			scopedConstraints.reduce((max, row) => Math.max(max, row.ordinal), -1) +
-			1;
-		const mode = cut ? "exclude" : "include";
+		const draft = constraintDraft();
+		if (!draft) return;
 		const label =
 			name.trim() ||
 			(tool.kind === "pickingBoundaryConstraint"
@@ -944,121 +1078,61 @@ function MapScreen() {
 					: tool.kind === "drawingRadiusConstraint" && tool.poiKind
 						? poiTypeLabel(tool.poiKind)
 						: null);
-		if (
-			tool.kind === "drawingRadiusConstraint" &&
-			radiusDraftCenters.length > 0
-		) {
+		if (editingConstraintId) {
 			void zero.mutate(
-				mutators.constraint.createManual({
+				mutators.constraint.editManual({
 					...event(),
-					constraintId: crypto.randomUUID(),
-					roundId: role.roundId,
-					seekerTeamId: role.teamId,
-					hiderTeamId,
-					geometry: {
-						kind: "radius",
-						centers: radiusDraftCenters.map(
-							(center) => [center[0], center[1]] as [number, number],
-						),
-						radius: tool.radiusMeters,
-					},
-					mode,
-					ordinal,
-					name: label,
-				}),
-			);
-		} else if (
-			tool.kind === "drawingPolygonConstraint" &&
-			tool.ring.length >= 3
-		) {
-			const region = buildValidHidingArea(tool.ring);
-			if (isEmptyRegion(region)) return;
-			void zero.mutate(
-				mutators.constraint.createManual({
-					...event(),
-					constraintId: crypto.randomUUID(),
-					roundId: role.roundId,
-					seekerTeamId: role.teamId,
-					hiderTeamId,
-					geometry: {
-						kind: "polygon",
-						polygons: regionToMultiPolygon(region).map((polygon) =>
-							polygon.map((ring) =>
-								ring.map(([lng, lat]) => [lng, lat] as [number, number]),
-							),
-						),
-					},
-					mode,
-					ordinal,
-					name: label,
-				}),
-			);
-		} else if (tool.kind === "pickingBoundaryConstraint" && selectedBoundary) {
-			void zero.mutate(
-				mutators.constraint.createManual({
-					...event(),
-					constraintId: crypto.randomUUID(),
-					roundId: role.roundId,
-					seekerTeamId: role.teamId,
-					hiderTeamId,
-					geometry: {
-						kind: "polygon",
-						polygons: selectedBoundary.polygons.map((polygon) =>
-							polygon.map((ring) =>
-								ring.map(([lng, lat]) => [lng, lat] as [number, number]),
-							),
-						),
-					},
-					mode,
-					ordinal,
-					name: label,
-				}),
-			);
-		} else if (tool.kind === "drawingSplitConstraint" && tool.from && tool.to) {
-			void zero.mutate(
-				mutators.constraint.createManual({
-					...event(),
-					constraintId: crypto.randomUUID(),
-					roundId: role.roundId,
-					seekerTeamId: role.teamId,
-					hiderTeamId,
-					geometry: {
-						kind: "halfPlane",
-						a: [tool.from[0], tool.from[1]],
-						b: [tool.to[0], tool.to[1]],
-						nearer: cut ? "b" : "a",
-					},
-					mode: "exclude",
-					ordinal,
-					name: label,
-				}),
-			);
-		} else if (
-			tool.kind === "pickingClosestPoiConstraint" &&
-			closestDraftRegion &&
-			!isEmptyRegion(closestDraftRegion)
-		) {
-			void zero.mutate(
-				mutators.constraint.createManual({
-					...event(),
-					constraintId: crypto.randomUUID(),
-					roundId: role.roundId,
-					seekerTeamId: role.teamId,
-					hiderTeamId,
-					geometry: {
-						kind: "polygon",
-						polygons: storedPolygons(closestDraftRegion),
-					},
-					mode,
-					ordinal,
+					constraintId: editingConstraintId,
+					geometry: draft.geometry,
+					origin: draft.origin,
+					mode: draft.mode,
 					name: label,
 				}),
 			);
 		} else {
-			return;
+			const ordinal =
+				scopedConstraints.reduce((max, row) => Math.max(max, row.ordinal), -1) +
+				1;
+			void zero.mutate(
+				mutators.constraint.createManual({
+					...event(),
+					constraintId: crypto.randomUUID(),
+					roundId: role.roundId,
+					seekerTeamId: role.teamId,
+					hiderTeamId,
+					geometry: draft.geometry,
+					origin: draft.origin,
+					mode: draft.mode,
+					ordinal,
+					name: label,
+				}),
+			);
 		}
 		webPlatform.haptics.vibrate([15]);
 		cancelTool();
+	};
+
+	const editingConstraint = editingConstraintId
+		? {
+				id: editingConstraintId,
+				name:
+					constraintItems.find((item) => item.id === editingConstraintId)
+						?.name ?? "",
+			}
+		: null;
+
+	/**
+	 * The list's edit: put the tool back the way it was left, and fly to what it
+	 * draws, since the cut being edited need not be on screen.
+	 */
+	const editConstraint = (id: string) => {
+		const row = constraintItems.find((item) => item.id === id);
+		const edit = row ? constraintEditTool(row) : null;
+		if (!row || !edit) return;
+		changeTool(edit.tool, id);
+		setCut(edit.cut);
+		const target = constraintFlyTarget(row.geometry);
+		if (target) setFlyTarget(target);
 	};
 
 	const renameConstraint = (id: string, name: string) => {
@@ -1405,6 +1479,7 @@ function MapScreen() {
 								<motion.div key="cuts" {...cardMotion}>
 									<CutsCard
 										constraints={constraintItems}
+										onEdit={editConstraint}
 										onRemove={removeConstraint}
 										onRename={renameConstraint}
 										onToggle={toggleConstraint}
@@ -1438,6 +1513,7 @@ function MapScreen() {
 										<MapBar
 											canEditConstraints={canEditConstraints}
 											cut={cut}
+											editing={editingConstraint}
 											hiders={hiderTeams}
 											onActions={() =>
 												setSeekerOverlay((current) =>

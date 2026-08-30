@@ -58,6 +58,8 @@ interface MapBarProps {
 	readonly cut: boolean;
 	readonly onCutChange: (cut: boolean) => void;
 	readonly remainingStopCount: number;
+	/** Set when the draft rewrites an existing cut instead of adding one. */
+	readonly editing: { readonly id: string; readonly name: string } | null;
 }
 
 /**
@@ -87,6 +89,7 @@ export function MapBar({
 	cut,
 	onCutChange,
 	remainingStopCount,
+	editing,
 }: MapBarProps) {
 	if (sheetOwnsBar(tool)) return null;
 
@@ -100,6 +103,9 @@ export function MapBar({
 		return (
 			<ConstraintDraft
 				cut={cut}
+				editing={editing}
+				// A different cut is a different draft: its name starts over.
+				key={editing?.id ?? "new"}
 				onCancel={onCancel}
 				onCommitConstraint={onCommitConstraint}
 				onCutChange={onCutChange}
@@ -169,6 +175,7 @@ export function sheetOwnsBar(tool: MapTool): boolean {
 
 function ConstraintDraft({
 	cut,
+	editing,
 	onCutChange,
 	tool,
 	onCancel,
@@ -185,6 +192,7 @@ function ConstraintDraft({
 	onUndoPolygonVertex,
 }: {
 	readonly cut: boolean;
+	readonly editing: { readonly id: string; readonly name: string } | null;
 	readonly onCutChange: (cut: boolean) => void;
 	readonly tool: MapTool;
 	readonly onCancel: () => void;
@@ -200,7 +208,7 @@ function ConstraintDraft({
 	readonly fallbackRadiusMeters: number;
 	readonly onUndoPolygonVertex: () => void;
 }) {
-	const [name, setName] = useState("");
+	const [name, setName] = useState(editing?.name ?? "");
 	const split = tool.kind === "drawingSplitConstraint" ? tool : null;
 	const radius = tool.kind === "drawingRadiusConstraint" ? tool : null;
 	const vertexCount =
@@ -246,6 +254,11 @@ function ConstraintDraft({
 			raised
 		>
 			<div className="flex flex-col gap-2">
+				{editing && (
+					<span className="eyebrow" data-testid="constraint-editing">
+						Editing this cut
+					</span>
+				)}
 				{split && (
 					<>
 						<p className="text-ink-dim text-xs leading-snug">

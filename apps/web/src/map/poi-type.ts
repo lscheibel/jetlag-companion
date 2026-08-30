@@ -1,4 +1,5 @@
 import {
+	isPoiKind,
 	MODE_IDS,
 	type ModeId,
 	POI_KIND_FALLBACK,
@@ -21,6 +22,17 @@ const STATION_TYPES = new Set<string>(MODE_IDS);
 
 export function isStationType(id: string): id is ModeId {
 	return STATION_TYPES.has(id);
+}
+
+/**
+ * A stored type id, checked back into the union. What a constraint's origin
+ * carries is whatever the catalog called it when the cut was made, which a
+ * later catalog need not still have.
+ */
+export function asPoiTypeId(id: string | null | undefined): PoiTypeId | null {
+	if (!id) return null;
+	if (isStationType(id)) return id;
+	return isPoiKind(id) ? id : null;
 }
 
 interface StationLabel {

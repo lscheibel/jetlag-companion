@@ -1,0 +1,1 @@
+ALTER TABLE "constraint" ADD COLUMN "origin" jsonb;

@@ -18,6 +18,8 @@ import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
 	canMeasureToYou,
+	constraintEditTool,
+	constraintKindLabel,
 	formatDistance,
 	type MapTool,
 	pathSegments,
@@ -539,6 +541,7 @@ interface CutsCardProps {
 	readonly onToggle: (id: string, enabled: boolean) => void;
 	readonly onRename: (id: string, name: string) => void;
 	readonly onRemove: (id: string) => void;
+	readonly onEdit: (id: string) => void;
 }
 
 export function CutsCard({
@@ -546,6 +549,7 @@ export function CutsCard({
 	onToggle,
 	onRename,
 	onRemove,
+	onEdit,
 }: CutsCardProps) {
 	return (
 		<Surface
@@ -561,6 +565,9 @@ export function CutsCard({
 					{constraints.map((row) => (
 						<ConstraintRow
 							key={row.id}
+							onEdit={
+								constraintEditTool(row) ? () => onEdit(row.id) : undefined
+							}
 							onRemove={
 								row.source === "manual" ? () => onRemove(row.id) : undefined
 							}
@@ -580,20 +587,18 @@ function ConstraintRow({
 	onToggle,
 	onRename,
 	onRemove,
+	onEdit,
 }: {
 	readonly row: ConstraintListItem;
 	readonly onToggle: () => void;
 	readonly onRename: (name: string) => void;
 	readonly onRemove?: () => void;
+	readonly onEdit?: () => void;
 }) {
 	const minus = row.mode === "exclude";
-	const kind =
-		row.kind === "radius"
-			? "Circle"
-			: row.kind === "halfPlane"
-				? "Split"
-				: "Area";
-	const origin = row.source === "answer" ? "from an answer" : "placed";
+	const kind = constraintKindLabel(row.geometry);
+	// Not `row.origin`: that is the tool, this is where the cut came from.
+	const sourceLabel = row.source === "answer" ? "from an answer" : "placed";
 	return (
 		<div
 			className={cn(
@@ -627,9 +632,25 @@ function ConstraintRow({
 					placeholder={`${kind} · ${row.mode}`}
 				/>
 				<span className="mt-0.5 block font-mono text-[0.55rem] text-ink-faint uppercase tracking-[0.07em]">
-					{kind} · {origin}
+					{kind} · {sourceLabel}
 				</span>
 			</label>
+			{/*
+			 * Reopening the tool is the row's edit; renaming happens in place, in
+			 * the field above. Absent when nothing can be reopened — an answer's
+			 * cut, or a polygon from before origins were recorded.
+			 */}
+			{onEdit && (
+				<button
+					aria-label={`Edit ${row.name ?? kind}`}
+					className="grid size-7 shrink-0 place-items-center rounded-lg text-ink-faint"
+					data-testid={`edit-constraint-${row.id}`}
+					onClick={onEdit}
+					type="button"
+				>
+					<Icon name="pencil-line" size="sm" />
+				</button>
+			)}
 			<Switch
 				label={row.enabled ? "Turn this cut off" : "Turn this cut on"}
 				on={row.enabled}

@@ -5,6 +5,7 @@ import type {
 	QuestionShape,
 } from "@zero-lag/rules";
 
+export type { ConstraintOrigin } from "./zero/constraint-origin";
 export type {
 	AnswerValue,
 	ConstraintGeometry,
@@ -172,6 +173,7 @@ export const EVENT_TYPES = [
 	"constraint.created",
 	"constraint.enabledChanged",
 	"constraint.renamed",
+	"constraint.edited",
 	"constraint.deleted",
 	"pin.created",
 	"pin.updated",

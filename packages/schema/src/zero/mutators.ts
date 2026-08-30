@@ -13,6 +13,7 @@ import type {
 	TeamRole,
 } from "../types";
 import { constraintGeometry } from "./constraint-geometry";
+import { constraintOrigin } from "./constraint-origin";
 import {
 	refuse,
 	reject,
@@ -1649,6 +1650,7 @@ export const mutators = defineMutators({
 				seekerTeamId: z.string(),
 				hiderTeamId: z.string(),
 				geometry: constraintGeometry,
+				origin: constraintOrigin.nullable(),
 				mode: z.enum(["include", "exclude"]),
 				ordinal: z.number().int().nonnegative(),
 				name: z.string().max(80).nullable(),
@@ -1699,6 +1701,7 @@ export const mutators = defineMutators({
 					source: "manual",
 					answerId: null,
 					geometry: args.geometry,
+					origin: args.origin,
 					mode: args.mode,
 					name: args.name?.trim() || null,
 					enabled: true,
@@ -1712,6 +1715,74 @@ export const mutators = defineMutators({
 					actorPlayerId: playerId,
 					actorTeamId: args.seekerTeamId,
 					payload: { constraintId: args.constraintId, source: "manual" },
+				});
+			},
+		),
+
+		/**
+		 * Reopening a cut in the tool that drew it and committing again is this
+		 * write, not a delete and a re-create: the row keeps its id, its ordinal,
+		 * its enabled flag and — unless the seeker typed a new one — its name, so
+		 * the fold order the list shows does not shuffle under an edit.
+		 */
+		editManual: defineMutator(
+			z.object({
+				...withEvent,
+				constraintId: z.string(),
+				geometry: constraintGeometry,
+				origin: constraintOrigin.nullable(),
+				mode: z.enum(["include", "exclude"]),
+				name: z.string().max(80).nullable(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const constraint = await tx.run(
+					zql.constraint.where("id", args.constraintId).one(),
+				);
+				if (!constraint) {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "an existing constraint",
+							actual: "no such constraint",
+						});
+					}
+					return;
+				}
+				/**
+				 * An answer-derived cut is the hider's word, not the seeker's shape.
+				 * The list offers no edit for one; the mutator refuses it too.
+				 */
+				if (constraint.source !== "manual") {
+					if (tx.location === "server") {
+						reject({
+							code: "game_state_invalid",
+							expected: "a hand-placed constraint",
+							actual: `a ${constraint.source} constraint`,
+						});
+					}
+					return;
+				}
+				await requireTeamMember(
+					tx,
+					playerId,
+					constraint.seekerTeamId,
+					"editing a constraint",
+				);
+				await tx.mutate.constraint.update({
+					id: args.constraintId,
+					geometry: args.geometry,
+					origin: args.origin,
+					mode: args.mode,
+					name: args.name?.trim() || constraint.name || null,
+				});
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "constraint.edited",
+					actorPlayerId: playerId,
+					actorTeamId: constraint.seekerTeamId,
+					payload: { constraintId: args.constraintId },
 				});
 			},
 		),

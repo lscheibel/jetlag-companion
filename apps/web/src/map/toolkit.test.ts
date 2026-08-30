@@ -1,7 +1,9 @@
 import { BERLIN_FIXTURE_CATALOG } from "@zero-lag/catalog";
 import { describe, expect, it } from "vitest";
 import {
+	type ConstraintListItem,
 	canMeasureToYou,
+	constraintEditTool,
 	distanceFromYou,
 	formatCoordinates,
 	formatDistance,
@@ -207,5 +209,114 @@ describe("radiusConstraintReady", () => {
 				[13.41, 52.51],
 			]),
 		).toBe(true);
+	});
+});
+
+describe("constraintEditTool", () => {
+	const row = (over: Partial<ConstraintListItem> = {}): ConstraintListItem => ({
+		id: "c1",
+		source: "manual",
+		mode: "exclude",
+		geometry: { kind: "radius", centers: [[13.4, 52.5]], radius: 500 },
+		origin: null,
+		enabled: true,
+		name: null,
+		...over,
+	});
+
+	it("reopens the tool the origin names, in the state it was left", () => {
+		const edit = constraintEditTool(
+			row({
+				geometry: { kind: "polygon", polygons: [] },
+				mode: "include",
+				origin: {
+					tool: "pickingClosestPoiConstraint",
+					poiId: "poi-7",
+					filterKind: "museum",
+					radiusMeters: 800,
+				},
+			}),
+		);
+		expect(edit).toEqual({
+			cut: false,
+			tool: {
+				kind: "pickingClosestPoiConstraint",
+				filterKind: "museum",
+				selectedId: "poi-7",
+				radiusMeters: 800,
+			},
+		});
+	});
+
+	it("drops a type id the catalog no longer carries", () => {
+		const edit = constraintEditTool(
+			row({
+				origin: {
+					tool: "drawingRadiusConstraint",
+					centers: [[13.4, 52.5]],
+					radiusMeters: 500,
+					poiKind: "phrenologist",
+				},
+			}),
+		);
+		expect(edit?.tool).toEqual({
+			kind: "drawingRadiusConstraint",
+			centers: [[13.4, 52.5]],
+			radiusMeters: 500,
+			poiKind: null,
+			pickingKind: false,
+		});
+	});
+
+	it("puts the cut/keep pair back where it was", () => {
+		expect(constraintEditTool(row())?.cut).toBe(true);
+		expect(constraintEditTool(row({ mode: "include" }))?.cut).toBe(false);
+		// A split is always an exclude; which side falls away is `nearer`.
+		expect(
+			constraintEditTool(
+				row({
+					geometry: {
+						kind: "halfPlane",
+						a: [13.4, 52.5],
+						b: [13.5, 52.6],
+						nearer: "a",
+					},
+				}),
+			)?.cut,
+		).toBe(false);
+	});
+
+	it("recovers a circle and a split from geometry alone", () => {
+		expect(constraintEditTool(row())?.tool).toEqual({
+			kind: "drawingRadiusConstraint",
+			centers: [[13.4, 52.5]],
+			radiusMeters: 500,
+			poiKind: null,
+			pickingKind: false,
+		});
+		expect(
+			constraintEditTool(
+				row({
+					geometry: {
+						kind: "halfPlane",
+						a: [13.4, 52.5],
+						b: [13.5, 52.6],
+						nearer: "b",
+					},
+				}),
+			)?.tool,
+		).toEqual({
+			kind: "drawingSplitConstraint",
+			from: [13.4, 52.5],
+			to: [13.5, 52.6],
+			focus: "from",
+		});
+	});
+
+	it("offers nothing for an answer's cut, or an origin-less polygon", () => {
+		expect(constraintEditTool(row({ source: "answer" }))).toBeNull();
+		expect(
+			constraintEditTool(row({ geometry: { kind: "polygon", polygons: [] } })),
+		).toBeNull();
 	});
 });

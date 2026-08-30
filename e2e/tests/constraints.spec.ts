@@ -295,3 +295,57 @@ test("a seeker split cuts one side of the remaining area", async ({
 	await ana.close();
 	await ben.close();
 });
+
+test("a cut reopens in the tool that drew it, and rewrites that row", async ({
+	browser,
+}) => {
+	test.setTimeout(120_000);
+	const ana = await openPhone(browser, "Ana");
+	const ben = await openPhone(browser, "Ben");
+	const code = await createGame(ana);
+	await joinGame(ben, code);
+	for (const phone of [ana, ben]) await waitForSync(phone);
+	await joinTeam(ana, "Seekers");
+	await joinTeam(ben, "Hiders");
+
+	await startHiding([ana, ben], code, "30");
+	await commitZone(ben, code);
+	await startSeeking(ana, code);
+
+	await openMap(ana, code);
+	await waitForSync(ana);
+
+	await pickConstraint(ana, "add-bezirk-constraint");
+	await expect(ana.page.getByTestId("boundary-9-mitte")).toBeVisible({
+		timeout: 20_000,
+	});
+	await ana.page.getByTestId("boundary-9-mitte").click();
+	await ana.page.getByTestId("they-are-inside").click();
+	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
+		timeout: 20_000,
+	});
+	const included = await areaHash(ana);
+
+	// A Bezirk is stored as a plain polygon: only the recorded origin can tell
+	// the picker from the pencil.
+	await pickConstraint(ana, "constraint-list");
+	await ana.page.locator('[data-testid^="edit-constraint-"]').click();
+	await expect(ana.page.getByTestId("constraint-editing")).toBeVisible();
+	await expect(ana.page.getByTestId("constraint-name")).toHaveValue("Mitte");
+
+	await ana.page.getByTestId("constraint-mode-exclude").click();
+	await ana.page.getByTestId("they-are-outside").click();
+
+	// Rewritten, not added: one row, and the fold is the other way round.
+	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
+		timeout: 20_000,
+	});
+	expect(await areaHash(ana)).not.toBe(included);
+	await pickConstraint(ana, "constraint-list");
+	await expect(
+		ana.page.locator('[data-testid^="constraint-name-"]'),
+	).toHaveValue("Mitte");
+
+	await ana.close();
+	await ben.close();
+});

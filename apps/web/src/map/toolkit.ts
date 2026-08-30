@@ -1,5 +1,7 @@
 import { distanceMeters, type LngLat } from "@zero-lag/geo";
-import type { PoiTypeId } from "./poi-type";
+import { type ConstraintGeometry, radiusCenters } from "@zero-lag/rules";
+import type { ConstraintOrigin } from "@zero-lag/schema";
+import { asPoiTypeId, type PoiTypeId } from "./poi-type";
 
 /**
  * What place search runs over: the stops the game carries. m4-spec §5.
@@ -154,10 +156,124 @@ export type ConstraintListItem = {
 	readonly id: string;
 	readonly source: "answer" | "manual";
 	readonly mode: "include" | "exclude";
-	readonly kind: string;
+	readonly geometry: ConstraintGeometry;
+	/** Null on answer-derived rows, and on rows written before edit existed. */
+	readonly origin: ConstraintOrigin | null;
 	readonly enabled: boolean;
 	readonly name: string | null;
 };
+
+/** What the list calls a shape. Four geometry kinds, three words for them. */
+export function constraintKindLabel(geometry: ConstraintGeometry): string {
+	if (geometry.kind === "radius") return "Circle";
+	if (geometry.kind === "halfPlane") return "Split";
+	return "Area";
+}
+
+/**
+ * Reopening a cut: the tool that drew it, restored to the state it was
+ * committed in, plus where the cut/keep pair stood.
+ */
+export type ConstraintEdit = {
+	readonly tool: MapTool;
+	readonly cut: boolean;
+};
+
+/**
+ * Null when there is no tool to go back to — an answer-derived row, or a
+ * pre-`origin` polygon, whose author (drawn, Bezirk, nearest cell) the
+ * geometry alone cannot name.
+ */
+export function constraintEditTool(
+	row: ConstraintListItem,
+): ConstraintEdit | null {
+	if (row.source !== "manual") return null;
+	// A split has no include/exclude; its pair picks which side falls away.
+	const cut =
+		row.geometry.kind === "halfPlane"
+			? row.geometry.nearer === "b"
+			: row.mode === "exclude";
+	const origin = row.origin;
+	if (origin) {
+		switch (origin.tool) {
+			case "drawingRadiusConstraint":
+				return {
+					cut,
+					tool: {
+						kind: "drawingRadiusConstraint",
+						centers: origin.centers,
+						radiusMeters: origin.radiusMeters,
+						poiKind: asPoiTypeId(origin.poiKind),
+						pickingKind: false,
+					},
+				};
+			case "drawingPolygonConstraint":
+				return {
+					cut,
+					tool: { kind: "drawingPolygonConstraint", ring: origin.ring },
+				};
+			case "drawingSplitConstraint":
+				return {
+					cut,
+					tool: {
+						kind: "drawingSplitConstraint",
+						from: origin.from,
+						to: origin.to,
+						focus: "from",
+					},
+				};
+			case "pickingBoundaryConstraint":
+				return {
+					cut,
+					tool: {
+						kind: "pickingBoundaryConstraint",
+						levels: BOUNDARY_CONSTRAINT_LEVELS,
+						selectedId: origin.boundaryId,
+					},
+				};
+			case "pickingClosestPoiConstraint":
+				return {
+					cut,
+					tool: {
+						kind: "pickingClosestPoiConstraint",
+						filterKind: asPoiTypeId(origin.filterKind),
+						selectedId: origin.poiId,
+						radiusMeters: origin.radiusMeters,
+					},
+				};
+		}
+	}
+	/**
+	 * Older rows, and the suspect-zone macro, carry no origin. A circle and a
+	 * split are still exactly what they look like; a polygon is not.
+	 */
+	if (row.geometry.kind === "radius") {
+		const centers = radiusCenters(row.geometry);
+		if (centers.length === 0) return null;
+		return {
+			cut,
+			tool: {
+				kind: "drawingRadiusConstraint",
+				centers,
+				radiusMeters: row.geometry.radius,
+				poiKind: null,
+				pickingKind: false,
+			},
+		};
+	}
+	if (row.geometry.kind === "halfPlane") {
+		return {
+			cut,
+			tool: {
+				kind: "drawingSplitConstraint",
+				from: row.geometry.a,
+				to: row.geometry.b,
+				focus: "from",
+			},
+		};
+	}
+	return null;
+}
 
 export function formatDistance(meters: number): string {
 	if (meters < 1_000) return `${Math.round(meters)} m`;
