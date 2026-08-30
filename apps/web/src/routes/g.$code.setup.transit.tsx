@@ -2,11 +2,11 @@ import { useZero } from "@rocicorp/zero/react";
 import { Checkbox } from "@zero-lag/ui/components/checkbox";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { fadeOnly, listContainer, listItem } from "@zero-lag/ui/lib/motion";
-import { cn } from "@zero-lag/ui/lib/utils";
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useGameShell } from "../game/shell";
+import { ModeBadge } from "../setup/mode-badge";
 import { modeLabel, modeTallyText } from "../setup/modes";
 import { persistSetup } from "../setup/persist";
 import { type ModeTally, useSetup } from "../setup/wizard";
@@ -134,18 +134,7 @@ function ModeRow({ tally, on, onToggle }: ModeRowProps) {
 				checked={on}
 				hint={modeTallyText(tally.lines, tally.stops)}
 				label={label.name}
-				leading={
-					<span
-						aria-hidden
-						className={cn(
-							"grid size-8 shrink-0 place-items-center rounded-[9px] font-bold text-sm",
-							label.color ? "text-white" : "bg-hairline-strong text-ink",
-						)}
-						style={label.color ? { background: label.color } : undefined}
-					>
-						{label.badge}
-					</span>
-				}
+				leading={<ModeBadge modeId={tally.modeId} />}
 				onChange={onToggle}
 				testId={`mode-${tally.modeId}`}
 			/>

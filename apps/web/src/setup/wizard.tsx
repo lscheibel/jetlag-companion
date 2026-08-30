@@ -29,6 +29,7 @@ import {
 	type SizeBand,
 	suggestGameSize,
 } from "./game-size";
+import { MODE_ORDER } from "./modes";
 
 /**
  * What the create-a-game wizard is holding while the host walks through it.
@@ -313,15 +314,3 @@ function nextModes(
 	if (all.every((id) => selected.has(id))) return null;
 	return all.filter((id) => selected.has(id));
 }
-
-/** U-Bahn, S-Bahn, tram, bus — then the ones a city game rarely turns on. */
-const MODE_ORDER: readonly ModeId[] = [
-	"u-bahn",
-	"s-bahn",
-	"tram",
-	"bus",
-	"regional",
-	"long-distance",
-	"ferry",
-	"funicular",
-];

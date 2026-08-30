@@ -1,20 +1,101 @@
 import { describe, expect, it } from "vitest";
 import {
+	boardStopModes,
 	closestPoiSites,
 	DEFAULT_POI_LAYERS,
 	defaultClosestPoiRadius,
 	ensurePoiKind,
+	ensurePoiType,
 	type MapPoi,
+	poiModeOn,
 	radiusPoiCenters,
+	stationPois,
+	stopIdOfPoi,
+	stopsForModes,
 	togglePoiKind,
+	togglePoiMode,
 } from "./poi";
+import type { SearchableStop } from "./toolkit";
 
 describe("togglePoiKind", () => {
-	it("adds and removes a kind without touching transit", () => {
+	it("adds and removes a kind without touching the stations", () => {
 		const withMuseum = togglePoiKind(DEFAULT_POI_LAYERS, "museum");
-		expect(withMuseum.transit).toBe(true);
+		expect(withMuseum.modes).toBeNull();
 		expect(withMuseum.kinds).toEqual(["museum"]);
 		expect(togglePoiKind(withMuseum, "museum").kinds).toEqual([]);
+	});
+});
+
+function stop(stopId: string, modeIds: readonly string[]): SearchableStop {
+	return {
+		stopId,
+		name: stopId,
+		lng: 13.4,
+		lat: 52.5,
+		modeIds,
+		lines: [],
+		insideArea: true,
+	};
+}
+
+const ALEX = stop("alex", ["u-bahn", "s-bahn", "tram"]);
+const BUS_ONLY = stop("bus-stop", ["bus"]);
+const FERRY = stop("ferry-pier", ["ferry"]);
+
+describe("boardStopModes", () => {
+	it("lists the modes the board carries, in signage order", () => {
+		expect(boardStopModes([BUS_ONLY, ALEX])).toEqual([
+			"u-bahn",
+			"s-bahn",
+			"tram",
+			"bus",
+		]);
+	});
+
+	it("is empty for a board with no stops", () => {
+		expect(boardStopModes([])).toEqual([]);
+	});
+});
+
+describe("togglePoiMode", () => {
+	const available = ["u-bahn", "s-bahn", "bus"] as const;
+
+	it("turning one off is what turns the filter on", () => {
+		const withoutBus = togglePoiMode(DEFAULT_POI_LAYERS, "bus", available);
+		expect(withoutBus.modes).toEqual(["u-bahn", "s-bahn"]);
+		expect(poiModeOn(withoutBus, "bus")).toBe(false);
+		expect(poiModeOn(withoutBus, "u-bahn")).toBe(true);
+	});
+
+	it("turning the last one back on returns to everything", () => {
+		const withoutBus = togglePoiMode(DEFAULT_POI_LAYERS, "bus", available);
+		expect(togglePoiMode(withoutBus, "bus", available).modes).toBeNull();
+	});
+
+	it("can leave nothing plotted", () => {
+		const modes = available.reduce<typeof DEFAULT_POI_LAYERS>(
+			(state, modeId) => togglePoiMode(state, modeId, available),
+			DEFAULT_POI_LAYERS,
+		);
+		expect(modes.modes).toEqual([]);
+	});
+});
+
+describe("stopsForModes", () => {
+	it("keeps every stop when no filter is on", () => {
+		expect(stopsForModes([ALEX, BUS_ONLY, FERRY], null)).toHaveLength(3);
+	});
+
+	it("keeps a stop served by any chosen mode", () => {
+		expect(
+			stopsForModes([ALEX, BUS_ONLY, FERRY], ["u-bahn"]).map(
+				(row) => row.stopId,
+			),
+		).toEqual([ALEX.stopId]);
+	});
+
+	it("plots nothing when every mode is off", () => {
+		expect(stopsForModes([ALEX, BUS_ONLY], [])).toEqual([]);
 	});
 });
 
@@ -106,5 +187,63 @@ describe("radiusPoiCenters", () => {
 
 	it("is empty when the kind is absent", () => {
 		expect(radiusPoiCenters("museum", [ZOO, PARK])).toEqual([]);
+	});
+});
+
+describe("stationPois", () => {
+	it("gives a hub one pin per station type it serves", () => {
+		const pins = stationPois([ALEX]);
+		expect(pins.map((pin) => pin.kind)).toEqual(["u-bahn", "s-bahn", "tram"]);
+		expect(new Set(pins.map((pin) => pin.id)).size).toBe(3);
+		for (const pin of pins) expect(pin.name).toBe(ALEX.name);
+	});
+
+	it("points every pin back at its station", () => {
+		for (const pin of stationPois([ALEX, BUS_ONLY])) {
+			expect(stopIdOfPoi(pin)).toBe(
+				pin.name === ALEX.name ? ALEX.stopId : BUS_ONLY.stopId,
+			);
+		}
+	});
+
+	it("leaves amenity pins alone", () => {
+		expect(stopIdOfPoi(ZOO)).toBeNull();
+	});
+});
+
+describe("closestPoiSites over station pins", () => {
+	it("keeps only the same station type", () => {
+		const pins = stationPois([ALEX, BUS_ONLY]);
+		const uBahn = pins.find((pin) => pin.kind === "u-bahn");
+		if (!uBahn) throw new Error("no U-Bahn pin");
+		const { others } = closestPoiSites(uBahn, [...pins, ZOO]);
+		expect(others).toEqual([]);
+	});
+});
+
+describe("ensurePoiType", () => {
+	it("switches an amenity kind on", () => {
+		expect(ensurePoiType(DEFAULT_POI_LAYERS, "zoo").kinds).toEqual(["zoo"]);
+	});
+
+	it("switches a station type back on without disturbing the others", () => {
+		const available = ["u-bahn", "s-bahn", "bus"] as const;
+		const withoutBus = togglePoiMode(DEFAULT_POI_LAYERS, "bus", available);
+		const back = ensurePoiType(withoutBus, "bus");
+		expect(poiModeOn(back, "bus")).toBe(true);
+		expect(poiModeOn(back, "u-bahn")).toBe(true);
+	});
+
+	it("leaves a layer that already plots everything alone", () => {
+		expect(ensurePoiType(DEFAULT_POI_LAYERS, "bus")).toBe(DEFAULT_POI_LAYERS);
+	});
+});
+
+describe("radiusPoiCenters over station pins", () => {
+	it("takes every station of one type inside the area", () => {
+		const pins = stationPois([ALEX, BUS_ONLY]);
+		expect(radiusPoiCenters("bus", pins)).toEqual([
+			[BUS_ONLY.lng, BUS_ONLY.lat],
+		]);
 	});
 });

@@ -1,5 +1,5 @@
-import type { PoiKind } from "@zero-lag/catalog";
 import { distanceMeters, type LngLat } from "@zero-lag/geo";
+import type { PoiTypeId } from "./poi-type";
 
 /**
  * What place search runs over: the stops the game carries. m4-spec §5.
@@ -96,7 +96,7 @@ export type MapTool =
 			readonly kind: "drawingRadiusConstraint";
 			readonly centers: readonly LngLat[];
 			readonly radiusMeters: number;
-			readonly poiKind: PoiKind | null;
+			readonly poiKind: PoiTypeId | null;
 			readonly pickingKind: boolean;
 	  }
 	| {
@@ -116,7 +116,7 @@ export type MapTool =
 	  }
 	| {
 			readonly kind: "pickingClosestPoiConstraint";
-			readonly filterKind: PoiKind | null;
+			readonly filterKind: PoiTypeId | null;
 			readonly selectedId: string | null;
 			readonly radiusMeters: number | null;
 	  }

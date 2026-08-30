@@ -39,3 +39,15 @@ export function modeTallyText(lines: number, stops: number): string {
 		stops === 1 ? "1 stop" : `${stops.toLocaleString("en")} stops`;
 	return lines > 0 ? `${lineText} · ${stopText}` : stopText;
 }
+
+/** U-Bahn, S-Bahn, tram, bus — then the ones a city game rarely turns on. */
+export const MODE_ORDER: readonly ModeId[] = [
+	"u-bahn",
+	"s-bahn",
+	"tram",
+	"bus",
+	"regional",
+	"long-distance",
+	"ferry",
+	"funicular",
+];

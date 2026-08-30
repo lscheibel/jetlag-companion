@@ -1,4 +1,3 @@
-import { POI_KIND_LABELS } from "@zero-lag/catalog";
 import { distanceMeters, type LngLat } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
@@ -17,6 +16,7 @@ import {
 	stepZoneMeters,
 } from "../setup/game-size";
 import { CoordinateFields } from "./coordinate-fields";
+import { poiTypeLabel } from "./poi-type";
 import {
 	type MapTool,
 	type RadiusConstraintTool,
@@ -506,7 +506,7 @@ function RadiusPosition({
 			<div className="flex flex-col gap-1" data-testid="radius-poi-kind">
 				<span className="eyebrow">Centre</span>
 				<p className="text-sm leading-snug">
-					{POI_KIND_LABELS[poiKind]}
+					{poiTypeLabel(poiKind)}
 					<span className="text-ink-dim"> · {centers.length}</span>
 				</p>
 			</div>

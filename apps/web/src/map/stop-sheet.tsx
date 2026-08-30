@@ -2,7 +2,10 @@ import { groupLinesByMode, type ModeId } from "@zero-lag/catalog";
 import type { LngLat } from "@zero-lag/geo";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
+import { useState } from "react";
+import { ConstraintOption, type PoiConstraintKind } from "./constraint-option";
 import { DistanceToYou } from "./distance-to-you";
+import { isStationType, poiTypeSingular } from "./poi-type";
 import type { SearchableStop } from "./toolkit";
 
 const MODE_LABELS: Record<ModeId, string> = {
@@ -24,6 +27,17 @@ interface StopSheetProps {
 	readonly onSuspectHidingZone?: (stop: SearchableStop) => void;
 	/** GPS origin, or null when there is no fix to measure from. */
 	readonly fromYou: LngLat | null;
+	/**
+	 * Seekers with a round: start a circle or a nearest-cell cut from this
+	 * station — the same two shapes the amenity sheet offers, because a station
+	 * is a point of interest like any other. A hub gets one nearest-cell row per
+	 * station type it serves: the cell of the U-Bahn is not the cell of the bus.
+	 */
+	readonly onAddConstraint?: (
+		stop: SearchableStop,
+		kind: PoiConstraintKind,
+		modeId: ModeId | null,
+	) => void;
 }
 
 /**
@@ -44,10 +58,22 @@ export function StopSheet({
 	onClose,
 	onSuspectHidingZone,
 	fromYou,
+	onAddConstraint,
 }: StopSheetProps) {
 	const shown = useHeldValue(open, stop);
 	const groups = shown ? groupLinesByMode(shown.lines) : [];
 	const characterCount = shown ? stationNameCharacterCount(shown.name) : 0;
+	const [choosingForId, setChoosingForId] = useState<string | null>(null);
+	if (!open && choosingForId !== null) {
+		setChoosingForId(null);
+	}
+	const choosing = shown !== null && choosingForId === shown.stopId;
+	const stationTypes = shown ? shown.modeIds.filter(isStationType) : [];
+
+	function close() {
+		setChoosingForId(null);
+		onClose();
+	}
 
 	return (
 		<Sheet
@@ -68,7 +94,7 @@ export function StopSheet({
 						: "Outside the game area"
 					: undefined
 			}
-			onClose={onClose}
+			onClose={close}
 			open={open}
 			testId="stop-sheet"
 			title={shown?.name}
@@ -82,6 +108,37 @@ export function StopSheet({
 				)}
 				{shown && (
 					<DistanceToYou from={fromYou} lat={shown.lat} lng={shown.lng} />
+				)}
+				{onAddConstraint && shown && !choosing && (
+					<button
+						className="min-h-tap-comfortable w-full rounded-control border border-hairline bg-surface px-3 text-sm"
+						data-testid="stop-add-constraint"
+						onClick={() => setChoosingForId(shown.stopId)}
+						type="button"
+					>
+						Add a constraint
+					</button>
+				)}
+				{choosing && shown && onAddConstraint && (
+					<div className="flex flex-col gap-2">
+						<ConstraintOption
+							hint="A radius around this station"
+							icon="circle-dashed"
+							label="Circle"
+							onPick={() => onAddConstraint(shown, "circle", null)}
+							testId="stop-constraint-circle"
+						/>
+						{stationTypes.map((modeId) => (
+							<ConstraintOption
+								hint="The cell it sits in"
+								icon="crosshair"
+								key={modeId}
+								label={`Nearest · ${poiTypeSingular(modeId)}`}
+								onPick={() => onAddConstraint(shown, "nearest", modeId)}
+								testId={`stop-constraint-nearest-${modeId}`}
+							/>
+						))}
+					</div>
 				)}
 				{groups.length === 0 ? (
 					<p className="text-ink-dim text-sm">

@@ -3,7 +3,8 @@ import {
 	buildValidHidingArea,
 	expandBBox,
 	isPoiKind,
-	POI_KIND_LABELS,
+	type ModeId,
+	POI_KINDS,
 	SCALE_SETTINGS,
 } from "@zero-lag/catalog";
 import {
@@ -74,16 +75,22 @@ import { PlayerMarker } from "../map/player-marker";
 import { PlayerSheet } from "../map/player-sheet";
 import { buildMapPlayers, visibleMarkers } from "../map/players";
 import {
+	boardStopModes,
 	closestPoiSites,
 	DEFAULT_POI_LAYERS,
 	defaultClosestPoiRadius,
-	ensurePoiKind,
+	ensurePoiType,
 	type MapPoi,
 	radiusPoiCenters,
+	stationPoi,
+	stationPois,
+	stopIdOfPoi,
+	stopsForModes,
 } from "../map/poi";
 import { PoiLayer } from "../map/poi-layer";
 import { PoiPickerSheet } from "../map/poi-picker-sheet";
 import { type PoiConstraintKind, PoiSheet } from "../map/poi-sheet";
+import { type PoiTypeId, poiTypeLabel } from "../map/poi-type";
 import { remainingStopCount } from "../map/remaining-stops";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
@@ -306,6 +313,20 @@ function MapScreen() {
 			})),
 		[mapStops],
 	);
+	/**
+	 * Station types on this board, and the stops the picker leaves plotted. The
+	 * filter is local to this phone: `searchableStops` stays the whole board, so
+	 * hiding the buses cannot change what a zone or a constraint is measured
+	 * against.
+	 */
+	const stopModes = useMemo(
+		() => boardStopModes(searchableStops),
+		[searchableStops],
+	);
+	const visibleStops = useMemo(
+		() => stopsForModes(searchableStops, poiLayers.modes),
+		[searchableStops, poiLayers.modes],
+	);
 	const selectedStop =
 		searchableStops.find((stop) => stop.stopId === selectedStopId) ?? null;
 	const scalePreset = games[0]?.mapConfig?.scalePreset ?? "city";
@@ -437,21 +458,42 @@ function MapScreen() {
 		}
 		return out;
 	}, [catalogPois, area]);
+	/**
+	 * Everything a constraint can be aimed at: amenity pins and station pins in
+	 * one pool, because the nearest-cell and all-of-this-type tools ask the same
+	 * question of both. Stations are still *drawn* by the stop layer.
+	 */
+	const pickablePois = useMemo<readonly MapPoi[]>(
+		() => [...allPois, ...stationPois(searchableStops)],
+		[allPois, searchableStops],
+	);
+	const poiTypes = useMemo<readonly PoiTypeId[]>(
+		() => [...stopModes, ...POI_KINDS],
+		[stopModes],
+	);
 	const visiblePois = useMemo<readonly MapPoi[]>(() => {
-		const wanted = new Set(poiLayers.kinds);
+		const wanted = new Set<string>(poiLayers.kinds);
 		return allPois.filter((poi) => wanted.has(poi.kind));
 	}, [allPois, poiLayers.kinds]);
 	const selectedPoi =
 		visiblePois.find((poi) => poi.id === selectedPoiId) ?? null;
 	const selectedClosestPoi =
 		tool.kind === "pickingClosestPoiConstraint" && tool.selectedId
-			? (allPois.find((poi) => poi.id === tool.selectedId) ?? null)
+			? (pickablePois.find((poi) => poi.id === tool.selectedId) ?? null)
 			: null;
+	/**
+	 * The station drawn in hand: the one whose sheet is open, or the station a
+	 * nearest-cell draft is measured from. Only the first is a hiding-zone
+	 * question, so only the first draws the zone circle.
+	 */
+	const highlightedStopId =
+		selectedStopId ??
+		(selectedClosestPoi ? stopIdOfPoi(selectedClosestPoi) : null);
 	const closestDraftRegion = useMemo(() => {
 		if (tool.kind !== "pickingClosestPoiConstraint" || !selectedClosestPoi) {
 			return null;
 		}
-		const { others } = closestPoiSites(selectedClosestPoi, allPois);
+		const { others } = closestPoiSites(selectedClosestPoi, pickablePois);
 		const clip = area ? multiPolygonToRegion(area) : undefined;
 		return closestSiteRegion(
 			[selectedClosestPoi.lng, selectedClosestPoi.lat],
@@ -461,12 +503,12 @@ function MapScreen() {
 				radiusMeters: tool.radiusMeters ?? undefined,
 			},
 		);
-	}, [tool, selectedClosestPoi, allPois, area]);
+	}, [tool, selectedClosestPoi, pickablePois, area]);
 	const radiusDraftCenters = useMemo(() => {
 		if (tool.kind !== "drawingRadiusConstraint") return [];
-		if (tool.poiKind) return radiusPoiCenters(tool.poiKind, allPois);
+		if (tool.poiKind) return radiusPoiCenters(tool.poiKind, pickablePois);
 		return tool.centers;
-	}, [tool, allPois]);
+	}, [tool, pickablePois]);
 	const boundaries = useBoundaries(session, areaBBox, pickingLevels);
 	const visibleBoundaries =
 		tool.kind === "pickingBoundaryConstraint"
@@ -514,11 +556,11 @@ function MapScreen() {
 		if (next.kind === "drawingSplitConstraint") setCut(false);
 		if (next.kind === "pickingClosestPoiConstraint" && next.filterKind) {
 			const kind = next.filterKind;
-			setPoiLayers((current) => ensurePoiKind(current, kind));
+			setPoiLayers((current) => ensurePoiType(current, kind));
 		}
 		if (next.kind === "drawingRadiusConstraint" && next.poiKind) {
 			const kind = next.poiKind;
-			setPoiLayers((current) => ensurePoiKind(current, kind));
+			setPoiLayers((current) => ensurePoiType(current, kind));
 		}
 		setTool(next);
 	};
@@ -539,6 +581,29 @@ function MapScreen() {
 			filterKind: poi.kind,
 			selectedId: poi.id,
 			radiusMeters: defaultClosestPoiRadius(fromYou, poi.lng, poi.lat),
+		});
+	};
+
+	/**
+	 * The station sheet offers the same two shapes as the amenity sheet. A
+	 * circle is about the point and needs no type; a nearest cell is about one
+	 * station type, which is why the sheet names which.
+	 */
+	const addStopConstraint = (
+		stop: SearchableStop,
+		kind: PoiConstraintKind,
+		modeId: ModeId | null,
+	) => {
+		if (kind === "nearest" && modeId) {
+			addPoiConstraint(stationPoi(stop, modeId), kind);
+			return;
+		}
+		changeTool({
+			kind: "drawingRadiusConstraint",
+			centers: [[stop.lng, stop.lat]],
+			radiusMeters: defaultRadiusMeters,
+			poiKind: null,
+			pickingKind: false,
 		});
 	};
 
@@ -592,15 +657,16 @@ function MapScreen() {
 				}
 			}
 			const tapPx = isHidingHider ? 36 : STOP_TAP_PX;
-			const stopHit = poiLayers.transit
-				? nearestHitPx(
-						searchableStops,
-						screen,
-						(stop) => [stop.lng, stop.lat],
-						project,
-						tapPx,
-					)
-				: null;
+			const stopHit =
+				visibleStops.length > 0
+					? nearestHitPx(
+							visibleStops,
+							screen,
+							(stop) => [stop.lng, stop.lat],
+							project,
+							tapPx,
+						)
+					: null;
 			const poiHit =
 				!isHidingHider && visiblePois.length > 0
 					? nearestHitPx(
@@ -676,8 +742,8 @@ function MapScreen() {
 		}
 		if (tool.kind === "pickingClosestPoiConstraint") {
 			const candidates = tool.filterKind
-				? allPois.filter((poi) => poi.kind === tool.filterKind)
-				: allPois;
+				? pickablePois.filter((poi) => poi.kind === tool.filterKind)
+				: pickablePois;
 			const hit = nearestHitPx(
 				candidates,
 				screen,
@@ -687,7 +753,7 @@ function MapScreen() {
 			);
 			if (!hit) return;
 			webPlatform.haptics.vibrate([10]);
-			setPoiLayers((current) => ensurePoiKind(current, hit.item.kind));
+			setPoiLayers((current) => ensurePoiType(current, hit.item.kind));
 			setTool({
 				...tool,
 				filterKind: hit.item.kind,
@@ -876,7 +942,7 @@ function MapScreen() {
 				: tool.kind === "pickingClosestPoiConstraint"
 					? (selectedClosestPoi?.name ?? null)
 					: tool.kind === "drawingRadiusConstraint" && tool.poiKind
-						? POI_KIND_LABELS[tool.poiKind]
+						? poiTypeLabel(tool.poiKind)
 						: null);
 		if (
 			tool.kind === "drawingRadiusConstraint" &&
@@ -1119,18 +1185,16 @@ function MapScreen() {
 								radiusMeters={defaultRadiusMeters}
 							/>
 						)}
-					{poiLayers.transit && (
-						<BuilderStopsLayer
-							area={area}
-							fold={
-								role.role === "seeker" ? (searchArea.surviving ?? null) : null
-							}
-							id="play-stops"
-							selectedId={selectedStopId}
-							stops={searchableStops}
-							zoneRadiusMeters={defaultRadiusMeters}
-						/>
-					)}
+					<BuilderStopsLayer
+						area={area}
+						fold={
+							role.role === "seeker" ? (searchArea.surviving ?? null) : null
+						}
+						id="play-stops"
+						selectedId={highlightedStopId}
+						stops={visibleStops}
+						zoneRadiusMeters={selectedStopId ? defaultRadiusMeters : null}
+					/>
 					<PoiLayer
 						area={area}
 						pois={visiblePois}
@@ -1473,7 +1537,8 @@ function MapScreen() {
 					role.roundId !== null
 				}
 				stops={searchableStops}
-				pois={allPois}
+				poiTypes={poiTypes}
+				pois={pickablePois}
 				onCancel={cancelTool}
 				onClearZone={clearZone}
 				onSaveZone={saveZone}
@@ -1512,12 +1577,14 @@ function MapScreen() {
 
 			<PoiPickerSheet
 				layers={poiLayers}
+				modes={stopModes}
 				onChange={setPoiLayers}
 				onClose={() => setPoiPickerOpen(false)}
 				open={poiPickerOpen}
 			/>
 			<StopSheet
 				fromYou={fromYou}
+				onAddConstraint={canEditConstraints ? addStopConstraint : undefined}
 				onClose={() => setSelectedStopId(null)}
 				onSuspectHidingZone={
 					canSuspectHidingZone ? suspectHidingZone : undefined

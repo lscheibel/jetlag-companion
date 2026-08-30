@@ -1,4 +1,3 @@
-import { POI_KIND_LABELS, POI_KINDS, type PoiKind } from "@zero-lag/catalog";
 import type { LngLat } from "@zero-lag/geo";
 import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
@@ -11,6 +10,7 @@ import {
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import { defaultClosestPoiRadius, type MapPoi } from "./poi";
+import { type PoiTypeId, poiTypeLabel } from "./poi-type";
 import {
 	type BoundaryListItem,
 	formatCoordinates,
@@ -39,6 +39,8 @@ interface MapToolSheetProps {
 	readonly boundaries: readonly BoundaryListItem[];
 	readonly onSelectBoundary: (id: string | null) => void;
 	readonly pois: readonly MapPoi[];
+	/** Every type a pin can be on this board: station types, then amenities. */
+	readonly poiTypes: readonly PoiTypeId[];
 }
 
 export function MapToolSheet(props: MapToolSheetProps) {
@@ -301,18 +303,17 @@ function ClosestPoiPickerSheet(
 		props.tool.kind === "pickingClosestPoiConstraint" ? props.tool : null;
 	const filterKind = picking?.filterKind ?? null;
 	const folded = query.trim().toLocaleLowerCase("de");
-	const kindCounts = POI_KINDS.map((kind) => ({
-		kind,
-		count: props.pois.filter((poi) => poi.kind === kind && poi.insideArea)
-			.length,
-	}));
-	const rows = props.pois.filter((poi) => {
+	const kindCounts = poiTypeCounts(props.poiTypes, props.pois);
+	const matches = props.pois.filter((poi) => {
 		if (!filterKind || poi.kind !== filterKind || !poi.insideArea) return false;
 		if (!folded) return true;
 		return poi.name.toLocaleLowerCase("de").includes(folded);
 	});
+	// A city carries thousands of bus stops. The list is a way in, not an
+	// inventory: the rest are reached by name, or by tapping the dot.
+	const rows = matches.slice(0, PICK_LIST_LIMIT);
 
-	function selectKind(kind: PoiKind) {
+	function selectKind(kind: PoiTypeId) {
 		if (!picking) return;
 		props.onToolChange({
 			...picking,
@@ -355,7 +356,7 @@ function ClosestPoiPickerSheet(
 						>
 							<span className="min-w-0 flex-1">
 								<b className="block text-[0.85rem] leading-tight">
-									{POI_KIND_LABELS[kind]}
+									{poiTypeLabel(kind)}
 								</b>
 								<span className="eyebrow mt-0.5 block text-ink-dim">
 									{count === 0
@@ -386,7 +387,7 @@ function ClosestPoiPickerSheet(
 						data-testid="closest-poi-search"
 						label="Find a place"
 						onChange={(event) => setQuery(event.target.value)}
-						placeholder={POI_KIND_LABELS[filterKind]}
+						placeholder={poiTypeLabel(filterKind)}
 						type="search"
 						value={query}
 					/>
@@ -424,6 +425,12 @@ function ClosestPoiPickerSheet(
 							})}
 						</div>
 					)}
+					{matches.length > rows.length && (
+						<p className="eyebrow text-ink-dim">
+							{rows.length} of {matches.length} — search by name, or tap one on
+							the map.
+						</p>
+					)}
 				</>
 			)}
 		</Sheet>
@@ -435,13 +442,9 @@ function RadiusPoiKindSheet(
 ) {
 	const picking =
 		props.tool.kind === "drawingRadiusConstraint" ? props.tool : null;
-	const kindCounts = POI_KINDS.map((kind) => ({
-		kind,
-		count: props.pois.filter((poi) => poi.kind === kind && poi.insideArea)
-			.length,
-	}));
+	const kindCounts = poiTypeCounts(props.poiTypes, props.pois);
 
-	function selectKind(kind: PoiKind) {
+	function selectKind(kind: PoiTypeId) {
 		if (!picking) return;
 		props.onToolChange({
 			...picking,
@@ -479,7 +482,7 @@ function RadiusPoiKindSheet(
 					>
 						<span className="min-w-0 flex-1">
 							<b className="block text-[0.85rem] leading-tight">
-								{POI_KIND_LABELS[kind]}
+								{poiTypeLabel(kind)}
 							</b>
 							<span className="eyebrow mt-0.5 block text-ink-dim">
 								{count === 0
@@ -493,6 +496,21 @@ function RadiusPoiKindSheet(
 		</Sheet>
 	);
 }
+
+/** How many of each type are in play, in the order the sheets list them. */
+function poiTypeCounts(
+	types: readonly PoiTypeId[],
+	pois: readonly MapPoi[],
+): readonly { readonly kind: PoiTypeId; readonly count: number }[] {
+	const counts = new Map<string, number>();
+	for (const poi of pois) {
+		if (!poi.insideArea) continue;
+		counts.set(poi.kind, (counts.get(poi.kind) ?? 0) + 1);
+	}
+	return types.map((kind) => ({ kind, count: counts.get(kind) ?? 0 }));
+}
+
+const PICK_LIST_LIMIT = 50;
 
 function poiSlug(name: string): string {
 	return name
