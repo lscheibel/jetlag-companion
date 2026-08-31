@@ -572,6 +572,7 @@ function MapScreen() {
 			? { name: committedStop.name, point: stopPosition(committedStop) }
 			: null,
 		origin,
+		area: areaBBox,
 	};
 	const visiblePois = useMemo<readonly MapPoi[]>(() => {
 		const wanted = new Set<string>(poiLayers.kinds);

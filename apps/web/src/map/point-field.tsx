@@ -259,7 +259,7 @@ function PointSheet({
 	const changeText = (next: string) => {
 		setText(next);
 		setProblem(null);
-		const found = parsePastedCoordinates(next);
+		const found = parsePastedCoordinates(next, sources.area);
 		if (found) onPoint(found.point, "typed");
 	};
 
@@ -269,7 +269,7 @@ function PointSheet({
 				setProblem("Nothing on the clipboard. The point is unchanged.");
 				return;
 			}
-			const found = parsePastedCoordinates(clip);
+			const found = parsePastedCoordinates(clip, sources.area);
 			if (!found) {
 				setText(clip);
 				setProblem(

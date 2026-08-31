@@ -1,4 +1,4 @@
-import type { LngLat } from "@zero-lag/geo";
+import type { BBox, LngLat } from "@zero-lag/geo";
 import { createContext, type ReactNode, useContext } from "react";
 import type { MapPin } from "./pin-layer";
 import type { MapPoi } from "./poi";
@@ -38,6 +38,12 @@ export interface PointSources {
 	} | null;
 	/** What "nearest" is measured from, or null with nothing to measure from. */
 	readonly origin: LngLat | null;
+	/**
+	 * The game area's extent, which is how a pasted pair of small numbers gets
+	 * its order settled. Null before a game has an area, and then a paste falls
+	 * back on reading the first number as the latitude.
+	 */
+	readonly area: BBox | null;
 }
 
 const NOTHING: PointSources = {
@@ -47,6 +53,7 @@ const NOTHING: PointSources = {
 	placeTypes: [],
 	hidingZoneStop: null,
 	origin: null,
+	area: null,
 };
 
 const PointSourcesContext = createContext<PointSources>(NOTHING);

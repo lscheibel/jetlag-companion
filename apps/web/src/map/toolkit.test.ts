@@ -1,4 +1,5 @@
 import { BERLIN_FIXTURE_CATALOG } from "@zero-lag/catalog";
+import type { BBox } from "@zero-lag/geo";
 import { describe, expect, it } from "vitest";
 import {
 	type ConstraintListItem,
@@ -132,6 +133,171 @@ describe("pasted coordinates", () => {
 			point: [13.405, 52.52],
 			swapped: false,
 		});
+	});
+
+	it("finds a pair inside a question", () => {
+		expect(
+			parsePastedCoordinates(
+				"52.51971, 13.29455\n\nAre you within 1100m of us?",
+			),
+		).toEqual({ point: [13.29455, 52.51971], swapped: false });
+		expect(
+			parsePastedCoordinates("1km Thermometer start \n\n52.50506, 13.32180"),
+		).toEqual({ point: [13.3218, 52.50506], swapped: false });
+		expect(
+			parsePastedCoordinates("500m Radar (again): 52.53448, 13.44355"),
+		).toEqual({ point: [13.44355, 52.53448], swapped: false });
+		expect(
+			parsePastedCoordinates("Thermometer start: 52.516355,13.416487"),
+		).toEqual({ point: [13.416487, 52.516355], swapped: false });
+	});
+
+	it("takes the first pair when a message carries two", () => {
+		expect(
+			parsePastedCoordinates("Q: 52.51971, 13.29455 — A: 52.53448, 13.44355"),
+		).toEqual({ point: [13.29455, 52.51971], swapped: false });
+	});
+
+	it("does not read distances or zoom levels as a pair", () => {
+		expect(parsePastedCoordinates("Are you within 1100m of us?")).toBeNull();
+		expect(parsePastedCoordinates("500m Radar, 1km Thermometer")).toBeNull();
+		expect(parsePastedCoordinates("zoomed to 15z at 1.5km")).toBeNull();
+	});
+
+	it("reads comma decimals", () => {
+		expect(parsePastedCoordinates("52,3448, 13,44355")).toEqual({
+			point: [13.44355, 52.3448],
+			swapped: false,
+		});
+		expect(parsePastedCoordinates("52,3448 13,44355")).toEqual({
+			point: [13.44355, 52.3448],
+			swapped: false,
+		});
+		expect(parsePastedCoordinates("Radar (again): 52,3448, 13,44355")).toEqual({
+			point: [13.44355, 52.3448],
+			swapped: false,
+		});
+	});
+
+	it("leaves a genuinely ambiguous comma string alone", () => {
+		expect(parsePastedCoordinates("52,52,13,405")).toBeNull();
+	});
+
+	it("does not read a thousands separator as half a pair", () => {
+		expect(parsePastedCoordinates("Within 1,532, 13.4498 km away")).toBeNull();
+		expect(parsePastedCoordinates("1,532 13.4498")).toBeNull();
+	});
+
+	it("finds the coordinate past a thousands separator", () => {
+		expect(parsePastedCoordinates("Within 1,532km at 53.3448,13.4498")).toEqual(
+			{ point: [13.4498, 53.3448], swapped: false },
+		);
+		expect(
+			parsePastedCoordinates("Within 1,532, 13.4498 km — at 53.3448,13.4498"),
+		).toEqual({ point: [13.4498, 53.3448], swapped: false });
+	});
+});
+
+describe("pasted map links", () => {
+	const berlin: ParsedCoordinates = {
+		point: [13.405, 52.52],
+		swapped: false,
+	};
+
+	it("reads a Google Maps viewport link", () => {
+		expect(parsePastedCoordinates("google.com/maps/@52.52,13.405,15z")).toEqual(
+			berlin,
+		);
+		expect(
+			parsePastedCoordinates(
+				"https://www.google.com/maps/place/Berlin/@52.52,13.405,17z/data=!4m6",
+			),
+		).toEqual(berlin);
+	});
+
+	it("reads Google's place-detail pair", () => {
+		expect(
+			parsePastedCoordinates("https://www.google.com/maps/…!3d52.52!4d13.405"),
+		).toEqual(berlin);
+	});
+
+	it("reads query-point links", () => {
+		expect(
+			parsePastedCoordinates("https://maps.apple.com/?ll=52.52,13.405&z=16"),
+		).toEqual(berlin);
+		expect(
+			parsePastedCoordinates("https://maps.google.com/?q=52.52,13.405"),
+		).toEqual(berlin);
+		expect(
+			parsePastedCoordinates("https://www.bing.com/maps?cp=52.52~13.405"),
+		).toEqual(berlin);
+	});
+
+	it("reads an OpenStreetMap hash and a geo: URI", () => {
+		expect(
+			parsePastedCoordinates(
+				"https://www.openstreetmap.org/#map=15/52.52/13.405",
+			),
+		).toEqual(berlin);
+		expect(parsePastedCoordinates("geo:52.52,13.405")).toEqual(berlin);
+	});
+
+	it("takes a link at its word rather than at the area's", () => {
+		// The link states its order, so an area that would rather have Berlin
+		// does not get to move a point out of the Gulf of Aden.
+		const berlinArea: BBox = [13.09, 52.34, 13.76, 52.68];
+		expect(parsePastedCoordinates("geo:13.405,52.52", berlinArea)).toEqual({
+			point: [52.52, 13.405],
+			swapped: false,
+		});
+	});
+
+	it("has nothing to read in a shortened link", () => {
+		expect(
+			parsePastedCoordinates("https://maps.app.goo.gl/aBcDeF123"),
+		).toBeNull();
+	});
+});
+
+describe("pasted coordinates, with a game area", () => {
+	/** Berlin. */
+	const berlinArea: BBox = [13.09, 52.34, 13.76, 52.68];
+
+	it("reads a lng-first pair the right way round", () => {
+		expect(parsePastedCoordinates("13.405, 52.52", berlinArea)).toEqual({
+			point: [13.405, 52.52],
+			swapped: true,
+		});
+	});
+
+	it("leaves a lat-first pair alone", () => {
+		expect(parsePastedCoordinates("52.52, 13.405", berlinArea)).toEqual({
+			point: [13.405, 52.52],
+			swapped: false,
+		});
+	});
+
+	it("does not touch a pair that is nowhere near the area either way", () => {
+		expect(parsePastedCoordinates("48.8584, 2.2945", berlinArea)).toEqual({
+			point: [2.2945, 48.8584],
+			swapped: false,
+		});
+	});
+
+	it("does not touch a pair that reads as the area both ways round", () => {
+		// Anywhere the two numbers are both plausible locally, the area has
+		// nothing to say and lat-first stands.
+		const square: BBox = [13.0, 13.0, 53.0, 53.0];
+		expect(parsePastedCoordinates("52.52, 13.405", square)).toEqual({
+			point: [13.405, 52.52],
+			swapped: false,
+		});
+	});
+
+	it("settles the order of a pair found in prose", () => {
+		expect(
+			parsePastedCoordinates("Radar (again): 13.44355, 52.53448", berlinArea),
+		).toEqual({ point: [13.44355, 52.53448], swapped: true });
 	});
 });
 

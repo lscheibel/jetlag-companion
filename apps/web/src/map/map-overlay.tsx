@@ -341,9 +341,14 @@ export function PinCard({
 					/>
 				</label>
 				{/* A grid, not a row: eight 40px squares plus their gaps were wider
-				    than the card they sat in, so the last two fell off the edge. */}
+				    than the card they sat in, so the last two fell off the edge.
+				    Each swatch fills its column and only the height is capped, so a
+				    narrow card gives squares and a wide one gives squat rectangles —
+				    never a swatch on end. The width has to be stated for that: left
+				    to stretch, the ratio pulls the width back down to the capped
+				    height and the slack goes to the gaps instead. */}
 				<ColorPicker
-					className="[&_button]:aspect-auto [&_button]:h-10"
+					className="[&_button]:max-h-10 [&_button]:w-full"
 					label="Pin colour"
 					onChange={changeColor}
 					options={COLOR_OPTIONS}

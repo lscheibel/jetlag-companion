@@ -102,11 +102,17 @@ function PinMark({
 	readonly label: string;
 }) {
 	const name = label.trim();
+	/*
+	 * The marker is anchored on its own centre, so the dot — not the dot and its
+	 * label together — has to be what sits in the middle of the box. The label
+	 * hangs out of flow below it; a label in flow pushed the dot up by half its
+	 * height, and the pin drew a few metres north of the place it recorded.
+	 */
 	return (
-		<span className="flex min-h-11 flex-col items-center">
+		<span className="relative grid size-11 place-items-center">
 			<PinDot color={color} />
 			{name ? (
-				<span className="mt-0.5 max-w-28 truncate rounded-md bg-surface/95 px-1.5 py-0.5 font-semibold text-[0.65rem] leading-tight shadow">
+				<span className="absolute top-[calc(50%+0.75rem)] left-1/2 max-w-28 -translate-x-1/2 truncate rounded-md bg-surface/95 px-1.5 py-0.5 font-semibold text-[0.65rem] leading-tight shadow">
 					{name}
 				</span>
 			) : null}
