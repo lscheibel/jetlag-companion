@@ -62,6 +62,16 @@ export type PointerSession = {
 	) => void;
 	onRadiusChange: (draft: RadiusDraft, cause: GestureCause) => void;
 	onRingChange: (draft: RingDraft, cause: GestureCause) => void;
+	/**
+	 * Where a tap that places a vertex actually means. A tool that offers
+	 * snapping moves it onto whatever the map draws there; left off, a tap is
+	 * the raw point under the finger.
+	 */
+	snapTap?: (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	) => LngLat;
 };
 
 type Capture =
@@ -260,6 +270,20 @@ export function bindMapPointers(
 		}
 	};
 
+	/**
+	 * A placing tap gets to snap; `tap` mode is a selection rather than a
+	 * placement, so it keeps the raw point and asks the caller what was hit.
+	 */
+	const placed = (was: {
+		startPoint: LngLat;
+		start: { x: number; y: number };
+	}) =>
+		session.snapTap?.(
+			was.startPoint,
+			(lngLat) => projectLngLat(map, lngLat),
+			was.start,
+		) ?? was.startPoint;
+
 	const finish = (commitTap: boolean) => {
 		if (!capture) return;
 		const was = capture;
@@ -276,7 +300,7 @@ export function bindMapPointers(
 							center: mode.center,
 							radiusMeters: mode.radiusMeters,
 						},
-						{ kind: "tap", point: was.startPoint },
+						{ kind: "tap", point: placed(was) },
 					),
 					"tap",
 				);
@@ -286,7 +310,7 @@ export function bindMapPointers(
 				session.onRingChange(
 					applyRingGesture(
 						{ points: mode.points },
-						{ kind: "tap", point: was.startPoint },
+						{ kind: "tap", point: placed(was) },
 					),
 					"tap",
 				);

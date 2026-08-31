@@ -107,7 +107,9 @@ import {
 	PIN_TAP_PX,
 	type SearchableStop,
 	type SearchResult,
+	type SnapTarget,
 	STOP_TAP_PX,
+	snapToTarget,
 	stopPosition,
 } from "../map/toolkit";
 import { useBlindness } from "../map/use-blindness";
@@ -840,6 +842,47 @@ function MapScreen() {
 		}
 	};
 
+	/**
+	 * What a measure tap can land on rather than beside, built at the moment of
+	 * the tap: only what the map is currently drawing, because a marker you
+	 * cannot see is not one you meant to hit.
+	 */
+	const measureSnapTargets = (): readonly SnapTarget[] => {
+		const targets: SnapTarget[] = [];
+		for (const stop of visibleStops) {
+			targets.push({ point: [stop.lng, stop.lat], maxPx: STOP_TAP_PX });
+		}
+		for (const poi of visiblePois) {
+			targets.push({ point: [poi.lng, poi.lat], maxPx: STOP_TAP_PX });
+		}
+		for (const pin of pins) {
+			targets.push({ point: [pin.lng, pin.lat], maxPx: PIN_TAP_PX });
+		}
+		if (fromYou) targets.push({ point: fromYou, maxPx: STOP_TAP_PX });
+		for (const player of others) {
+			if (!player.fix) continue;
+			targets.push({
+				point: [player.fix.lng, player.fix.lat],
+				maxPx: STOP_TAP_PX,
+			});
+		}
+		return targets;
+	};
+
+	/**
+	 * Measuring to a station is measuring to the station, not to wherever the
+	 * finger covered it. Only the measure tool snaps, and only when placing a
+	 * new vertex — a vertex being dragged stays where it is put.
+	 */
+	const snapMeasureTap = (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	): LngLat => {
+		if (tool.kind !== "measure") return point;
+		return snapToTarget(measureSnapTargets(), screen, project) ?? point;
+	};
+
 	const handleRadiusDraft = (draft: RadiusDraft, cause: GestureCause) => {
 		if (cause === "tap") webPlatform.haptics.vibrate([10]);
 		setTool((current) => {
@@ -1381,6 +1424,7 @@ function MapScreen() {
 						mode={pointerMode(tool)}
 						onRadiusChange={handleRadiusDraft}
 						onRingChange={handleRingDraft}
+						onSnapTap={snapMeasureTap}
 						onTap={handleTap}
 					/>
 					<MapFlyTo target={flyTarget} />

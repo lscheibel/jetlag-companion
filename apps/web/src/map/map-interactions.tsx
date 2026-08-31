@@ -84,6 +84,7 @@ export function MapPointerHandler({
 	onTap,
 	onRadiusChange,
 	onRingChange,
+	onSnapTap,
 }: {
 	readonly mode: PointerMode;
 	readonly onTap?: (
@@ -93,6 +94,12 @@ export function MapPointerHandler({
 	) => void;
 	readonly onRadiusChange?: (draft: RadiusDraft, cause: GestureCause) => void;
 	readonly onRingChange?: (draft: RingDraft, cause: GestureCause) => void;
+	/** Given where a placing tap landed, where the vertex belongs. */
+	readonly onSnapTap?: (
+		point: LngLat,
+		project: (lngLat: LngLat) => { x: number; y: number },
+		screen: { x: number; y: number },
+	) => LngLat;
 }) {
 	const map = useMapInstance();
 	const modeRef = useRef(mode);
@@ -103,6 +110,8 @@ export function MapPointerHandler({
 	radiusRef.current = onRadiusChange;
 	const ringRef = useRef(onRingChange);
 	ringRef.current = onRingChange;
+	const snapRef = useRef(onSnapTap);
+	snapRef.current = onSnapTap;
 
 	useEffect(() => {
 		if (!map) return;
@@ -112,6 +121,8 @@ export function MapPointerHandler({
 				tapRef.current?.(point, project, screen),
 			onRadiusChange: (draft, cause) => radiusRef.current?.(draft, cause),
 			onRingChange: (draft, cause) => ringRef.current?.(draft, cause),
+			snapTap: (point, project, screen) =>
+				snapRef.current?.(point, project, screen) ?? point,
 		});
 	}, [map]);
 	return null;

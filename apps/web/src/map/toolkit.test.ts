@@ -14,7 +14,9 @@ import {
 	parsePastedCoordinates,
 	radiusConstraintReady,
 	type SearchableStop,
+	type SnapTarget,
 	searchStops,
+	snapToTarget,
 } from "./toolkit";
 
 /**
@@ -196,6 +198,31 @@ describe("nearestAtPx", () => {
 		expect(
 			nearestAtPx(pins, screen, (pin) => [pin.lng, pin.lat], project, 24)?.id,
 		).toBe("pin-1");
+	});
+});
+
+describe("snapToTarget", () => {
+	const project = (lngLat: readonly [number, number]) => ({
+		x: lngLat[0],
+		y: lngLat[1],
+	});
+	const targets: SnapTarget[] = [
+		{ point: [10, 0], maxPx: 24 },
+		{ point: [40, 0], maxPx: 44 },
+	];
+
+	it("takes the nearest target the tap is inside", () => {
+		expect(snapToTarget(targets, { x: 12, y: 0 }, project)).toEqual([10, 0]);
+	});
+
+	it("respects each target's own slop", () => {
+		// 30 px out: past the 24 px dot, still inside the 44 px pin.
+		expect(snapToTarget(targets, { x: 70, y: 0 }, project)).toEqual([40, 0]);
+	});
+
+	it("returns null on open map", () => {
+		expect(snapToTarget(targets, { x: 200, y: 0 }, project)).toBeNull();
+		expect(snapToTarget([], { x: 10, y: 0 }, project)).toBeNull();
 	});
 });
 

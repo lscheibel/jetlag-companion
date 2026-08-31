@@ -175,6 +175,54 @@ describe("bindMapPointers", () => {
 		expect(last?.points[0]).not.toEqual([...CENTER]);
 	});
 
+	it("snaps a placing tap onto whatever the map draws there", () => {
+		const map = createFakeMap();
+		const marker = offsetLngLat(CENTER, 60, 0);
+		let mode: PointerMode = { kind: "ring", closed: false, points: [] };
+		const rings: RingDraft[] = [];
+		bindMapPointers(map, {
+			getMode: () => mode,
+			onTap() {},
+			onRadiusChange() {},
+			onRingChange(draft) {
+				rings.push(draft);
+				mode = { kind: "ring", closed: false, points: draft.points };
+			},
+			snapTap: () => marker,
+		});
+
+		map.emit("touchstart", eventAt(CENTER[0], CENTER[1], map));
+		map.emit("touchend", eventAt(CENTER[0], CENTER[1], map));
+
+		expect(rings[0]?.points).toEqual([marker]);
+	});
+
+	it("leaves a dragged vertex where it is dropped", () => {
+		const map = createFakeMap();
+		const marker = offsetLngLat(CENTER, 600, 0);
+		let mode: PointerMode = { kind: "ring", closed: false, points: [CENTER] };
+		const rings: RingDraft[] = [];
+		bindMapPointers(map, {
+			getMode: () => mode,
+			onTap() {},
+			onRadiusChange() {},
+			onRingChange(draft) {
+				rings.push(draft);
+				mode = { kind: "ring", closed: false, points: draft.points };
+			},
+			snapTap: () => marker,
+		});
+
+		const moved = offsetLngLat(CENTER, 200, 0);
+		map.emit("touchstart", eventAt(CENTER[0], CENTER[1], map));
+		map.emit("touchmove", eventAt(moved[0], moved[1], map));
+		map.emit("touchend", eventAt(moved[0], moved[1], map));
+
+		const last = rings[rings.length - 1];
+		expect(last?.points).toHaveLength(1);
+		expect(last?.points[0]).not.toEqual(marker);
+	});
+
 	it("inserts a vertex when a ring edge is tapped", () => {
 		const map = createFakeMap();
 		const start = CENTER;

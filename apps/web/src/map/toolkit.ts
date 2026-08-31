@@ -50,6 +50,38 @@ export function nearestHitPx<T>(
 	return best ? { item: best, dist: bestDist } : null;
 }
 
+/**
+ * Somewhere a tap can land on rather than beside, with the slop its marker
+ * earns — a 4 px station dot and a 44 px pin column are not the same target.
+ */
+export type SnapTarget = {
+	readonly point: LngLat;
+	readonly maxPx: number;
+};
+
+/**
+ * The drawn thing nearest a tap, or null when the tap landed on open map.
+ * Each target carries its own radius, so this is a per-target comparison
+ * rather than `nearestHitPx`'s single cutoff.
+ */
+export function snapToTarget(
+	targets: readonly SnapTarget[],
+	screen: { x: number; y: number },
+	project: (lngLat: LngLat) => { x: number; y: number },
+): LngLat | null {
+	let best: SnapTarget | null = null;
+	let bestDist = Number.POSITIVE_INFINITY;
+	for (const target of targets) {
+		const at = project(target.point);
+		const dist = Math.hypot(at.x - screen.x, at.y - screen.y);
+		if (dist <= target.maxPx && dist < bestDist) {
+			bestDist = dist;
+			best = target;
+		}
+	}
+	return best ? best.point : null;
+}
+
 export function nearestAtPx<T>(
 	items: readonly T[],
 	screen: { x: number; y: number },
