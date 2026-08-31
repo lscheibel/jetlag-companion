@@ -150,8 +150,9 @@ test("a seeker radius can be placed by typing coordinates", async ({
 	const seed = await areaHash(ana);
 	await pickConstraint(ana, "add-radius-constraint");
 	await expect(ana.page.getByTestId("radius-draft")).toBeVisible();
-	await ana.page.getByTestId("radius-center-lat").fill("52.52000");
-	await ana.page.getByTestId("radius-center-lng").fill("13.40500");
+	await ana.page.getByTestId("radius-center-point").click();
+	await ana.page.getByTestId("radius-center-input").fill("52.52000, 13.40500");
+	await ana.page.keyboard.press("Escape");
 	await ana.page.getByTestId("they-are-inside").click();
 	await expect(ana.page.getByTestId("constraint-count")).toHaveText("1", {
 		timeout: 20_000,

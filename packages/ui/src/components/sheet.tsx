@@ -35,6 +35,11 @@ interface SheetProps {
 	eyebrow?: ReactNode;
 	/** Shown at the bottom of the sheet, pinned: the sheet's primary action. */
 	actions?: ReactNode;
+	/**
+	 * Between the title and the body, and outside the body's scroll: a field
+	 * that filters a list has to stay put while the list moves under it.
+	 */
+	pinned?: ReactNode;
 	children: ReactNode;
 	className?: string;
 	/** Test id for the panel itself; the scrim gets `${testId}-scrim`. */
@@ -52,6 +57,7 @@ export function Sheet({
 	title,
 	eyebrow,
 	actions,
+	pinned,
 	children,
 	className,
 	testId = "sheet",
@@ -128,6 +134,7 @@ export function Sheet({
 								)}
 							</div>
 						)}
+						{pinned && <div className="shrink-0">{pinned}</div>}
 						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [&>*]:shrink-0">
 							{children}
 						</div>

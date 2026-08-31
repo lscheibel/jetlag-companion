@@ -15,8 +15,8 @@ import {
 	parseZoneMeters,
 	stepZoneMeters,
 } from "../setup/game-size";
-import { CoordinateFields } from "./coordinate-fields";
 import { poiTypeLabel } from "./poi-type";
+import { PointField } from "./point-field";
 import {
 	type MapTool,
 	type RadiusConstraintTool,
@@ -261,29 +261,22 @@ function ConstraintDraft({
 				)}
 				{split && (
 					<>
-						<p className="text-ink-dim text-xs leading-snug">
-							Tap the map to place the highlighted point.
-						</p>
-						<div className="flex flex-col gap-1">
-							<span className="eyebrow">From</span>
-							<CoordinateFields
-								focused={split.focus === "from"}
-								onFocus={() => onSplitChange({ ...split, focus: "from" })}
-								onPoint={(point) => setSplitPoint("from", point)}
-								point={split.from}
-								testIdPrefix="split-from"
-							/>
-						</div>
-						<div className="flex flex-col gap-1">
-							<span className="eyebrow">To</span>
-							<CoordinateFields
-								focused={split.focus === "to"}
-								onFocus={() => onSplitChange({ ...split, focus: "to" })}
-								onPoint={(point) => setSplitPoint("to", point)}
-								point={split.to}
-								testIdPrefix="split-to"
-							/>
-						</div>
+						<PointField
+							armed={split.focus === "from"}
+							label="From"
+							onArm={() => onSplitChange({ ...split, focus: "from" })}
+							onPoint={(point) => setSplitPoint("from", point)}
+							point={split.from}
+							testIdPrefix="split-from"
+						/>
+						<PointField
+							armed={split.focus === "to"}
+							label="To"
+							onArm={() => onSplitChange({ ...split, focus: "to" })}
+							onPoint={(point) => setSplitPoint("to", point)}
+							point={split.to}
+							testIdPrefix="split-to"
+						/>
 					</>
 				)}
 				{radius && (
@@ -527,10 +520,9 @@ function RadiusPosition({
 	}
 	return (
 		<div className="flex flex-col gap-2">
-			<p className="text-ink-dim text-xs leading-snug">
-				Tap the map to place the centre, or paste coordinates.
-			</p>
-			<CoordinateFields
+			<PointField
+				armed
+				label="Centre"
 				onPoint={onPoint}
 				point={centers[0] ?? null}
 				testIdPrefix="radius-center"

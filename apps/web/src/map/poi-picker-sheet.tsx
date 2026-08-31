@@ -1,15 +1,14 @@
 import { type ModeId, POI_KINDS, type PoiKind } from "@zero-lag/catalog";
 import { Checkbox } from "@zero-lag/ui/components/checkbox";
 import { Sheet } from "@zero-lag/ui/components/sheet";
-import { ModeBadge } from "../setup/mode-badge";
 import {
-	POI_KIND_COLORS,
 	type PoiLayerState,
 	poiModeOn,
 	togglePoiKind,
 	togglePoiMode,
 } from "./poi";
 import { poiTypeLabel } from "./poi-type";
+import { PoiTypeGlyph } from "./poi-type-glyph";
 
 interface PoiPickerSheetProps {
 	readonly open: boolean;
@@ -79,7 +78,7 @@ function ModeRow({
 		<Checkbox
 			checked={checked}
 			label={poiTypeLabel(modeId)}
-			leading={<ModeBadge modeId={modeId} />}
+			leading={<PoiTypeGlyph type={modeId} />}
 			onChange={onToggle}
 			testId={`poi-layer-mode-${modeId}`}
 		/>
@@ -99,19 +98,9 @@ function KindRow({
 		<Checkbox
 			checked={checked}
 			label={poiTypeLabel(kind)}
-			leading={<KindSwatch kind={kind} />}
+			leading={<PoiTypeGlyph type={kind} />}
 			onChange={onToggle}
 			testId={`poi-layer-${kind}`}
-		/>
-	);
-}
-
-function KindSwatch({ kind }: { readonly kind: PoiKind }) {
-	return (
-		<span
-			aria-hidden
-			className="size-3.5 shrink-0 rounded-full"
-			style={{ backgroundColor: POI_KIND_COLORS[kind] }}
 		/>
 	);
 }

@@ -11,9 +11,9 @@ import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { COLOR_OPTIONS } from "../lobby/palette";
-import { CoordinateFields } from "./coordinate-fields";
 import { COMPACT_SECONDARY } from "./map-bar";
 import type { MapPin } from "./pin-layer";
+import { PointField } from "./point-field";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
@@ -240,11 +240,7 @@ function MeasureInsertForm({
 				onInsert(point);
 			}}
 		>
-			<CoordinateFields
-				onPoint={setPoint}
-				point={point}
-				testIdPrefix="measure"
-			/>
+			<PointField onPoint={setPoint} point={point} testIdPrefix="measure" />
 			<ActionButton
 				data-testid="measure-insert"
 				disabled={!point}
@@ -323,7 +319,7 @@ export function PinCard({
 					});
 				}}
 			>
-				<CoordinateFields
+				<PointField
 					onPoint={onDraftPoint}
 					point={draftPoint}
 					testIdPrefix="pin"

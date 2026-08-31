@@ -226,9 +226,6 @@ h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:8
 .act:hover{background:var(--surface-raised);color:var(--ink)}
 .act:active{transform:scale(.9)}
 .act.done{color:var(--live)}
-.fmt{flex:0 0 auto;display:flex;align-items:center;height:26px;padding:0 9px;border-radius:999px;background:var(--surface-raised);
-  font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
-.fmt:hover{color:var(--ink)}
 .hint{display:flex;align-items:center;gap:7px;min-height:15px;padding:0 8px;
   font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
 .hint.live{color:var(--live)}
@@ -316,6 +313,7 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
 .q{background:var(--paper-2);border:1px solid var(--rule);border-left:4px solid var(--red);border-radius:16px;padding:15px 17px;box-shadow:var(--lift)}
 .q h4{font-size:16.5px;margin-bottom:6px}
 .q p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+.q.settled{border-left-color:var(--green)}
 .q .assume{margin-top:8px;font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
 .foot{padding:44px 0 0;color:var(--text-3);font-size:13px;display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 
@@ -323,6 +321,63 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
 }
 </style>
+<style>
+.plates.duo{max-width:1000px;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr))}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+
+/* ── the readout, now the resting state of every point ───────────────── */
+.readout{transition:border-color var(--dur-tap),box-shadow var(--dur-tap),background var(--dur-tap)}
+.readout:hover{border-color:var(--hairline-strong)}
+.readout .lead{flex:0 0 auto;font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.readout.empty .v{color:var(--ink-faint)}
+.readout.armed{border-color:var(--action);border-width:2px;box-shadow:0 0 0 3px var(--surface-raised),0 0 0 6px var(--action)}
+.readout .act{width:34px;height:34px}
+
+/* ── sheet levels ────────────────────────────────────────────────────── */
+.lvl{display:none;flex-direction:column;gap:9px}
+.lvl.on{display:flex}
+.sheet .back{display:grid;place-items:center;width:32px;height:32px;flex:0 0 auto;border-radius:11px;background:var(--surface);color:var(--ink-dim)}
+.sheet .count{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.listscroll{display:flex;flex-direction:column;gap:5px;max-height:188px;overflow:auto;scrollbar-width:thin}
+.dist{margin-left:auto;flex:0 0 auto;font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;font-size:10px;letter-spacing:.06em;color:var(--ink-faint)}
+.srcrow .chev+.dist,.srcrow .dist+.chev{margin-left:8px}
+.pdot{width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px rgb(255 255 255/.22)}
+.searchbox{display:flex;align-items:center;gap:9px;min-height:44px;border-radius:14px;background:var(--surface);
+  border:1.5px solid var(--hairline);padding:0 12px;color:var(--ink-faint)}
+.searchbox input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;font-size:14px;color:var(--ink)}
+.field.display .box.bad{border-color:var(--danger)}
+.hint.bad{color:var(--danger)}
+
+/* the sheet leaves when a choice is made */
+.sheet{transition:transform 400ms var(--ease-travel)}
+.scrim{transition:opacity 300ms var(--ease-travel)}
+.mapstage.closing .sheet{transform:translateY(106%)}
+.mapstage.closing .scrim{opacity:0}
+
+/* ── tap routes ──────────────────────────────────────────────────────── */
+.routes{display:flex;flex-direction:column;gap:10px}
+.route{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px}
+.route .who{flex:0 0 118px;font-weight:600;color:var(--text)}
+.route .step{display:inline-flex;align-items:center;gap:7px;border-radius:11px;background:var(--paper-3);border:1px solid var(--rule);
+  padding:5px 10px;color:var(--text-2)}
+.route .step .i{width:15px;height:15px}
+.route .step.end{background:color-mix(in oklab,var(--yellow) 24%,var(--paper-3));border-color:color-mix(in oklab,var(--yellow) 50%,var(--rule));color:var(--text);font-weight:600}
+.route .sep{color:var(--text-3);font-family:"Azeret Mono",monospace;font-size:11px}
+.route .n{margin-left:auto;font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+@media (max-width:640px){.route .who{flex:1 1 100%}.route .n{margin-left:0}}
+.setaside{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.aside{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:15px 17px;box-shadow:var(--lift);display:flex;flex-direction:column;gap:7px}
+.aside h4{font-size:16.5px}
+.aside p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+.aside .num{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+</style>
+<style>
+/* team identity — Okabe–Ito, mirrored from apps/web/src/lobby/palette.ts */
+:root{--t-vermillion:#D55E00;--t-cobalt:#0072B2;--t-jade:#009E73;--t-orchid:#CC79A7;--t-amber:#E69F00}
+</style>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="ic-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 1.6v3.2M12 19.2v3.2M1.6 12h3.2M19.2 12h3.2"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
@@ -332,7 +387,8 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
     <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M6 21.4V2.8"/><path d="M6 4.2h11.4l-2.6 3.9 2.6 3.9H6z"/></symbol>
     <symbol id="ic-zone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" stroke-dasharray="3.1 3.1"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></symbol>
     <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="8.6" y="8.6" width="12" height="12" rx="3"/><path d="M15.4 5.2H6.4A1.4 1.4 0 0 0 5 6.6v9"/></symbol>
-    <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="3.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="3.4" y="13.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="13.4" width="7.2" height="7.2" rx="2"/></symbol>
+    <symbol id="ic-tram" viewBox="0 0 24 24"><rect x="4.6" y="3.2" width="14.8" height="14" rx="3"/><path d="M4.6 11.2h14.8M12 3.2V1.4M7.6 21.2l2-4M16.4 21.2l-2-4"/></symbol>
+    <symbol id="ic-bus" viewBox="0 0 24 24"><rect x="4" y="3.4" width="16" height="13.6" rx="3.4"/><path d="M4 11h16M7.4 20.6v-3.6M16.6 20.6v-3.6"/><circle cx="8.2" cy="14.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.8" cy="14.2" r="1.1" fill="currentColor" stroke="none"/></symbol>
     <symbol id="ic-pencil" viewBox="0 0 24 24"><path d="M4 20.2h4.2L20.4 8a2.1 2.1 0 0 0 0-3l-1.4-1.4a2.1 2.1 0 0 0-3 0L4 15.8z"/><path d="M14.8 5.6 18.4 9.2"/></symbol>
     <symbol id="ic-caret-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.6 5.5-5.6"/></symbol>
     <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="m9.5 6.5 5.6 5.5-5.6 5.5"/></symbol>
@@ -340,6 +396,8 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
     <symbol id="ic-x" viewBox="0 0 24 24"><path d="M5.6 5.6 18.4 18.4M18.4 5.6 5.6 18.4"/></symbol>
     <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m15.6 15.6 4.2 4.2"/></symbol>
     <symbol id="ic-ruler" viewBox="0 0 24 24"><rect x="1.8" y="8.2" width="20.4" height="7.6" rx="2" transform="rotate(-20 12 12)"/><path d="M7.4 8.6 8.6 11M11 7.2l1.2 2.4M14.6 5.8l1.2 2.4"/></symbol>
+
+    <symbol id="ic-train" viewBox="0 0 24 24"><rect x="5" y="3.2" width="14" height="13.6" rx="4"/><path d="M5.6 11.4h12.8M8.6 20.8l2.2-4M15.4 20.8l-2.2-4"/><circle cx="8.9" cy="14.1" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.1" cy="14.1" r="1.1" fill="currentColor" stroke="none"/></symbol>
 
     <symbol id="faux-map" viewBox="0 0 360 320" preserveAspectRatio="xMidYMid slice">
       <rect width="360" height="320" fill="var(--map-land)"/>
@@ -371,10 +429,10 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
 
 <header class="masthead">
   <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
-    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 08</span><span>·</span><span>Coordinate picker</span><span>·</span><span>30 Aug 2026</span>
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 08</span><span>·</span><span>Coordinate picker</span><span>·</span><span>Revision 3 · 31 Aug 2026</span>
   </div>
-  <h1>Nine ways to say <em>one point</em>.</h1>
-  <p class="deck">The picker sits in a card over the map — four places today, sometimes twice in the same card. It has to take a typed pair, the clipboard, a plus code, your own position, a pin, a place, a hider's zone centre and a tap on the map, and hand the value back out again. Four layouts below. All four are shorter than what ships now; they disagree about where the alternatives live.</p>
+  <h1>A point is a <em>fact</em> until you touch it.</h1>
+  <p class="deck">Settled: layout D, everywhere. In a card a point is a 44&nbsp;px readout — no border to type into, no caret, no keyboard. Tapping it opens one sheet, and the field only exists in there. This revision puts every source in one list, paste included, moves copy onto the field&#39;s trailing edge, and gives places their kind step. Plus codes are out for now.</p>
   <div class="mast-foot">
     <div class="legend">
       <span class="tag ship">Ships today</span>
@@ -393,193 +451,33 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
   </div>
 </header>
 
-<!-- ═══ the brief ═══════════════════════════════════════════════════════ -->
-<section class="band" id="brief">
+<!-- ═══ the readout ═════════════════════════════════════════════════════ -->
+<section class="band" id="rest">
   <div class="band-head">
-    <span class="kicker">The brief</span>
-    <h2>What ships today, and what it now has to do</h2>
-    <p>Two 60&nbsp;px fields side by side and a paste button: 60&nbsp;px of card for two thirds of one requirement. In the cut editor two of them stack under their own labels and eat 170&nbsp;px before the tool's own controls get a turn.</p>
-  </div>
-  <div class="plates">
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><h3>Today</h3><span class="tag ship">apps/web/src/map/coordinate-fields.tsx</span></div>
-        <p>Latitude, longitude, paste. A map tap writes the same point the fields show. Everything else on the list is missing.</p>
-      </div>
-      <div class="mapstage">
-        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-        <span class="stagetag" data-measure></span>
-        <div class="mcard">
-          <div class="head"><svg class="i sm" aria-hidden="true"><use href="#ic-pin"/></svg><h4>New pin</h4><button class="x" type="button" aria-label="Close"><svg class="i sm" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
-          <div class="row pm" style="gap:8px;flex-wrap:nowrap">
-            <div class="field grow"><div class="box" style="flex-direction:column;align-items:flex-start;gap:0;justify-content:center">
-              <span class="eyebrow">Latitude</span><input value="52.52003" readonly></div></div>
-            <div class="field grow"><div class="box" style="flex-direction:column;align-items:flex-start;gap:0;justify-content:center">
-              <span class="eyebrow">Longitude</span><input value="13.40488" readonly></div></div>
-            <button class="btn s-comfortable t-secondary inline" type="button" style="width:56px;padding:0" aria-label="Paste coordinates"><svg class="i sm" aria-hidden="true"><use href="#ic-clipboard"/></svg></button>
-          </div>
-          <div class="field"><div class="box"><input placeholder="What is it" readonly></div></div>
-          <button class="btn s-comfortable t-primary" type="button">Drop pin</button>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Appears in</dt><dd>Pin card · measure insert · cut editor (twice, from and to) · radius centre</dd>
-          <dt>Widest use</dt><dd>The cut editor, where two pickers and a mode pair share a card capped at 45% of the screen</dd>
-        </dl>
-        <p class="cost"><b>The cost of the label.</b> "Latitude" and "Longitude" sit above the numbers in every instance and are never once ambiguous — the value is two decimals separated by a comma, and everyone reading it already knows which is which.</p>
-      </div>
-    </article>
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><h3>The nine</h3><span class="tag new">Requirement</span></div>
-        <p>Six of these are <em style="font-style:normal;font-weight:600">sources</em> — different ways to arrive at the same value. Only two are ways of typing, and one is a way of taking the value back out.</p>
-      </div>
-      <div class="stage">
-        <div class="srclist">
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-pencil"/></svg></span><span><span class="t">Type it</span><span class="s">Field · <code>52.52003, 13.40488</code></span></span></div>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-clipboard"/></svg></span><span><span class="t">Paste</span><span class="s">Field · any of six syntaxes, ships</span></span></div>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-grid"/></svg></span><span><span class="t">Plus code</span><span class="s">Field · <code>9F4MGC9C+9X</code> · new</span></span></div>
-          <hr>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-crosshair"/></svg></span><span><span class="t">Where I am</span><span class="s">Source · one tap</span></span></div>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-map"/></svg></span><span><span class="t">Point on the map</span><span class="s">Source · arms the map, ships</span></span></div>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-pin"/></svg></span><span><span class="t">From a pin</span><span class="s">Source · opens a list</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">From a place</span><span class="s">Source · opens a list</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
-          <div class="srcrow hider"><span class="g"><svg class="i sm"><use href="#ic-zone"/></svg></span><span><span class="t">My zone centre</span><span class="s">Source · hiders only</span></span></div>
-          <hr>
-          <div class="srcrow"><span class="g"><svg class="i sm"><use href="#ic-copy"/></svg></span><span><span class="t">Copy this point</span><span class="s">Out · in whichever format is shown</span></span></div>
-        </div>
-      </div>
-      <div class="notes">
-        <p class="why"><b>Six sources, one field, one way out.</b> That grouping is the whole design: a source writes the field, the field parses whatever it is given, and copy hands back what the field shows. Every layout below is an argument about where the six sources sit.</p>
-      </div>
-    </article>
-
-  </div>
-</section>
-
-<!-- ═══ shared decisions ════════════════════════════════════════════════ -->
-<section class="band" id="shared">
-  <div class="band-head">
-    <span class="kicker">Before the layouts</span>
-    <h2>Two decisions all four share</h2>
-    <p>They are what makes any of the four fit at all. Neither is a layout question, and both collapse three of the nine requirements into one control.</p>
-  </div>
-  <div class="plates">
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">1</span><h3>One field, every syntax</h3><span class="tag new">Parser</span></div>
-        <p>Typing, pasting and plus codes are not three modes — they are one field and one parser. <code>parsePastedCoordinates</code> already reads six syntaxes; it gains plus codes and stops being about the clipboard.</p>
-      </div>
-      <div class="stage" style="gap:12px">
-        <div class="col" style="gap:4px">
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-pencil"/></svg></button>
-            <input class="val" value="52.52003, 13.40488" readonly></div>
-          <div class="hint live"><span class="dot"></span>Typed pair · read as lat, lng</div>
-        </div>
-        <div class="col" style="gap:4px">
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg></button>
-            <input class="val" style="font-size:13px" value="52°31&#39;12.1&quot;N 13°24&#39;17.6&quot;E" readonly></div>
-          <div class="hint live"><span class="dot"></span>Pasted · degrees, minutes, seconds</div>
-        </div>
-        <div class="col" style="gap:4px">
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-grid"/></svg></button>
-            <input class="val" value="9F4MGC9C+9X" readonly></div>
-          <div class="hint live"><span class="dot"></span>Plus code · 3 m square</div>
-        </div>
-        <div class="col" style="gap:4px">
-          <div class="pick bad"><button class="src" type="button"><svg class="i sm"><use href="#ic-pencil"/></svg></button>
-            <input class="val" value="13.40488, 52.52003" readonly></div>
-          <div class="hint warn"><span class="dot"></span>Longitude first — reading it the other way round</div>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Reads</dt><dd>Decimal pairs, DMS, <code>lat=…&amp;lng=…</code>, JSON, <code>LatLng(…)</code>, map-app URLs, plus codes</dd>
-          <dt>New</dt><dd>Plus code decode and encode. Full 11-character codes always; a short code (<code>9C9C+9X</code>) resolves against the map centre</dd>
-          <dt>Offline</dt><dd>An open-location-code decoder is pure arithmetic and ships in the bundle — no lookup, so it survives a dead signal</dd>
-        </dl>
-        <p class="why"><b>The line under the field is the whole feedback loop.</b> It says what the app read, in the app's own words, and it is the only place a swapped pair or a truncated code gets caught before the point lands on the map.</p>
-      </div>
-    </article>
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">2</span><h3>The value is a readout, not two numbers</h3><span class="tag new">Display</span></div>
-        <p>One mono string, tabular figures, in whichever format is showing. Copy hands back exactly what is on screen — so the format switch is also the copy-format switch, and there is nothing else to choose.</p>
-      </div>
-      <div class="stage" style="gap:12px">
-        <div class="col" style="gap:4px">
-          <span class="varlabel">Latitude / longitude · five decimals, about a metre</span>
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
-            <input class="val" value="52.52003, 13.40488" readonly>
-            <button class="fmt" type="button">Lat/Lng</button>
-            <button class="act" type="button" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></button></div>
-        </div>
-        <div class="col" style="gap:4px">
-          <span class="varlabel">Plus code · same point, said out loud over the radio</span>
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
-            <input class="val" value="9F4MGC9C+9X" readonly>
-            <button class="fmt" type="button">Plus</button>
-            <button class="act done" type="button" aria-label="Copied"><svg class="i sm"><use href="#ic-check"/></svg></button></div>
-          <div class="hint live"><span class="dot"></span>Copied</div>
-        </div>
-        <div class="col" style="gap:4px">
-          <span class="varlabel">Armed · the map is waiting for the tap</span>
-          <div class="pick armed"><button class="src set" type="button"><svg class="i sm"><use href="#ic-map"/></svg></button>
-            <input class="val" style="color:var(--ink-faint)" value="Tap the map" readonly>
-            <button class="act" type="button" aria-label="Stop"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Glyph</dt><dd>The leading icon is not decoration: it says where the value came from, and it is the control that changes it</dd>
-          <dt>Armed</dt><dd>Keeps the yellow double ring the cut editor already uses for <code>focused</code>, so two pickers in one card still read unambiguously</dd>
-          <dt>Registry</dt><dd><code>copy</code>, <code>crosshair</code>-as-source and <code>grid</code> are the only new names; the rest are already in <code>icon.tsx</code></dd>
-        </dl>
-        <p class="why"><b>Copy is a state, not a screen.</b> The button becomes a check for a second and the hint line says so. No toast, nothing to dismiss, and it works with one thumb while the other hand holds a phone.</p>
-      </div>
-    </article>
-
-  </div>
-</section>
-<style>
-.plates.duo{max-width:1000px;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr))}
-.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px}
-.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
-.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
-</style>
-
-<!-- ═══ A ═══════════════════════════════════════════════════════════════ -->
-<section class="band" id="a">
-  <div class="band-head">
-    <span class="kicker">Layout A</span>
-    <h2>Value bar — one row, sources behind the glyph</h2>
-    <p>The whole picker is a single 52&nbsp;px row: the source glyph on the left, the value in the middle, one action on the right. Tapping the glyph raises a sheet with the six sources; tapping the value types into it. Nothing else is ever on screen.</p>
+    <span class="kicker">At rest</span>
+    <h2>In the card there is nothing to type into</h2>
+    <p>One line: where the value came from, the value itself, copy, and a chevron that says there is more behind it. It reads like the pin's label and the pin's note — a fact about the thing being made, not a form field competing with them.</p>
   </div>
   <div class="plates duo">
 
     <article class="plate">
       <div class="plate-head">
-        <div class="plate-title"><span class="as">A</span><h3>In the card</h3><span class="tag new">52 + 15 px</span></div>
-        <p>Same pin card as today, with the picker down from 60&nbsp;px plus two labels to one row plus a 15&nbsp;px line that only speaks when it has something to say.</p>
+        <div class="plate-title"><h3>The readout</h3><span class="tag new">44 px</span></div>
+        <p>Three states, and only one of them is unusual. The armed state belongs to the map, not to the sheet — the sheet has already closed by then.</p>
       </div>
       <div class="plate-ctl">
         <span class="lab">State</span>
-        <div class="statebar" data-states="a">
-          <button type="button" data-state="empty" aria-pressed="true">Empty</button>
-          <button type="button" data-state="set" aria-pressed="false">Filled</button>
-          <button type="button" data-state="armed" aria-pressed="false">Armed</button>
+        <div class="statebar" data-states="rest">
+          <button type="button" data-state="set" aria-pressed="true">Filled</button>
+          <button type="button" data-state="empty" aria-pressed="false">Empty</button>
+          <button type="button" data-state="armed" aria-pressed="false">Choosing on the map</button>
         </div>
       </div>
-      <div class="mapstage" data-group="a">
+      <div class="mapstage" data-group="rest">
         <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
         <span class="stagetag" data-measure></span>
         <div class="maprail">
-          <button class="iconbtn" type="button" aria-label="Where I am"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
+          <button class="iconbtn" type="button" aria-label="Current location"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
           <button class="iconbtn" type="button" aria-pressed="true" aria-label="Pins"><svg class="i sm"><use href="#ic-pin"/></svg></button>
           <button class="iconbtn" type="button" aria-label="Measure"><svg class="i sm"><use href="#ic-ruler"/></svg></button>
         </div>
@@ -587,233 +485,65 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
         <div class="mcard">
           <div class="head"><svg class="i sm" aria-hidden="true"><use href="#ic-pin"/></svg><h4>New pin</h4><button class="x" type="button" aria-label="Close"><svg class="i sm" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
 
-          <div class="col st on pm" data-st="empty" style="gap:4px">
-            <div class="pick"><button class="src" type="button" aria-label="Choose a source"><svg class="i sm"><use href="#ic-pencil"/></svg><svg class="i xs"><use href="#ic-caret-down"/></svg></button>
-              <input class="val" placeholder="Type, paste, or pick a source" readonly></div>
-            <div class="hint">No point yet</div>
+          <div class="col st on pm" data-st="set" style="gap:4px">
+            <button class="readout" type="button">
+              <svg class="i sm g"><use href="#ic-crosshair"/></svg>
+              <span class="v">52.52003, 13.40488</span>
+              <span class="act" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></span>
+              <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+            </button>
           </div>
-          <div class="col st pm" data-st="set" style="gap:4px">
-            <div class="pick"><button class="src set" type="button" aria-label="Choose a source"><svg class="i sm"><use href="#ic-crosshair"/></svg><svg class="i xs"><use href="#ic-caret-down"/></svg></button>
-              <input class="val" value="52.52003, 13.40488" readonly>
-              <button class="fmt" type="button">Lat/Lng</button>
-              <button class="act" type="button" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></button></div>
-            <div class="hint live"><span class="dot"></span>Where I am · ±12 m · 3 s ago</div>
+          <div class="col st pm" data-st="empty" style="gap:4px">
+            <button class="readout empty" type="button">
+              <svg class="i sm g"><use href="#ic-pin"/></svg>
+              <span class="v">Choose a point</span>
+              <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+            </button>
           </div>
           <div class="col st pm" data-st="armed" style="gap:4px">
-            <div class="pick armed"><button class="src set" type="button" aria-label="Choose a source"><svg class="i sm"><use href="#ic-map"/></svg><svg class="i xs"><use href="#ic-caret-down"/></svg></button>
-              <input class="val" style="color:var(--ink-faint)" value="52.52003, 13.40488" readonly>
-              <button class="act" type="button" aria-label="Stop choosing"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
-            <div class="hint arm"><span class="dot"></span>Tap the map · drag to fine-tune</div>
+            <div class="readout armed">
+              <svg class="i sm g"><use href="#ic-map"/></svg>
+              <span class="v">52.52003, 13.40488</span>
+              <button class="act" type="button" aria-label="Stop choosing"><svg class="i sm"><use href="#ic-x"/></svg></button>
+            </div>
+            <div class="hint arm"><span class="dot"></span>Tap the map · every tap moves it</div>
           </div>
 
           <div class="field"><div class="box"><input placeholder="What is it" readonly></div></div>
+          <div class="field"><div class="box" style="min-height:66px;align-items:flex-start;padding-top:10px"><input placeholder="Everyone on the team sees this" readonly></div></div>
           <button class="btn s-comfortable t-primary" type="button">Drop pin</button>
         </div>
       </div>
       <div class="notes">
         <dl class="spec">
-          <dt>Row</dt><dd>52 px, the comfortable tap floor — the three controls inside are 42, flexible and 40</dd>
-          <dt>Hint</dt><dd>15 px, present only when there is something to report: freshness, a parse, an armed map</dd>
-          <dt>Two of them</dt><dd>Stack to 142 px in the cut editor, against about 170 px today, with every source included</dd>
+          <dt>Whole line</dt><dd>Opens the sheet. The copy glyph is the one part that does not — it copies and flips to a check</dd>
+          <dt>Glyph</dt><dd>Names the source: your position, the map, a pin, a place, a zone, or a pencil for something typed</dd>
+          <dt>Armed</dt><dd>The only state with a second line. Yellow double ring, an X to stop, and no sheet in the way of the map</dd>
         </dl>
+        <p class="why"><b>Why no field here.</b> The point is usually already right — it arrived from the map, from your own position, from a place you picked. Typing is the exception, and a card that shows a text box advertises the exception as if it were the job. It also keeps the keyboard down, which on a phone is the difference between seeing the map and not.</p>
       </div>
     </article>
 
     <article class="plate">
       <div class="plate-head">
-        <div class="plate-title"><h3>Choosing a source</h3><span class="tag new">Sheet</span></div>
-        <p>One sheet, six rows, ordered by how often a player reaches for them. Two rows are drills into lists that already exist; the zone row appears for hiders and is simply absent for everyone else.</p>
+        <div class="plate-title"><h3>Two points, one card</h3><span class="tag new">94 px</span></div>
+        <p>The cut editor's two ends. Each line carries its own label, and the one you are working on is the one whose sheet is open — there is no focus ring to maintain, because only one sheet exists at a time.</p>
       </div>
-      <div class="mapstage tall">
-        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-        <div class="scrim"></div>
-        <div class="sheet">
-          <span class="grab"></span>
-          <div class="head"><h4>Where from?</h4><button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
-          <div class="srclist">
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-crosshair"/></svg></span><span><span class="t">Where I am</span><span class="s">±12 m · 3 s ago</span></span></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-map"/></svg></span><span><span class="t">Point on the map</span><span class="s">Tap, then drag to adjust</span></span></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-clipboard"/></svg></span><span><span class="t">Paste</span><span class="s">52.5163, 13.3777</span></span></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-pin"/></svg></span><span><span class="t">From a pin</span><span class="s">12 on your team's map</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">From a place</span><span class="s">Stations, parks, museums</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
-            <button class="srcrow hider" type="button"><span class="g"><svg class="i sm"><use href="#ic-zone"/></svg></span><span><span class="t">My zone centre</span><span class="s">Hiders only · Brandenburger Tor</span></span></button>
-          </div>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Order</dt><dd>Where I am, the map, the clipboard, then the two lists. Frequency, not category</dd>
-          <dt>Paste row</dt><dd>Shows what is on the clipboard where the browser allows a silent read; plain "Paste" where it does not</dd>
-          <dt>Absent</dt><dd>A seeker never sees a greyed-out zone row — a control nobody can press is a control nobody should see</dd>
-        </dl>
-        <p class="why"><b>Why A.</b> The card is over a map, and the map is the thing the player is actually reading. One row leaves the most of it visible, and the sheet borrows the screen only for the second it takes to choose.</p>
-        <p class="cost"><b>What it costs.</b> Every source is two taps, and the six are invisible until you open the sheet. A player who does not know "from a pin" exists will not discover it here.</p>
-      </div>
-    </article>
-
-  </div>
-</section>
-
-<!-- ═══ B ═══════════════════════════════════════════════════════════════ -->
-<section class="band" id="b">
-  <div class="band-head">
-    <span class="kicker">Layout B</span>
-    <h2>Value bar and rail — every source on the surface</h2>
-    <p>The same row, with the sources laid out under it as a scrolling strip of 46&nbsp;px tiles. Nothing is behind a menu, every source is one tap, and the picker costs a second row.</p>
-  </div>
-  <div class="plates duo">
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">B</span><h3>In the card</h3><span class="tag new">52 + 49 px</span></div>
-        <p>The rail scrolls horizontally and is masked at the right edge, so the sixth tile is always half-visible — the strip says it continues without a chevron saying so.</p>
-      </div>
-      <div class="plate-ctl">
-        <span class="lab">Player</span>
-        <div class="statebar" data-states="b">
-          <button type="button" data-state="seeker" aria-pressed="true">Seeker</button>
-          <button type="button" data-state="hider" aria-pressed="false">Hider</button>
-        </div>
-      </div>
-      <div class="mapstage" data-group="b">
-        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-        <span class="stagetag" data-measure></span>
-        <div class="maprail">
-          <button class="iconbtn" type="button" aria-label="Where I am"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
-          <button class="iconbtn" type="button" aria-pressed="true" aria-label="Pins"><svg class="i sm"><use href="#ic-pin"/></svg></button>
-          <button class="iconbtn" type="button" aria-label="Measure"><svg class="i sm"><use href="#ic-ruler"/></svg></button>
-        </div>
-        <div class="mcard">
-          <div class="head"><svg class="i sm" aria-hidden="true"><use href="#ic-pin"/></svg><h4>New pin</h4><button class="x" type="button" aria-label="Close"><svg class="i sm" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
-          <div class="col pm" style="gap:6px">
-            <div class="pick"><button class="src set" type="button" aria-label="Source"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
-              <input class="val" value="52.52003, 13.40488" readonly>
-              <button class="fmt" type="button">Lat/Lng</button></div>
-            <div class="hint live"><span class="dot"></span>Where I am · ±12 m · 3 s ago</div>
-            <div class="srcrail st on" data-st="seeker">
-              <button class="toolbtn" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-copy"/></svg>Copy</button>
-            </div>
-            <div class="srcrail st" data-st="hider">
-              <button class="toolbtn" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-              <button class="toolbtn hider" type="button"><svg class="i sm"><use href="#ic-zone"/></svg>Zone</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-              <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-            </div>
-          </div>
-          <div class="field"><div class="box"><input placeholder="What is it" readonly></div></div>
-          <button class="btn s-comfortable t-primary" type="button">Drop pin</button>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Tile</dt><dd>60 × 46 px, glyph over a mono label — the <code>ToolButton</code> the map rail already uses, one size down</dd>
-          <dt>Hider</dt><dd>Zone slots in second, not last: for a hider answering a radius question it is the most likely source on the strip</dd>
-          <dt>Selected</dt><dd>The active source stays lit in the rail, so the row's glyph and the rail agree without repeating a label</dd>
-        </dl>
-      </div>
-    </article>
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><h3>The whole strip</h3><span class="tag new">Rail</span></div>
-        <p>Six tiles for a seeker, seven for a hider, and about four and a half fit on a 390&nbsp;px phone. Order is fixed, so muscle memory survives the scroll.</p>
-      </div>
-      <div class="stage" style="justify-content:center;gap:16px">
-        <span class="varlabel">Seeker · six</span>
-        <div class="srcgrid" style="grid-template-columns:repeat(3,minmax(0,1fr));-webkit-mask-image:none">
-          <button class="toolbtn" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-copy"/></svg>Copy</button>
-        </div>
-        <span class="varlabel">Hider · the same six with one more, second in line</span>
-        <div class="srcgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));-webkit-mask-image:none">
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-          <button class="toolbtn hider" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-zone"/></svg>Zone</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-          <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-copy"/></svg>Copy</button>
-        </div>
-        <div class="hint" style="justify-content:center">Plus code is not a tile — it is what the field accepts and what the format switch shows</div>
-      </div>
-      <div class="notes">
-        <p class="why"><b>Why B.</b> Nothing is hidden. A player who has never opened this picker can see, without pressing anything, that their own position and their team's pins are available — and reach either in one tap while walking.</p>
-        <p class="cost"><b>What it costs.</b> 128 px where A spends 71, which the cut editor cannot pay twice: two of these is 256 px of a card capped at 45% of the screen, before the add/cut pair and the save button.</p>
-      </div>
-    </article>
-
-  </div>
-</section>
-
-<!-- ═══ C ═══════════════════════════════════════════════════════════════ -->
-<section class="band" id="c">
-  <div class="band-head">
-    <span class="kicker">Layout C</span>
-    <h2>Collapsed line — the one you are editing is the one that opens</h2>
-    <p>At rest a point is a 44&nbsp;px line: its name, its value, a chevron. Tapping opens it in place and closes the other, which is exactly the focus the cut editor already tracks. Two points cost 94&nbsp;px until one of them is being worked on.</p>
-  </div>
-  <div class="plates duo">
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">C</span><h3>In the cut editor</h3><span class="tag new">44 px each</span></div>
-        <p>The hardest card in the app: two points, a mode pair, and a save button. Try both lines — only one can be open, and the open one is the point the map tap will write.</p>
-      </div>
-      <div class="plate-ctl">
-        <span class="lab">Open</span>
-        <div class="statebar" data-states="c">
-          <button type="button" data-state="none" aria-pressed="true">Neither</button>
-          <button type="button" data-state="from" aria-pressed="false">From</button>
-          <button type="button" data-state="to" aria-pressed="false">To</button>
-        </div>
-      </div>
-      <div class="mapstage tall" data-group="c">
+      <div class="mapstage" data-group="two">
         <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
         <span class="stagetag" data-measure></span>
         <div class="mcard">
           <div class="head"><svg class="i sm" aria-hidden="true"><use href="#ic-ruler"/></svg><h4>Cut the area</h4><button class="x" type="button" aria-label="Close"><svg class="i sm" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
-
           <div class="col pm" style="gap:6px">
-            <button class="crow" type="button" aria-expanded="false" data-crow="from"><span class="lead">From</span><span class="v">52.52003, 13.40488</span><svg class="i sm chev"><use href="#ic-caret-down"/></svg></button>
-            <div class="cbody st" data-st="from">
-              <div class="pick armed"><button class="src set" type="button"><svg class="i sm"><use href="#ic-map"/></svg></button>
-                <input class="val" value="52.52003, 13.40488" readonly>
-                <button class="fmt" type="button">Lat/Lng</button>
-                <button class="act" type="button" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></button></div>
-              <div class="hint arm"><span class="dot"></span>Tap the map to move this end</div>
-              <div class="srcgrid">
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-                <button class="toolbtn" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-              </div>
-            </div>
-
-            <button class="crow" type="button" aria-expanded="false" data-crow="to"><span class="lead">To</span><span class="v empty">Not set</span><svg class="i sm chev"><use href="#ic-caret-down"/></svg></button>
-            <div class="cbody st" data-st="to">
-              <div class="pick"><button class="src" type="button"><svg class="i sm"><use href="#ic-pencil"/></svg></button>
-                <input class="val" placeholder="Type, paste, or pick below" readonly></div>
-              <div class="hint">No point yet</div>
-              <div class="srcgrid">
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-                <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-              </div>
-            </div>
+            <button class="readout" type="button"><span class="lead">From</span>
+              <svg class="i sm g"><use href="#ic-flag"/></svg>
+              <span class="v">52.52003, 13.40488</span>
+              <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg></button>
+            <button class="readout empty" type="button"><span class="lead">To</span>
+              <svg class="i sm g"><use href="#ic-pin"/></svg>
+              <span class="v">Choose a point</span>
+              <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg></button>
           </div>
-
           <div class="row" style="gap:6px;flex-wrap:nowrap">
             <button class="btn s-compact t-secondary" type="button">Keep this side</button>
             <button class="btn s-compact t-primary" type="button">Cut it away</button>
@@ -822,215 +552,282 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
       </div>
       <div class="notes">
         <dl class="spec">
-          <dt>Closed</dt><dd>44 px, the tap floor, value right-aligned so two lines read as a column of numbers</dd>
-          <dt>Open</dt><dd>Row, hint and a four-tile grid — the same tiles as B, wrapped instead of scrolled</dd>
-          <dt>Focus</dt><dd>Open <em>is</em> focused. The <code>focus: "from" | "to"</code> the cut editor already holds becomes the accordion's state, and the double ring can go</dd>
+          <dt>Label</dt><dd>Inside the line, mono, on the leading edge — the two read as a column of numbers with names, not as two forms</dd>
+          <dt>Cost</dt><dd>94 px for both, against about 170 px today. The measure tool's growing list of points gets the same treatment</dd>
+          <dt>Gone</dt><dd><code>focused</code> and <code>onFocus</code> on the picker. Whichever sheet is open is the point being written</dd>
         </dl>
-      </div>
-    </article>
-
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><h3>Alone in a card</h3><span class="tag new">Single</span></div>
-        <p>Where there is only one point, the line starts open and there is nothing to collapse — the layout degrades to A with the sources spelled out instead of hidden.</p>
-      </div>
-      <div class="stage" style="gap:14px">
-        <span class="varlabel">Radius centre · one point, opened</span>
-        <div class="cbody" style="padding:0;gap:7px">
-          <div class="pick"><button class="src set" type="button"><svg class="i sm"><use href="#ic-flag"/></svg></button>
-            <input class="val" value="52.51628, 13.37770" readonly>
-            <button class="fmt" type="button">Lat/Lng</button>
-            <button class="act" type="button" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></button></div>
-          <div class="hint live"><span class="dot"></span>Brandenburger Tor · a place on the map</div>
-          <div class="srcgrid">
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-crosshair"/></svg>Me</button>
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-map"/></svg>Map</button>
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-clipboard"/></svg>Paste</button>
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-pin"/></svg>Pin</button>
-            <button class="toolbtn" type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-flag"/></svg>Place</button>
-            <button class="toolbtn hider" type="button"><svg class="i sm"><use href="#ic-zone"/></svg>Zone</button>
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-grid"/></svg>Plus</button>
-            <button class="toolbtn" type="button"><svg class="i sm"><use href="#ic-copy"/></svg>Copy</button>
-          </div>
-        </div>
-        <span class="varlabel">Closed, for comparison — 44 px</span>
-        <button class="crow" type="button" aria-expanded="false"><span class="lead">Centre</span><span class="v">52.51628, 13.37770</span><svg class="i sm chev"><use href="#ic-caret-down"/></svg></button>
-      </div>
-      <div class="notes">
-        <p class="why"><b>Why C.</b> It is the only layout that gets smaller as the card gets busier. Two points closed cost 94 px; the same two in A cost 142 and in B 256. And it deletes a concept: focus stops being a ring you have to notice.</p>
-        <p class="cost"><b>What it costs.</b> The card resizes under your thumb every time a line opens, which is the one motion a card floating over a map cannot make quietly. Reading a value you are not editing also costs a tap.</p>
+        <p class="cost"><b>The one thing this loses.</b> You cannot compare the two values while editing either of them, because the sheet covers the card. If that bites, the sheet grows a second line naming the other end — not a second field.</p>
       </div>
     </article>
 
   </div>
 </section>
 
-<!-- ═══ D ═══════════════════════════════════════════════════════════════ -->
-<section class="band" id="d">
+<!-- ═══ the sheet ═══════════════════════════════════════════════════════ -->
+<section class="band" id="sheet">
   <div class="band-head">
-    <span class="kicker">Layout D</span>
-    <h2>Readout and picker sheet — the card keeps one line</h2>
-    <p>In the card the point is a 44&nbsp;px readout with a copy glyph: it states the value and gets out of the way. Tapping it opens the picker as a sheet of its own, where the field is display-sized, the sources are full rows and a strip of map shows what has been chosen.</p>
+    <span class="kicker">On tap</span>
+    <h2>One sheet, three levels deep at most</h2>
+    <p>The field lives here, at a size worth typing into, with copy on its trailing edge. Under it, the sources — every one of them a row, paste included. Two rows lead somewhere: pins are one list, and places are a kind first and then a place, the same two steps the radius tool already asks for. Switch levels below.</p>
   </div>
   <div class="plates duo">
 
     <article class="plate">
       <div class="plate-head">
-        <div class="plate-title"><span class="as">D</span><h3>In the card</h3><span class="tag new">44 px</span></div>
-        <p>The pin card is the busiest one that carries a point — label, note, eight colours and a button. Here the coordinate takes a single line of it.</p>
+        <div class="plate-title"><h3>The point sheet</h3><span class="tag new">Live, no save</span></div>
+        <p>Nothing in here is staged. Every source writes the point and dismisses the sheet, so closing is something that happens to you rather than something you do — and there is no button that means "yes, really".</p>
       </div>
-      <div class="mapstage" data-group="d">
-        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-        <span class="stagetag" data-measure></span>
-        <div class="maprail">
-          <button class="iconbtn" type="button" aria-label="Where I am"><svg class="i sm"><use href="#ic-crosshair"/></svg></button>
-          <button class="iconbtn" type="button" aria-pressed="true" aria-label="Pins"><svg class="i sm"><use href="#ic-pin"/></svg></button>
-          <button class="iconbtn" type="button" aria-label="Measure"><svg class="i sm"><use href="#ic-ruler"/></svg></button>
+      <div class="plate-ctl">
+        <span class="lab">Level</span>
+        <div class="statebar" data-states="sheet">
+          <button type="button" data-state="point" aria-pressed="true">The point</button>
+          <button type="button" data-state="pins" aria-pressed="false">Pins</button>
+          <button type="button" data-state="kinds" aria-pressed="false">Kinds of place</button>
+          <button type="button" data-state="places" aria-pressed="false">Places</button>
         </div>
-        <div class="mcard">
-          <div class="head"><svg class="i sm" aria-hidden="true"><use href="#ic-pin"/></svg><h4>New pin</h4><button class="x" type="button" aria-label="Close"><svg class="i sm" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
-          <div class="readout pm">
-            <svg class="i sm g"><use href="#ic-crosshair"/></svg>
-            <span class="v">52.52003, 13.40488</span>
-            <button class="act" type="button" aria-label="Copy" style="width:32px;height:32px"><svg class="i sm"><use href="#ic-copy"/></svg></button>
-            <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+      </div>
+      <div class="mapstage tall" data-group="sheet" style="min-height:520px">
+        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <span class="grab"></span>
+
+          <div class="lvl on" data-lvl="point">
+            <div class="head"><h4>The point</h4><button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+            <div class="field display"><div class="box">
+              <input value="52.52003, 13.40488" readonly>
+              <button class="act" type="button" aria-label="Copy"><svg class="i"><use href="#ic-copy"/></svg></button>
+            </div></div>
+            <span class="eyebrow" style="padding:0 4px">Choose position</span>
+            <div class="srclist">
+              <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-crosshair"/></svg></span><span><span class="t">Current location</span><span class="s">±12 m · 3 s ago</span></span></button>
+              <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-map"/></svg></span><span><span class="t">Choose on map</span><span class="s">Closes this · tap to place</span></span></button>
+              <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-clipboard"/></svg></span><span><span class="t">Paste from clipboard</span><span class="s">Reads a pair, a link, or degrees</span></span></button>
+              <button class="srcrow" type="button" data-go="pins"><span class="g"><svg class="i sm"><use href="#ic-pin"/></svg></span><span><span class="t">From a pin</span><span class="s">Your team&#39;s map</span></span><span class="dist">12</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="kinds"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">From a place</span><span class="s">Stations, parks, museums</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow hider" type="button"><span class="g"><svg class="i sm"><use href="#ic-zone"/></svg></span><span><span class="t">Hiding zone stop</span><span class="s">Brandenburger Tor · your committed zone</span></span></button>
+            </div>
           </div>
-          <div class="field"><div class="box"><input placeholder="What is it" readonly></div></div>
-          <div class="field"><div class="box" style="min-height:66px;align-items:flex-start;padding-top:10px"><input placeholder="Everyone on the team sees this" readonly></div></div>
-          <button class="btn s-comfortable t-primary" type="button">Drop pin</button>
+
+          <div class="lvl" data-lvl="pins">
+            <div class="head"><button class="back" type="button" data-go="point" aria-label="Back"><svg class="i sm" style="transform:rotate(180deg)"><use href="#ic-caret-right"/></svg></button><h4>From a pin</h4><span class="count">12</span><button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+            <div class="searchbox"><svg class="i sm"><use href="#ic-search"/></svg><input placeholder="Find a pin" readonly></div>
+            <div class="listscroll">
+              <button class="srcrow" type="button"><span class="g"><span class="pdot" style="background:var(--t-cobalt)"></span></span><span><span class="t">Bus depot gate</span><span class="s">Ana · 12 min ago</span></span><span class="dist">240 m</span></button>
+              <button class="srcrow" type="button"><span class="g"><span class="pdot" style="background:var(--t-amber)"></span></span><span><span class="t">Where we split up</span><span class="s">You · 1 h ago</span></span><span class="dist">1.2 km</span></button>
+              <button class="srcrow" type="button"><span class="g"><span class="pdot" style="background:var(--t-jade)"></span></span><span><span class="t">Seen at 14:02</span><span class="s">Ben · 26 min ago</span></span><span class="dist">2.4 km</span></button>
+              <button class="srcrow" type="button"><span class="g"><span class="pdot" style="background:var(--t-orchid)"></span></span><span><span class="t">Camera on the bridge</span><span class="s">Ana · 2 h ago</span></span><span class="dist">3.1 km</span></button>
+              <button class="srcrow" type="button"><span class="g"><span class="pdot" style="background:var(--t-vermillion)"></span></span><span><span class="t">Ruled out this block</span><span class="s">You · 3 h ago</span></span><span class="dist">4.0 km</span></button>
+            </div>
+          </div>
+
+          <div class="lvl" data-lvl="kinds">
+            <div class="head"><button class="back" type="button" data-go="point" aria-label="Back"><svg class="i sm" style="transform:rotate(180deg)"><use href="#ic-caret-right"/></svg></button><h4>What kind of place</h4><button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+            <div class="listscroll">
+              <button class="srcrow" type="button" data-go="places"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">U-Bahn stations</span></span><span class="dist">173</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g" style="color:var(--transit-s)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">S-Bahn stations</span></span><span class="dist">166</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g" style="color:var(--transit-tram)"><svg class="i sm"><use href="#ic-tram"/></svg></span><span><span class="t">Tram stops</span></span><span class="dist">803</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g"><svg class="i sm"><use href="#ic-bus"/></svg></span><span><span class="t">Bus stops</span></span><span class="dist">2612</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g" style="color:var(--live)"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">Parks</span></span><span class="dist">46</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">Museums</span></span><span class="dist">71</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">Theatres</span></span><span class="dist">38</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+              <button class="srcrow" type="button" data-go="places"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">Stadiums</span></span><span class="dist">12</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+            </div>
+          </div>
+
+          <div class="lvl" data-lvl="places">
+            <div class="head"><button class="back" type="button" data-go="kinds" aria-label="Back"><svg class="i sm" style="transform:rotate(180deg)"><use href="#ic-caret-right"/></svg></button><h4>U-Bahn stations</h4><span class="count">Nearest first</span><button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+            <div class="searchbox"><svg class="i sm"><use href="#ic-search"/></svg><input placeholder="Find a U-Bahn station" readonly></div>
+            <div class="listscroll">
+              <button class="srcrow" type="button"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">Brandenburger Tor</span><span class="s">U5</span></span><span class="dist">320 m</span></button>
+              <button class="srcrow" type="button"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">Mohrenstra&szlig;e</span><span class="s">U2</span></span><span class="dist">540 m</span></button>
+              <button class="srcrow" type="button"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">Stadtmitte</span><span class="s">U2 · U6</span></span><span class="dist">720 m</span></button>
+              <button class="srcrow" type="button"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">Franz&ouml;sische Stra&szlig;e</span><span class="s">U6</span></span><span class="dist">810 m</span></button>
+              <button class="srcrow" type="button"><span class="g" style="color:var(--transit-u)"><svg class="i sm"><use href="#ic-train"/></svg></span><span><span class="t">Hausvogteiplatz</span><span class="s">U2</span></span><span class="dist">1.0 km</span></button>
+            </div>
+          </div>
+
         </div>
       </div>
       <div class="notes">
         <dl class="spec">
-          <dt>Line</dt><dd>44 px: glyph, value, copy, chevron. The whole line opens the sheet; only the copy glyph does not</dd>
-          <dt>Reads as</dt><dd>A fact about the pin, in the same register as its label and its note — not a form field competing with them</dd>
+          <dt>A source</dt><dd>Applies the point and closes the whole sheet — current location, paste, a pin, a place, the zone stop. One tap, one result, map back in view</dd>
+          <dt>Kinds first</dt><dd>Places are a type and then a place, mirroring <code>PoiPickerSheet</code>: station types in signage order, then the amenity kinds, and only the types this board actually carries</dd>
+          <dt>Back</dt><dd>Steps up one level and changes nothing. Three levels at most, one on screen at a time</dd>
+          <dt>Search</dt><dd>On the lists of things, not on the list of kinds. Pins and places both sort by distance</dd>
+          <dt>Absent</dt><dd>No pins means no "From a pin" row. No fix yet means no "Current location". No committed zone means no "Hiding zone stop", and seekers never see that one at all</dd>
+          <dt>Keyboard</dt><dd>The sheet opens with it down. The field is focused only when tapped, so the sources are reachable first</dd>
         </dl>
+        <p class="why"><b>Why the lists live in this sheet.</b> Picking a pin is picking a coordinate — the same errand as typing one — and sending it to a sheet of its own would make the back gesture mean two different things. One sheet opens, and it always closes back to the map.</p>
+        <p class="cost"><b>Hiding zone stop</b> is the hider's committed stop, not a zone drawn on the map and not a stop they are still considering. Before they commit there is nothing to offer, so the row is not there.</p>
       </div>
     </article>
 
     <article class="plate">
       <div class="plate-head">
-        <div class="plate-title"><h3>The picker sheet</h3><span class="tag new">Sheet</span></div>
-        <p>Everything at once, at a size the thumb likes: a display-sized field, the parse underneath, a strip of map for confirmation, and the six sources as full rows.</p>
+        <div class="plate-title"><h3>Paste is a row</h3><span class="tag new">Moved</span></div>
+        <p>It belongs with the sources, not beside the field: like the current location, it produces a point outright and the sheet leaves. The browser will not hand over the clipboard without a gesture, and a row is a gesture.</p>
       </div>
-      <div class="mapstage tall">
-        <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-        <div class="scrim"></div>
-        <div class="sheet">
-          <span class="grab"></span>
-          <div class="head"><h4>The point</h4>
-            <button class="fmt" type="button" style="margin-left:auto">Lat/Lng</button>
-            <button class="x" type="button" aria-label="Close"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
-          <div class="field display"><div class="box"><input value="52.52003, 13.40488" readonly>
-            <button class="act" type="button" aria-label="Copy"><svg class="i"><use href="#ic-copy"/></svg></button></div></div>
-          <div class="hint live"><span class="dot"></span>Where I am · ±12 m · 3 s ago</div>
-          <div class="mapstrip">
-            <svg class="fauxmap" aria-hidden="true"><use href="#faux-map"/></svg>
-            <svg class="i lg pindot" aria-hidden="true"><use href="#ic-pin"/></svg>
+      <div class="plate-ctl">
+        <span class="lab">Outcome</span>
+        <div class="statebar" data-states="paste">
+          <button type="button" data-state="good" aria-pressed="true">Read it</button>
+          <button type="button" data-state="junk" aria-pressed="false">Unreadable</button>
+          <button type="button" data-state="none" aria-pressed="false">Nothing there</button>
+        </div>
+      </div>
+      <div class="stage" data-group="paste" style="gap:14px;justify-content:center;min-height:300px">
+        <div class="col st on" data-st="good" style="gap:9px">
+          <span class="varlabel">The sheet has gone · the clipboard held degrees, minutes, seconds</span>
+          <div class="readout">
+            <svg class="i sm g"><use href="#ic-clipboard"/></svg>
+            <span class="v">52.51628, 13.37770</span>
+            <button class="act" type="button" aria-label="Copy"><svg class="i sm"><use href="#ic-copy"/></svg></button>
+            <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
           </div>
-          <div class="srclist">
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-map"/></svg></span><span><span class="t">Point on the map</span><span class="s">Closes this and waits for a tap</span></span></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-pin"/></svg></span><span><span class="t">From a pin</span><span class="s">12 on your team's map</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
-            <button class="srcrow" type="button"><span class="g"><svg class="i sm"><use href="#ic-flag"/></svg></span><span><span class="t">From a place</span><span class="s">Stations, parks, museums</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
-          </div>
+        </div>
+        <div class="col st" data-st="junk" style="gap:9px">
+          <span class="varlabel">Still in the sheet · the paste is kept, not thrown away</span>
+          <div class="field display"><div class="box bad"><input value="Meet at the north gate" readonly><button class="act" type="button" aria-label="Copy"><svg class="i"><use href="#ic-copy"/></svg></button></div></div>
+          <div class="hint bad"><span class="dot"></span>Nothing in that looks like a point — edit it or paste again</div>
+        </div>
+        <div class="col st" data-st="none" style="gap:9px">
+          <span class="varlabel">Still in the sheet · the point is untouched</span>
+          <div class="field display"><div class="box"><input value="52.52003, 13.40488" readonly><button class="act" type="button" aria-label="Copy"><svg class="i"><use href="#ic-copy"/></svg></button></div></div>
+          <div class="hint warn"><span class="dot"></span>Clipboard is empty · nothing changed</div>
         </div>
       </div>
       <div class="notes">
         <dl class="spec">
-          <dt>Field</dt><dd>76 px, mono at 21 px — a coordinate typed on a moving train, at the size the join-code screen already uses for something worth getting right</dd>
-          <dt>Map strip</dt><dd>74 px of the same basemap, centred on the value. The only place in the four where you can check a pasted point without dismissing anything</dd>
-          <dt>Map source</dt><dd>Dismisses the sheet and arms the map — the one source that cannot be served inside a sheet that covers the map</dd>
+          <dt>Read it</dt><dd>The point lands and the sheet dismisses, exactly like choosing a pin. The confirmation is the value itself, back on the card, with the clipboard as its glyph</dd>
+          <dt>Kept text</dt><dd>An unreadable paste stays in the field and the sheet stays open. It is usually one character from working, and dismissing would cost the player the paste</dd>
+          <dt>Unchanged</dt><dd>An empty or refused clipboard never clears a good point — the line says so and the value stands</dd>
+          <dt>Copy</dt><dd>Its opposite number now sits inside the field, on the trailing edge, and flips to a check for a second. On the card it is on the readout, where it costs no sheet at all</dd>
         </dl>
-        <p class="why"><b>Why D.</b> The card stays a card. Where a point is one fact among five — a pin's label, note and colour — this is the only layout that treats it that way, and the sheet has room to be generous about the two things that are actually fiddly: typing and confirming.</p>
-        <p class="cost"><b>What it costs.</b> Every change is a round trip, the map disappears behind a scrim while you make it, and "point on the map" has to close the thing you just opened. Two points in one card means two sheets.</p>
+        <p class="why"><b>The rule that falls out of this.</b> The sheet closes when a source succeeds. A source that fails has something to say, so it stays and says it.</p>
       </div>
     </article>
 
   </div>
 </section>
 
-<!-- ═══ compare ═════════════════════════════════════════════════════════ -->
-<section class="band" id="compare">
+<!-- ═══ routes ══════════════════════════════════════════════════════════ -->
+<section class="band" id="routes">
   <div class="band-head">
-    <span class="kicker">Side by side</span>
-    <h2>Taps from a resting card, and what the card pays</h2>
-    <p>Counted from a card sitting open with a value already in it — the state a player is actually in when they decide to change the point. Yellow marks the cheapest column in each row.</p>
+    <span class="kicker">End to end</span>
+    <h2>Every source, counted from a card at rest</h2>
+    <p>Most sources are two taps. The ones that cost more are the ones that are a choice from a list, and the deepest — a place — is a kind and then a place, which is the price of not scrolling 2,600 bus stops. The thing you do most often to a point you did not set, copying it, never opens anything.</p>
   </div>
-  <div class="tablewrap">
-    <table>
-      <thead>
-        <tr><th scope="col">Requirement</th><th scope="col">A · Value bar</th><th scope="col">B · Rail</th><th scope="col">C · Collapsed</th><th scope="col">D · Sheet</th></tr>
-      </thead>
-      <tbody>
-        <tr><th scope="row">Type it</th><td class="n best">1</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">Paste</th><td class="n">2</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">Plus code</th><td class="n best">1</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">Where I am</th><td class="n">2</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">Point on the map</th><td class="n">2</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">From a pin</th><td class="n">3</td><td class="n best">2</td><td class="n">3</td><td class="n">3</td></tr>
-        <tr><th scope="row">From a place</th><td class="n">3</td><td class="n best">2</td><td class="n">3</td><td class="n">3</td></tr>
-        <tr><th scope="row">Zone centre · hiders</th><td class="n">2</td><td class="n best">1</td><td class="n">2</td><td class="n">2</td></tr>
-        <tr><th scope="row">Copy the value</th><td class="n best">1</td><td class="n best">1</td><td class="n">2</td><td class="n best">1</td></tr>
-        <tr><th scope="row">Card cost · one point</th><td class="n"><b>71</b> px</td><td class="n"><b>128</b> px</td><td class="n best"><b>44</b> px</td><td class="n best"><b>44</b> px</td></tr>
-        <tr><th scope="row">Card cost · two points</th><td class="n"><b>142</b> px</td><td class="n"><b>256</b> px</td><td class="n best"><b>94</b> px</td><td class="n">88 px + two sheets</td></tr>
-        <tr><th scope="row">Sources visible at rest</th><td class="n">0</td><td class="n best">6–7</td><td class="n">0</td><td class="n">0</td></tr>
-        <tr><th scope="row">Map stays visible</th><td class="n">Mostly</td><td class="n">Least</td><td class="n best">Yes</td><td class="n">No</td></tr>
-        <tr><th scope="row">Best where</th><td class="n">Anywhere</td><td class="n">One point, room to spare</td><td class="n">Two points, one card</td><td class="n">Card already full</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="plates duo" style="margin-top:26px;max-width:none">
+  <div class="plates" style="grid-template-columns:minmax(0,1fr)">
     <article class="plate">
-      <div class="plate-head"><div class="plate-title"><h3>What I would build</h3><span class="tag new">Recommendation</span></div></div>
-      <div class="notes" style="border-top:0">
-        <p class="why" style="margin-top:0"><b>A everywhere, with C's collapse in the cut editor.</b> They are not two designs. C's open body is A's row with the sources drawn out flat instead of raised in a sheet, so one component ships with two framings: <code>&lt;PointField&gt;</code> for a card with room, <code>&lt;PointField collapsible&gt;</code> where two of them share a card. B's rail is that same source list rendered inline, kept for the one screen with the space — and it is the right first-run behaviour if a player has never opened the sheet.</p>
-        <p class="cost"><b>D is the one to reject,</b> unless you want the pin card to grow. It reads beautifully in isolation and hides the map at the exact moment a player is deciding where a point goes.</p>
+      <div class="stage" style="padding:22px 20px">
+        <div class="routes">
+          <div class="route"><span class="who">Copy it</span>
+            <span class="step end"><svg class="i"><use href="#ic-copy"/></svg>Copy on the readout</span>
+            <span class="n">1 tap · no sheet</span></div>
+          <div class="route"><span class="who">Type it</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-pencil"/></svg>The field</span>
+            <span class="n">2 taps · then the keyboard</span></div>
+          <div class="route"><span class="who">Paste</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-clipboard"/></svg>Paste from clipboard</span>
+            <span class="n">2 taps · sheet closes</span></div>
+          <div class="route"><span class="who">Current location</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-crosshair"/></svg>Current location</span>
+            <span class="n">2 taps · sheet closes</span></div>
+          <div class="route"><span class="who">On the map</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step"><svg class="i"><use href="#ic-map"/></svg>Choose on map</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-crosshair"/></svg>Tap the map, as often as you like</span>
+            <span class="n">2 taps · then the map</span></div>
+          <div class="route"><span class="who">Hiding zone stop</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-zone"/></svg>Hiding zone stop</span>
+            <span class="n">2 taps · hiders, once committed</span></div>
+          <div class="route"><span class="who">From a pin</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step"><svg class="i"><use href="#ic-pin"/></svg>From a pin</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-check"/></svg>The pin</span>
+            <span class="n">3 taps · sheet closes</span></div>
+          <div class="route"><span class="who">From a place</span>
+            <span class="step"><svg class="i"><use href="#ic-caret-right"/></svg>Readout</span><span class="sep">›</span>
+            <span class="step"><svg class="i"><use href="#ic-flag"/></svg>From a place</span><span class="sep">›</span>
+            <span class="step"><svg class="i"><use href="#ic-train"/></svg>The kind</span><span class="sep">›</span>
+            <span class="step end"><svg class="i"><use href="#ic-check"/></svg>The place, or search first</span>
+            <span class="n">4 taps · sheet closes</span></div>
+        </div>
+        </div>
       </div>
-    </article>
-    <article class="plate">
-      <div class="plate-head"><div class="plate-title"><h3>What it takes</h3><span class="tag ask">Before building</span></div></div>
-      <div class="notes" style="border-top:0">
+      <div class="notes">
         <dl class="spec">
-          <dt>Parser</dt><dd><code>parsePastedCoordinates</code> → <code>parsePoint</code>, plus an open-location-code decode and encode. Pure arithmetic, no network, so it holds offline</dd>
-          <dt>Format</dt><dd>A <code>formatPoint(point, "latlng" | "plus")</code> and one remembered preference — the format switch is also the copy format</dd>
-          <dt>Icons</dt><dd>Three names into the closed registry: <code>copy</code>, <code>grid</code>, and <code>flag-banner</code> reused for a place</dd>
-          <dt>Sources</dt><dd>Pins and places already have lists on the map; the zone centre and the clipboard preview are new reads</dd>
-          <dt>Tests</dt><dd><code>constraints.spec.ts</code> fills <code>radius-center-lat</code> and <code>-lng</code>. One field means one testid — <code>radius-center-value</code>, filled with the pair as typed</dd>
+          <dt>Closes on</dt><dd>Every source that lands a point: the current location, a successful paste, a pin, a place, the zone stop · the map source, which needs the map back · the close control or the backdrop</dd>
+          <dt>Stays open on</dt><dd>Typing, copying, stepping back from a list, and a paste that could not be read — the one source with something left to say</dd>
+          <dt>Never</dt><dd>Asks twice. There is no "use this point" — the point is already used, and the card behind is already showing it</dd>
         </dl>
       </div>
     </article>
+  </div>
+</section>
+
+<!-- ═══ set aside ═══════════════════════════════════════════════════════ -->
+<section class="band" id="aside">
+  <div class="band-head">
+    <span class="kicker">From round one</span>
+    <h2>What this replaces</h2>
+    <p>Three layouts that kept the field in the card. Each was cheaper in taps and more expensive in everything else; the numbers are the card height one point costs.</p>
+  </div>
+  <div class="setaside">
+    <div class="aside"><span class="num">A · 71 px</span><h4>Value bar</h4><p>One 52 px row with the sources behind its glyph. Fastest to type into, but every card carried a live text field and a caret waiting for a keyboard.</p></div>
+    <div class="aside"><span class="num">B · 128 px</span><h4>Value bar and rail</h4><p>The same row over a strip of source tiles. Everything one tap away and nothing hidden — at nearly three times the card height, twice over in the cut editor.</p></div>
+    <div class="aside"><span class="num">C · 94 px for two</span><h4>Collapsed line</h4><p>44 px per point, expanding in place. Closest to what survives: its closed line is this readout. What it did on opening now happens in the sheet, where the map is not underneath it.</p></div>
   </div>
 </section>
 
 <!-- ═══ questions ═══════════════════════════════════════════════════════ -->
-<section class="band" id="questions">
+<section class="band" id="settled">
   <div class="band-head">
-    <span class="kicker">Open</span>
-    <h2>Three things I guessed at</h2>
-    <p>Each is drawn above under the assumption printed with it. Say the word and the drawing changes.</p>
+    <span class="kicker">Settled</span>
+    <h2>What this deck now fixes</h2>
+    <p>The decisions the drawings above depend on, so a later reading of them is not a re-litigation.</p>
   </div>
   <div class="qs">
-    <div class="q">
-      <h4>Which point is "zone centre"?</h4>
-      <p>A hider's own hiding zone has a centre — their stop. So does a zone a seeker has drawn on the map. Both are plausibly the thing a hider wants to drop into a picker.</p>
-      <p class="assume">Drawn as: the hider's own zone, named by its stop</p>
+    <div class="q settled">
+      <h4>Live, with no save</h4>
+      <p>Typing writes straight through to the card. There is no draft, no "use this point", nothing to confirm and nothing to cancel.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
     </div>
-    <div class="q">
-      <h4>Short plus codes, or full ones only?</h4>
-      <p>A full code (<code>9F4MGC9C+9X</code>) is unambiguous anywhere. A short one (<code>9C9C+9X</code>) is what people actually read out, and needs a reference point to resolve — the map centre is the obvious one, and is wrong if the map has been panned away.</p>
-      <p class="assume">Drawn as: both, short resolved against the map centre</p>
+    <div class="q settled">
+      <h4>A source that lands closes the sheet</h4>
+      <p>Current location, paste, a pin, a place, the zone stop. A paste that cannot be read is the exception: the text stays, the field goes red, the sheet stays open.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
     </div>
-    <div class="q">
-      <h4>Does copy follow the display format?</h4>
-      <p>Copying what is on screen is the honest rule, but a plus code pasted into a mapping app that does not read them is a dead end for whoever receives it.</p>
-      <p class="assume">Drawn as: copy hands back exactly what is shown</p>
+    <div class="q settled">
+      <h4>Rows that cannot work are not there</h4>
+      <p>No fix yet, no "Current location". No pins, no "From a pin". No committed zone, no "Hiding zone stop" — and seekers never see that row at all.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
+    </div>
+    <div class="q settled">
+      <h4>Hiding zone stop means the committed stop</h4>
+      <p>The hider's own committed hiding stop, not a zone drawn on the map and not a stop they are still turning over.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
+    </div>
+    <div class="q settled">
+      <h4>Kinds show what the board carries</h4>
+      <p>Every kind on the board appears, sorted by distance whatever that distance is — the same rule the map's own layer picker follows.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
+    </div>
+    <div class="q settled">
+      <h4>No plus codes</h4>
+      <p>Out of scope for now. The field is lat/lng, and the parser keeps the syntaxes it already reads.</p>
+      <p class="assume">Settled · 31 Aug 2026</p>
     </div>
   </div>
 </section>
 
 <footer class="foot">
-  <span class="mono">Zero Lag · Deck 08 · Coordinate picker · proposals, not decisions</span>
+  <span class="mono">Zero Lag · Deck 08 · Coordinate picker · revision 3 · proposals, not decisions</span>
   <span class="mono">Role tokens from packages/ui/src/styles/tokens.css · Bricolage Grotesque · Archivo · Azeret Mono</span>
 </footer>
 </div>
@@ -1059,37 +856,41 @@ tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
   const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
   settle();
   window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
-  window.addEventListener("resize", () => moveThumb(bar.querySelector('button[aria-pressed="true"]')));
 
-  /* state switchers */
+  /* one state switcher for every stage that has states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    for (const el of scope.querySelectorAll(".lvl")) el.classList.toggle("on", el.dataset.lvl === want);
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+    measureAll();
+  }
   for (const strip of document.querySelectorAll(".statebar[data-states]")) {
-    const group = document.querySelector('.mapstage[data-group="' + strip.dataset.states + '"]');
     strip.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-state]");
-      if (!btn || !group) return;
-      for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
-      const want = btn.dataset.state;
-      for (const el of group.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
-      for (const row of group.querySelectorAll(".crow[data-crow]")) row.setAttribute("aria-expanded", String(row.dataset.crow === want));
-      measureAll();
+      if (btn) show(strip.dataset.states, btn.dataset.state);
     });
   }
 
-  /* the accordion is real: tapping a line opens it and closes the other */
-  for (const row of document.querySelectorAll(".crow[data-crow]")) {
+  /* the sheet's own levels: a row drills in, back returns */
+  for (const btn of document.querySelectorAll("[data-go]")) {
+    btn.addEventListener("click", () => show("sheet", btn.dataset.go));
+  }
+
+  /* choosing from a list applies the point and dismisses the sheet */
+  for (const row of document.querySelectorAll(".listscroll .srcrow")) {
     row.addEventListener("click", () => {
-      const group = row.closest(".mapstage");
-      const want = row.getAttribute("aria-expanded") === "true" ? null : row.dataset.crow;
-      for (const r of group.querySelectorAll(".crow[data-crow]")) r.setAttribute("aria-expanded", String(r.dataset.crow === want));
-      for (const el of group.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
-      const strip = document.querySelector('.statebar[data-states="' + group.dataset.group + '"]');
-      if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === (want || "none")));
-      measureAll();
+      const stage = row.closest(".mapstage");
+      stage.classList.add("closing");
+      setTimeout(() => { stage.classList.remove("closing"); show("sheet", "point"); }, 1100);
     });
   }
 
-  /* copy glyph flips to a check, the way the real one would */
+  /* copy flips to a check, the way the real one would */
   for (const act of document.querySelectorAll(".act")) {
     act.addEventListener("click", () => {
       const use = act.querySelector("use");

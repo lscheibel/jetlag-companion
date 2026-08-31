@@ -93,6 +93,7 @@ import { PoiLayer } from "../map/poi-layer";
 import { PoiPickerSheet } from "../map/poi-picker-sheet";
 import { type PoiConstraintKind, PoiSheet } from "../map/poi-sheet";
 import { type PoiTypeId, poiTypeLabel } from "../map/poi-type";
+import { type PointSources, PointSourcesProvider } from "../map/point-sources";
 import { remainingStopCount } from "../map/remaining-stops";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
@@ -503,10 +504,21 @@ function MapScreen() {
 	const poiBbox = areaBBox
 		? expandBBox(areaBBox, SCALE_SETTINGS[scalePreset].marginMeters)
 		: null;
+	/**
+	 * A card with a point in it can pick a place, so the amenities have to be in
+	 * hand before its sheet opens rather than after — which is why the pin,
+	 * measure and cut tools ask for them alongside the two POI tools.
+	 */
+	const pointPickingTool =
+		tool.kind === "placingPin" ||
+		tool.kind === "editingPin" ||
+		tool.kind === "measure" ||
+		tool.kind === "drawingSplitConstraint";
 	const catalogPois = usePois(
 		session,
 		poiBbox,
 		poiLayers.kinds.length > 0 ||
+			pointPickingTool ||
 			tool.kind === "pickingClosestPoiConstraint" ||
 			tool.kind === "drawingRadiusConstraint",
 	);
@@ -539,6 +551,28 @@ function MapScreen() {
 		() => [...stopModes, ...POI_KINDS],
 		[stopModes],
 	);
+	/**
+	 * What every point picker on this screen can copy a coordinate out of. The
+	 * hiding stop is the committed one and nothing else: a seeker has no
+	 * commitment to find, and a hider still turning one over has not made one.
+	 */
+	const pointSources: PointSources = {
+		fix:
+			ownFix && ownFix.source !== "unavailable"
+				? {
+						point: [ownFix.lng, ownFix.lat],
+						accuracyMeters: ownFix.accuracyMeters,
+						capturedAt: ownFix.capturedAt,
+					}
+				: null,
+		pins,
+		places: pickablePois,
+		placeTypes: poiTypes,
+		hidingZoneStop: committedStop
+			? { name: committedStop.name, point: stopPosition(committedStop) }
+			: null,
+		origin,
+	};
 	const visiblePois = useMemo<readonly MapPoi[]>(() => {
 		const wanted = new Set<string>(poiLayers.kinds);
 		return allPois.filter((poi) => wanted.has(poi.kind));
@@ -1268,7 +1302,7 @@ function MapScreen() {
 		setSelectedStopId(null);
 	};
 
-	return (
+	const map = (
 		<Screen
 			className={
 				tool.kind === "none"
@@ -1773,6 +1807,10 @@ function MapScreen() {
 				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
 			)}
 		</Screen>
+	);
+
+	return (
+		<PointSourcesProvider value={pointSources}>{map}</PointSourcesProvider>
 	);
 }
 
