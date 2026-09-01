@@ -193,11 +193,11 @@ h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:8
 .cards.cool{background:color-mix(in oklab,var(--live) 15%,var(--surface-raised));border-color:color-mix(in oklab,var(--live) 40%,var(--hairline));color:var(--live)}
 
 /* buttons */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:16px;
+.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;border-radius:16px;
   font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;min-height:52px;
   background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press);position:relative;overflow:hidden}
 .btn.tall{min-height:60px;font-size:17px;border-radius:19px}
-.btn small{font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.btn small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;line-height:1.3}
 .btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
 .btn.off{background:var(--surface-raised);color:var(--ink-faint);box-shadow:none;border:1px solid var(--hairline)}
 .btn.beacon::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite}
@@ -270,8 +270,17 @@ h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:8
 .tabs button[aria-pressed="true"]{background:var(--action);color:var(--action-ink)}
 .tabs .nm{font-family:"Azeret Mono",monospace;font-size:8px;letter-spacing:.05em;text-transform:uppercase}
 .sentence{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;line-height:1.2;letter-spacing:-.02em;padding:2px 2px 0}
-.sentence u{text-decoration:none;display:inline-block;min-width:66px;border-bottom:3px solid var(--action);text-align:center;color:var(--ink-faint);font-weight:600;font-size:16px}
-.sentence u.set{color:var(--ink);font-weight:800;font-size:19px;font-family:"Azeret Mono",monospace}
+.sentence u{
+  text-decoration:none;
+  background-image:linear-gradient(var(--action),var(--action));
+  background-repeat:no-repeat;
+  background-size:100% 3px;
+  background-position:0 calc(100% - 1px);
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;
+  padding:0 .12em 3px;color:var(--ink-faint);font-weight:600}
+.sentence u.blank{padding-left:1.7em;padding-right:1.7em}
+.sentence u.set{color:var(--ink);font-weight:800;font-family:"Azeret Mono",monospace;letter-spacing:-.015em}
+.sentence .fill{color:var(--action-press)}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .pick{display:grid;place-items:center;min-height:46px;border-radius:14px;background:var(--surface);border:1.5px solid var(--hairline);
   font-family:"Azeret Mono",monospace;font-size:13px;font-weight:700;transition:transform var(--dur-press) var(--ease-pop)}
@@ -410,26 +419,6 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
 .famrow.away .glyph{background:transparent;color:var(--ink-faint)}
 .famrow.away .nm{color:var(--ink-dim);font-weight:600}
 
-/* P2 · the family bar sits in the thumb */
-.botbar{display:flex;gap:3px;padding:5px;border-radius:18px;background:var(--surface-sunken);border:1px solid var(--hairline)}
-.botbar button{flex:1 1 0;display:grid;place-items:center;gap:3px;min-height:46px;border-radius:14px;color:var(--ink-faint)}
-.botbar button[aria-pressed="true"]{background:var(--action);color:var(--action-ink)}
-.botbar .nm{font-family:"Azeret Mono",monospace;font-size:7.5px;letter-spacing:.04em;text-transform:uppercase}
-.botbar button .dotmark{width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
-
-/* P3 · swipe, and the sentence says where you are */
-.pager{display:flex;align-items:center;gap:6px;padding:2px}
-.pager .tick{flex:1 1 0;height:3px;border-radius:999px;background:var(--surface-raised)}
-.pager .tick.on{background:var(--action)}
-.pager .of{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.09em;color:var(--ink-faint);white-space:nowrap}
-.swipe{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:9px}
-.peek{position:absolute;top:0;bottom:0;right:-152px;width:146px;border-radius:18px;background:var(--surface);border:1px solid var(--hairline);
-  padding:11px;display:flex;flex-direction:column;gap:7px;opacity:.75}
-.peek h5{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px}
-.peek .sh{font-size:11px;color:var(--ink-faint);line-height:1.3}
-.swipe.mid{transform:translateX(-124px);transition:transform var(--dur-move) var(--ease-travel)}
-.hint{display:flex;align-items:center;gap:6px;font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
-
 /* boards with more in them than nine chips */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .pick.l{grid-column:span 2;justify-items:start;place-items:center start;text-align:left;padding:0 11px;font-family:"Archivo",sans-serif;font-size:13px;font-weight:600;min-height:44px}
@@ -442,7 +431,14 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
 .elsewhere .head .t{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
 .elsewhere .head .sz{font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;border-radius:999px;padding:2px 7px;
   background:var(--surface-raised);border:1px solid var(--hairline);color:var(--ink-dim)}
-.away-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:6px 10px;border-radius:13px;border:1px dashed var(--hairline-strong);color:var(--ink-dim);font-size:12.5px}
+.away-item{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:6px 10px;border-radius:13px;
+  border:1px dashed var(--hairline-strong);color:var(--ink-dim);font-size:12.5px;text-align:left;
+  transition:transform var(--dur-press) var(--ease-pop),border-color var(--dur-tap),background var(--dur-tap)}
+.away-item:hover,.famrow.away:hover{background:var(--surface-raised)}
+.away-item:active,.famrow.away:active{transform:scale(.985)}
+.notice{display:flex;align-items:flex-start;gap:8px;border-radius:14px;padding:10px 11px;background:var(--surface-raised);
+  border:1px dashed var(--hairline-strong);color:var(--ink-dim);font-size:12px;line-height:1.4}
+.notice b{color:var(--ink);font-weight:700}
 .away-item .i{color:var(--ink-faint)}
 .away-item .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
 .away-item .why{margin:0;padding:0;border:0;font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
@@ -452,10 +448,10 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
 
 <header class="masthead">
   <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
-    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 10</span><span>·</span><span>The board</span><span>·</span><span>1 Sep 2026</span>
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 10</span><span>·</span><span>The board</span><span>·</span><span>Revision 2 · 1 Sep 2026</span>
   </div>
   <h1>The board wins. Now: <em>how do you change lane?</em></h1>
-  <p class="deck">Deck 09’s layout D is the direction — the family stays one tap away, the question is written out with its blanks, and the blank’s options are the screen. What is still open is the control that switches family, so here are three of them. Then all six boards, drawn from <code>docs/questions</code> with the real lists and the rounded metric distances, and the questions this board’s size excludes moved into a section of their own instead of being greyed out where they lie.</p>
+  <p class="deck">Deck 09’s layout D is the direction — the family stays one tap away, the question is written out with its blanks, and the blank’s options are the screen. The control that switches family is a <b>select</b>: the family’s own name in the bar, a sheet with all six behind it. Then all six boards from <code>docs/questions</code>, the questions this board’s size does not normally carry lifted into a section of their own rather than greyed out where they lie — sorted, never blocked, and the question card kept as the last screen — which the matching file, now that it exists, more than justifies.</p>
   <div class="mast-foot">
     <div class="legend">
       <span class="tag ship">Settled</span>
@@ -477,17 +473,17 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
 <!-- ═══ three category pickers ══════════════════════════════════════════ -->
 <section class="band" id="pickers">
   <div class="band-head">
-    <span class="kicker">Three pickers</span>
-    <h2>Six families, and the control that moves between them</h2>
-    <p>The icon rail from deck 09 works and reads as a compromise: six abbreviations across 306 px, none of them a word anyone says out loud. Each of these takes a different position on what the switch is for — a menu you open, a bar under your thumb, or no control at all.</p>
-    <p>All three are drawn on the radar board, with the distances as they now stand in <code>docs/questions/03-radar-questions.md</code>.</p>
+    <span class="kicker">The picker</span>
+    <h2>Six families behind one word</h2>
+    <p>Deck 09’s icon rail was a compromise: six abbreviations across 306 px, none of them a word anyone says out loud. The family is a <b>select</b> instead — its own name in the app bar, and a sheet with all six behind it. A bar of six segments under the thumb and a swipe-only board were both drawn and both dropped.</p>
+    <p>Shown on the radar board, with the distances as they stand in <code>docs/questions/03-radar-questions.md</code>.</p>
   </div>
-  <div class="plates">
+  <div class="plates" style="max-width:620px">
 
     <!-- ── P1 ────────────────────────────────────────────────────────── -->
     <article class="plate">
       <div class="plate-head">
-        <div class="plate-title"><span class="as">1</span><h3>The name is the control</h3><span class="tag new">Header</span></div>
+        <div class="plate-title"><h3>The name is the control</h3><span class="tag ship">Settled</span></div>
         <p>The family sits in the app bar as its own name with a caret. Tapping it opens the six as a sheet — the overview from layout A, on demand rather than permanently.</p>
       </div>
       <div class="plate-ctl">
@@ -519,8 +515,8 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
                 <button class="pick" type="button">10 km</button>
                 <button class="pick" type="button">15 km</button>
                 <button class="pick" type="button">40 km</button>
-                <button class="pick" type="button">80 km<small>past the edge</small></button>
-                <button class="pick" type="button">160 km<small>past the edge</small></button>
+                <button class="pick" type="button">80 km</button>
+                <button class="pick" type="button">160 km</button>
                 <button class="pick wide" type="button">A distance you choose</button>
               </div>
               <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
@@ -574,142 +570,11 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
           <dt>Sheet</dt><dd>Name, sentence and price for all six — the teaching layout A had, without paying for it on every screen</dd>
           <dt>Search</dt><dd>The one line in the sheet that leads to the other screen: all 62 questions, one field</dd>
         </dl>
-        <p class="why"><b>Why this is my pick.</b> Switching family is rare; picking a blank is constant. This is the only one of the three that spends its screen accordingly, and the sheet is where a size-excluded family can explain itself in a full sentence rather than a struck-through icon.</p>
-        <p class="cost"><b>What it costs.</b> Two taps to change family instead of one, and the current family is a word in a bar rather than a lit segment — you have to read it to know where you are.</p>
+        <p class="why"><b>Why a select.</b> Switching family is rare; picking a blank is constant, so the board keeps the screen and the switch keeps a word. The sheet is also the only place a family that is not in this game can explain itself in a sentence instead of a struck-through icon.</p>
+        <p class="cost"><b>What it costs.</b> Two taps to change family instead of one, and the current family is a word you read rather than a lit segment you glance at. Both were judged worth the screen.</p>
       </div>
     </article>
 
-    <!-- ── P2 ────────────────────────────────────────────────────────── -->
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">2</span><h3>The bar under your thumb</h3><span class="tag new">Bottom</span></div>
-        <p>The same six segments, moved to where the hand already is and given room to be tapped: 46 px targets on the bottom edge, directly above the action they feed.</p>
-      </div>
-      <div class="stand">
-        <div class="device">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
-            <div class="appbar">
-              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
-              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
-              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
-            </div>
-            <div class="scr">
-              <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
-              <span class="lbl">Yes or no · 5 min · 2→1 cards</span>
-              <div class="grid3">
-                <button class="pick" type="button">500 m</button>
-                <button class="pick" type="button">1 km<small>asked</small></button>
-                <button class="pick" type="button">2 km</button>
-                <button class="pick" type="button" aria-pressed="true">5 km</button>
-                <button class="pick" type="button">10 km</button>
-                <button class="pick" type="button">15 km</button>
-                <button class="pick" type="button">40 km</button>
-                <button class="pick" type="button">80 km</button>
-                <button class="pick" type="button">160 km</button>
-                <button class="pick wide" type="button">A distance you choose</button>
-              </div>
-              <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px">
-                <button class="btn tall beacon" type="button">Ask<small>5 km · from Ostbahnhof</small></button>
-                <div class="botbar" role="group" aria-label="Question family">
-                  <button type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-radar"/></svg><span class="nm">Radar</span></button>
-                  <button type="button"><svg class="i sm"><use href="#ic-match"/></svg><span class="nm">Match</span></button>
-                  <button type="button"><svg class="i sm"><use href="#ic-measure"/></svg><span class="nm">Measure</span></button>
-                  <button type="button"><svg class="i sm"><use href="#ic-thermo"/></svg><span class="nm">Therm</span></button>
-                  <button type="button"><svg class="i sm"><use href="#ic-photo"/></svg><span class="nm">Photo</span></button>
-                  <button type="button"><svg class="i sm"><use href="#ic-tentacle"/></svg><span class="nm">Tentacle</span></button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Reach</dt><dd>46 px tall on the bottom edge, six across at 48 px wide. Deck 09’s top rail was 30 px targets at the far end of the thumb’s arc</dd>
-          <dt>Order</dt><dd>Fixed, never re-sorted by use — a bar that moves under the thumb is worse than a bar that is far away</dd>
-          <dt>Cost in pixels</dt><dd>62 px permanently, which is roughly two rows of the matching board</dd>
-          <dt>Position</dt><dd>Folded into the button’s second line — the bar took the row the readout would have used, so changing where you ask from means opening the card</dd>
-        </dl>
-        <p class="why"><b>Why it might still win.</b> One tap, always, and the seeker never has to remember what family they are in — it is lit under their thumb. On a screen operated one-handed on a moving train, that is not nothing.</p>
-        <p class="cost"><b>What it costs.</b> The abbreviations. “Measure”, “Therm”, “Tentacle” at 7.5 px is the smallest type in the app, and it sits next to the largest button. It also puts a six-way switch directly beside <b>Ask</b>, which is the one control that spends a question.</p>
-      </div>
-    </article>
-
-    <!-- ── P3 ────────────────────────────────────────────────────────── -->
-    <article class="plate">
-      <div class="plate-head">
-        <div class="plate-title"><span class="as">3</span><h3>No control at all</h3><span class="tag ask">The risk</span></div>
-        <p>The sentence already names the family, so the family gets no widget: swipe the board sideways and the next one comes in. Six ticks say where you are and how many there are.</p>
-      </div>
-      <div class="plate-ctl">
-        <span class="lab">State</span>
-        <div class="statebar" data-states="p3">
-          <button type="button" data-state="rest" aria-pressed="true">Resting</button>
-          <button type="button" data-state="mid" aria-pressed="false">Mid-swipe</button>
-        </div>
-      </div>
-      <div class="stand">
-        <div class="device" data-group="p3">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
-            <div class="appbar">
-              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
-              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
-              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
-            </div>
-            <div class="scr" style="overflow:hidden">
-              <div class="pager" aria-hidden="true">
-                <span class="tick on"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span>
-                <span class="of">1 / 6</span>
-              </div>
-              <div class="swipe" data-swipe>
-                <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
-                <span class="lbl">Radar · yes or no · 2→1 cards</span>
-                <div class="grid3">
-                  <button class="pick" type="button">500 m</button>
-                  <button class="pick" type="button">1 km<small>asked</small></button>
-                  <button class="pick" type="button">2 km</button>
-                  <button class="pick" type="button" aria-pressed="true">5 km</button>
-                  <button class="pick" type="button">10 km</button>
-                  <button class="pick" type="button">15 km</button>
-                  <button class="pick" type="button">40 km</button>
-                  <button class="pick" type="button">80 km</button>
-                  <button class="pick" type="button">160 km</button>
-                  <button class="pick wide" type="button">A distance you choose</button>
-                </div>
-                <div class="hint" style="margin-top:6px"><svg class="i xs"><use href="#ic-swipe"/></svg>Swipe for matching</div>
-                <div class="peek">
-                  <h5>Matching</h5>
-                  <span class="sh">Is your nearest ___ the same as mine?</span>
-                  <div class="grid2" style="gap:5px">
-                    <span class="pick s">Airport</span>
-                    <span class="pick s">District</span>
-                    <span class="pick s">Park</span>
-                    <span class="pick s">Museum</span>
-                  </div>
-                </div>
-              </div>
-              <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:9px">
-                <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
-                <button class="btn tall beacon" type="button">Ask<small>5 km</small></button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="notes">
-        <dl class="spec">
-          <dt>Ticks</dt><dd>Six, the current one yellow, with “1 / 6” beside them. The only chrome the switch gets</dd>
-          <dt>Order</dt><dd>Has to be fixed and learnable — radar, matching, measuring, thermometer, photo, tentacle — because position is now the only address a family has</dd>
-          <dt>Fallback</dt><dd>Tapping the ticks jumps, so the gesture is never the only way through</dd>
-        </dl>
-        <p class="why"><b>Why it is worth drawing.</b> It gives the board every pixel and makes the sentence the whole interface. Between two families it is the fastest thing here — no target to hit, just a thumb moving sideways.</p>
-        <p class="cost"><b>What it costs, and the risk.</b> Going from radar to tentacle is five swipes or a tap on a 3 px tick. The board is also full of horizontally-arranged chips, so a sideways drag that starts on one is ambiguous — and this is a phone being used while walking. I would not ship it as the only way to change family.</p>
-      </div>
-    </article>
 
   </div>
 </section>
@@ -719,8 +584,8 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
   <div class="band-head">
     <span class="kicker">Six boards</span>
     <h2>Every family, drawn from the rulebook you wrote down</h2>
-    <p>Lists, wording and distances come from <code>docs/questions</code>. They are drawn with picker 1 so each board has the full screen; swap in picker 2 or 3 and the boards below lose 62 px or nothing at all respectively.</p>
-    <p>The board is <b>medium</b> — Berlin, team Eule hunting Fuchsbau. Questions this size does not have are not greyed out where they lie: they are lifted out into a section of their own at the foot of the board, under a dashed rule.</p>
+    <p>Lists, wording and distances come from <code>docs/questions</code>. Every board keeps the full screen, because the family sits in the app bar rather than in a rail across it.</p>
+    <p>The board is <b>medium</b> — Berlin, team Eule hunting Fuchsbau. Questions this size does not normally have are not greyed out where they lie: they are lifted into a section of their own at the foot of the board, under a dashed rule. Lifted is not blocked — they open the same card as anything else, with one line saying which board size they belong to.</p>
   </div>
   <div class="rack">
 
@@ -746,8 +611,8 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
               <button class="pick" type="button">10 km</button>
               <button class="pick" type="button">15 km</button>
               <button class="pick" type="button">40 km</button>
-              <button class="pick" type="button">80 km<small>past the edge</small></button>
-              <button class="pick" type="button">160 km<small>past the edge</small></button>
+              <button class="pick" type="button">80 km</button>
+              <button class="pick" type="button">160 km</button>
               <button class="pick wide" type="button">A distance you choose</button>
             </div>
             <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
@@ -758,9 +623,9 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
         </div>
       </div>
       <ul class="anno">
-        <li class="y"><b>Nothing is lifted out.</b> Radar has no size rule — every rung is legal on every board. The two rungs bigger than the map say so quietly rather than being moved or dimmed, because a yes still tells you something.</li>
+        <li class="y"><b>Nothing is lifted out, and nothing is judged.</b> Radar has no size rule — every rung is legal on every board, including the two that cover the whole of it. The board does not say which ones are worth spending a question on.</li>
         <li><b>“Asked” under 1 km</b> is the same mark on every board: a distance already spent, still tappable, because asking it again is a legal if wasteful move.</li>
-        <li class="r"><b>Open:</b> is “past the edge” help or interference? It is the only place a board comments on the quality of a choice.</li>
+        <li class="g"><b>The free rung is a chip like any other.</b> “A distance you choose” opens a number field on the card rather than a second control here.</li>
       </ul>
     </figure>
 
@@ -776,13 +641,13 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
           </div>
           <div class="scr">
-            <p class="sentence">Is your nearest <u>___</u> the same as mine?</p>
+            <p class="sentence">Is your nearest <u class="blank">&nbsp;</u> the same as mine?</p>
             <span class="lbl">Yes or no · 5 min · 3→1 cards</span>
             <div class="cut">
               <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
               <div class="grid2">
                 <button class="pick s" type="button">Airport</button>
-                <button class="pick s" type="button">Transit line</button>
+                <button class="pick s" type="button">Transit line<span class="tagline">while you ride</span></button>
                 <button class="pick s l" type="button">Length of the station name</button>
                 <button class="pick s l" type="button">Street or path</button>
               </div>
@@ -814,7 +679,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
       <ul class="anno">
         <li class="y"><b>Twenty does not fit a screenful of chips</b>, so this board scrolls and the groups become headings. Two columns, one row for a long name — the group is the unit, not the column.</li>
         <li class="g"><b>The examples do the explaining.</b> “District · Mitte” says what a district is here without the phrase “2nd administrative division” appearing anywhere.</li>
-        <li class="r"><b><code>01-matching-questions.md</code> is missing</b> from <code>docs/questions</code>. This list is from the fan rulebook page — the four administrative levels, landmass, and station-name length are the parts worth checking against what you meant to write down.</li>
+        <li class="g"><b>Checked against <code>01-matching-questions.md</code>.</b> The twenty subjects and the five groups are right. What the file adds is rules, not entries — riding rules, what counts in a station name, an enclosed landmass counting as a match — and those all belong on the card, which is why the card is back below.</li>
       </ul>
     </figure>
 
@@ -830,7 +695,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
           </div>
           <div class="scr">
-            <p class="sentence">Are you closer to <u>___</u> than me, or further?</p>
+            <p class="sentence">Are you closer to <u class="blank">&nbsp;</u> than me, or further?</p>
             <span class="lbl">Closer or further · 5 min · 3→1 cards</span>
             <div class="cut">
               <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
@@ -891,7 +756,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             </div>
             <div class="elsewhere">
               <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
-              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>75 km</span><span class="why">A large board — this one is medium</span></span></div>
+              <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>75 km</span><span class="why">A large board — this one is medium</span></span></button>
             </div>
             <div class="rules" style="margin-top:9px">
               <dt>Step 1</dt><dd>Send where you are now — this does it</dd>
@@ -905,7 +770,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
         </div>
       </div>
       <ul class="anno">
-        <li class="y"><b>Three rungs, and a fourth in its own box.</b> The 75 km rung is not dimmed in the row of chips where it would look tappable — it is lifted below the rule, in a dashed box that names the reason.</li>
+        <li class="y"><b>Three rungs, and a fourth in its own box.</b> The 75 km rung is not greyed out among the chips as though it were broken — it is lifted below the rule, in a dashed box that names the reason, and it still opens a card that can be sent.</li>
         <li class="g"><b>The button does not say “Ask”.</b> This question is two sends with a journey between them, so the board says which half it is doing, and the second half is a card in the question list.</li>
         <li class="r"><b>Open:</b> a thermometer might not belong on a board at all — it could be a tool you start on the map and finish there, the way the ruler works.</li>
       </ul>
@@ -923,7 +788,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
           </div>
           <div class="scr">
-            <p class="sentence">Send me a photo of <u>___</u>.</p>
+            <p class="sentence">Send me a photo of <u class="blank">&nbsp;</u>.</p>
             <span class="lbl">A photo, or “I can’t” · 10 min · 1→1 cards</span>
             <div class="cut foot" style="mask-image:linear-gradient(to bottom,transparent,#000 34px)">
               <div class="grid2" style="gap:6px">
@@ -935,10 +800,10 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
               </div>
               <div class="elsewhere">
                 <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
-                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>1 km of streets, traced</span><span class="why">Five turns, no doubling back</span></span></div>
-                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The tallest mountain from a station</span></span></div>
-                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The biggest water in your zone</span></span></div>
-                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Five buildings</span></span></div>
+                <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>1 km of streets, traced</span><span class="why">Five turns, no doubling back</span></span></button>
+                <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The tallest mountain from a station</span></span></button>
+                <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The biggest water in your zone</span></span></button>
+                <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Five buildings</span></span></button>
                 <div class="row" style="gap:6px;padding:2px 2px 0"><svg class="i xs faint"><use href="#ic-info"/></svg><span class="why" style="font-family:'Azeret Mono',monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)">Large boards also give 20 minutes to answer</span></div>
               </div>
             </div>
@@ -948,8 +813,8 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
       </div>
       <ul class="anno">
         <li class="y"><b>Scrolled to the foot.</b> Fourteen photo subjects have long names, so this board is a single column of rows — and the four it does not have sit under the dashed rule at the bottom where the list ends.</li>
-        <li class="g"><b>Read, not disabled.</b> The lifted items keep their full names and their conditions. A seeker learns that a large game has street-tracing in it, which is exactly the sort of thing that makes somebody ask for a bigger board next time.</li>
-        <li class="r"><b>Open:</b> is a lifted item tappable? Drawn as not — no chevron, no press. The alternative is a tap that opens the rule and says where it is available.</li>
+        <li class="g"><b>Read, not disabled.</b> The lifted items keep their full names, their conditions and their card. A seeker learns that a large game has street-tracing in it, which is exactly the sort of thing that makes somebody ask for a bigger board next time.</li>
+        <li class="g"><b>Sorted out, not shut off.</b> Each lifted row opens the ordinary card with one added line about board size — screen X3 — so the section is about where a question belongs, not about what the app will let you do.</li>
       </ul>
     </figure>
 
@@ -965,7 +830,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
           </div>
           <div class="scr">
-            <p class="sentence">Within <u class="set">2 km</u> of me, which <u>___</u> are you nearest to?</p>
+            <p class="sentence">Within <u class="set">2 km</u> of me, which <u class="blank">&nbsp;</u> are you nearest to?</p>
             <span class="lbl">A name, or out of range · 5 min · 4→2 cards</span>
             <div class="grid2">
               <button class="pick s" type="button">Museums</button>
@@ -975,10 +840,10 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             </div>
             <div class="elsewhere">
               <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large · 25 km</span></div>
-              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Metro lines</span></span></div>
-              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Zoos</span></span></div>
-              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Aquariums</span></span></div>
-              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Amusement parks</span></span></div>
+              <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Metro lines</span></span></button>
+              <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Zoos</span></span></button>
+              <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Aquariums</span></span></button>
+              <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Amusement parks</span></span></button>
             </div>
             <div class="row" style="gap:7px;align-items:flex-start;padding:6px 2px 0">
               <svg class="i sm faint" style="margin-top:1px"><use href="#ic-info"/></svg>
@@ -1001,12 +866,137 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
   </div>
 </section>
 
+<!-- ═══ the card, kept ══════════════════════════════════════════════════ -->
+<section class="band" id="card">
+  <div class="band-head">
+    <span class="kicker">The last screen</span>
+    <h2>The card stays, and the new file is why</h2>
+    <p>Picking a blank fills the sentence; the board’s button opens the card, and the card sends it. That extra beat is where the rules live — and <code>01-matching-questions.md</code> turned out to be mostly rules: a transit-line question may only be asked from a vehicle that is moving, an express running through the station without stopping is a no, the word “station” counts toward the name length, a landmass enclosed by yours still matches.</p>
+    <p>None of that fits under a chip. One line on the card, only where the rulebook has a trap in it, and only for the question actually being asked.</p>
+  </div>
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">C1</span><h3>Matching · transit line</h3><span class="who">the rule earns its line</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-match"/></svg><h4>Matching</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr" style="opacity:.45">
+            <p class="sentence">Is your nearest <u class="set">transit line</u> the same as mine?</p>
+            <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
+            <div class="grid2">
+              <span class="pick s">Airport</span>
+              <span class="pick s" aria-pressed="true">Transit line</span>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <span class="grip"></span>
+            <p class="sentence" style="font-size:20px">Is your nearest <span class="fill">transit line</span> the same as mine?</p>
+            <dl class="rules">
+              <dt>Answer</dt><dd>Yes or no, within five minutes</dd>
+              <dt>Fuchsbau</dt><dd>Draws 3 cards, keeps 1</dd>
+              <dt>The rule</dt><dd>Ask only from a vehicle that is moving. Yes needs a scheduled stop at their station — running through it does not count</dd>
+            </dl>
+            <div>
+              <span class="lbl" style="display:block;padding:0 2px 4px">Asking from</span>
+              <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">U2 towards Pankow · 52.5170, 13.4127</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+            </div>
+            <button class="btn tall beacon" type="button">Send to Fuchsbau<small>matching · 3→1</small></button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>One rule line, not a rulebook.</b> Two sentences at most, and only for questions that have a trap — most cards will not have this row at all.</li>
+        <li class="g"><b>“Asking from” is the position that gets sent</b>, and for this question it is a moving train, so it is the one thing worth reading twice before the button.</li>
+        <li><b>The verb changed.</b> The board says <b>Ask</b> and opens this; the card says <b>Send</b> and spends the question. Two buttons, two different acts.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">C2</span><h3>Tentacle · museums</h3><span class="who">two blanks, one sentence</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-tentacle"/></svg><h4>Tentacle</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr" style="opacity:.45">
+            <p class="sentence">Within <u class="set">2 km</u> of me, which <u class="set">museum</u> are you nearest to?</p>
+            <div class="grid2">
+              <span class="pick s" aria-pressed="true">Museums</span>
+              <span class="pick s">Libraries</span>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <span class="grip"></span>
+            <p class="sentence" style="font-size:20px">Within <span class="fill">2 km</span> of me, which <span class="fill">museum</span> are you nearest to?</p>
+            <dl class="rules">
+              <dt>Answer</dt><dd>The name of one museum, or that they are out of range</dd>
+              <dt>Fuchsbau</dt><dd>Draws 4 cards, keeps 2 — the most expensive question in the game</dd>
+              <dt>The rule</dt><dd>Whatever the mapping app calls a museum. Out of range still counts as answered</dd>
+            </dl>
+            <div>
+              <span class="lbl" style="display:block;padding:0 2px 4px">Asking from</span>
+              <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+            </div>
+            <button class="btn tall beacon" type="button">Send to Fuchsbau<small>tentacle · 4→2</small></button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>The price is written out</b> on the family that costs the most. This is the one card where a seeker should be given a reason to hesitate.</li>
+        <li class="g"><b>Both blanks read back filled.</b> The radius is fixed by the board size, so the card is where a seeker sees that it was 2 km and not 25.</li>
+        <li><b>Null and out-of-range answers still cost a question</b> and still pay the hider. That belongs here, once, rather than in a rules screen nobody opens.</li>
+      </ul>
+    </figure>
+
+  </div>
+
+  <div style="margin-top:34px;display:flex;flex-direction:column;gap:16px">
+    <span class="kicker">Taps, from the map to sent</span>
+    <div class="routes">
+      <div class="route"><span class="who">Same family</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">5 km</span><span class="sep">→</span>
+        <span class="step">Ask</span><span class="sep">→</span>
+        <span class="step end">Send</span><span class="n">5 taps</span></div>
+      <div class="route"><span class="who">Changing family</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">Radar ⌄</span><span class="sep">→</span>
+        <span class="step">Matching</span><span class="sep">→</span>
+        <span class="step">Park</span><span class="sep">→</span>
+        <span class="step">Ask</span><span class="sep">→</span>
+        <span class="step end">Send</span><span class="n">7 taps</span></div>
+      <div class="route"><span class="who">By search</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">Radar ⌄</span><span class="sep">→</span>
+        <span class="step"><svg class="i"><use href="#ic-search"/></svg>hosp</span><span class="sep">→</span>
+        <span class="step">a result</span><span class="sep">→</span>
+        <span class="step end">Send</span><span class="n">typing, then 4 taps</span></div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ the rule, and the screen you asked for next ═════════════════════ -->
 <section class="band" id="offsize">
   <div class="band-head">
-    <span class="kicker">Two more screens</span>
-    <h2>A family can be missing too, and search is its own place</h2>
-    <p>The same separation applies one level up: on a small board tentacle is not a family with nothing in it, it is a family that is not in this game — so the picker lifts it out under the same dashed rule. And the search you asked about: reached from one line in the picker, it is deck 09’s layout B, unchanged.</p>
+    <span class="kicker">Three more screens</span>
+    <h2>A family can be missing too, and a lifted row still answers</h2>
+    <p>The same separation applies one level up: on a small board tentacle is not a family with nothing in it, it is a family that is not in this game — so the picker lifts it out under the same dashed rule, and opens it anyway if you tap it. Search, reached from one line in that picker, is deck 09’s layout B unchanged.</p>
   </div>
   <div class="rack">
 
@@ -1058,10 +1048,10 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
             </button>
             <div class="elsewhere">
               <div class="head"><span class="t">Not in this game</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Medium and up</span></div>
-              <div class="famrow away">
+              <button class="famrow away" type="button">
                 <span class="glyph"><svg class="i sm"><use href="#ic-tentacle"/></svg></span>
                 <span class="grow"><span class="nm">Tentacle</span><span class="sh">Small boards do not have this family</span></span>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -1091,7 +1081,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
               <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-tentacle"/></svg></span><span class="grow"><span class="nm">Nearest <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital within 2 km</span><span class="note">Tentacle · a name · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span></button>
               <div class="elsewhere" style="margin-top:8px">
                 <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
-                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Nearest hospital within 25 km</span><span class="why">Tentacle · large boards</span></span></div>
+                <button class="away-item" type="button"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Nearest hospital within 25 km</span><span class="why">Tentacle · large boards</span></span></button>
               </div>
             </div>
           </div>
@@ -1104,28 +1094,75 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
       </ul>
     </figure>
 
+      <figure class="mock">
+      <div class="mock-label"><span class="n">X3</span><h3>A lifted item, tapped</h3><span class="who">inert, not dead</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-tentacle"/></svg><h4>Tentacle</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr" style="opacity:.45">
+            <p class="sentence">Within <u class="set">2 km</u> of me, which <u class="blank">&nbsp;</u> are you nearest to?</p>
+            <div class="grid2">
+              <span class="pick s">Museums</span>
+              <span class="pick s">Libraries</span>
+            </div>
+            <div class="elsewhere">
+              <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large · 25 km</span></div>
+              <span class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Zoos</span></span></span>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <span class="grip"></span>
+            <p class="sentence" style="font-size:19px">Within <span class="fill">25 km</span> of me, which <span class="fill">zoo</span> are you nearest to?</p>
+            <div class="notice">
+              <svg class="i sm" style="margin-top:1px"><use href="#ic-size"/></svg>
+              <span><b>Not in this game.</b> Zoos are a large-board tentacle and this board is medium. Ask it anyway if the two of you have agreed to.</span>
+            </div>
+            <dl class="rules">
+              <dt>Answer</dt><dd>The name of one zoo, or that they are out of range</dd>
+              <dt>Cost</dt><dd>The hider draws 4 cards and keeps 2</dd>
+              <dt>The rule</dt><dd>Whatever the mapping app calls a zoo. Every one in range is a tentacle reaching out from you</dd>
+            </dl>
+            <button class="btn tall beacon" type="button">Send to Fuchsbau<small>tentacle · 4→2</small></button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Inert to look at, alive to touch, and still askable.</b> The row keeps its dashed border and its lack of a chevron, but the sheet behind it is the ordinary question card — same rules, same price, same Send.</li>
+        <li class="g"><b>The notice is the whole difference.</b> One line saying this is a large-board question and this board is medium. The app states the rule; the two of you decide whether to bend it.</li>
+        <li><b>Same sheet in three places</b> — a lifted subject on a board, a lifted family in the picker, a lifted search result. On a large board it is the identical card with the notice gone.</li>
+      </ul>
+    </figure>
+
   </div>
 
   <div class="setaside" style="margin-top:40px">
-    <div class="aside call">
-      <span class="num">01 · Missing file</span>
-      <h4><code>01-matching-questions.md</code> is not in <code>docs/questions</code></h4>
-      <p>Board B2 is drawn from the fan rulebook page instead. Twenty subjects in five groups, including four administrative levels, landmass and station-name length — worth a check against what you meant to write down.</p>
+    <div class="aside">
+      <span class="num">01 · Answered</span>
+      <h4><code>01-matching-questions.md</code> checks out</h4>
+      <p>Board B2 needs no change: same twenty subjects, same five groups. The file’s new material is rule text — a transit-line question may only be asked from a moving vehicle, an express passing through is a no, the word “station” counts toward the name length, an enclosed landmass is a match. All of it lands on the card.</p>
     </div>
     <div class="aside call">
       <span class="num">02 · Divisions</span>
       <h4>Local words, or the rulebook’s numbering</h4>
-      <p>Matching and measuring both lean on administrative levels. Drawn as State · Berlin, District · Mitte, Neighbourhood · Moabit — readable, and a per-country table somebody has to write and keep right. The rulebook’s “2nd administrative division” needs no table and no seeker says it out loud.</p>
+      <p>Drawn as State · Berlin, District · Mitte, Neighbourhood · Moabit — readable, and a per-country table somebody has to write and keep right. The rulebook’s “2nd administrative division” needs no table and nobody says it out loud.</p>
+      <p>The file makes this sharper: a fourth level “doesn’t exist everywhere”, and Berlin is its own awkward case — a city that is also a state. Whatever the wording, a board should list the levels this map actually has and no more.</p>
     </div>
-    <div class="aside call">
-      <span class="num">03 · Lifted items</span>
-      <h4>Do they respond to a tap?</h4>
-      <p>Drawn inert: dashed, no chevron, reason on the line. The alternative is a tap that opens the full rule and says which board size has it — more to build, and it makes a thing you cannot ask feel like a thing you can.</p>
+    <div class="aside">
+      <span class="num">03 · Settled</span>
+      <h4>Lifted items answer a tap, and can be asked</h4>
+      <p>They stay drawn inert — dashed, no chevron, reason on the line — and they open the ordinary question card with one extra line: this is a large-board question and this board is medium. Screen X3. Nothing is blocked. The separation sorts the menu and states the rule; whether to ask anyway is the players’ call, not the app’s.</p>
     </div>
-    <div class="aside call">
-      <span class="num">04 · Past the edge</span>
-      <h4>Should radar comment on a pointless rung?</h4>
-      <p>80 and 160 km cover this whole board, so a yes tells you nothing. Drawn with a two-word mark under the chip. It is the only place any board judges a choice, and that is either a kindness or the app playing for you.</p>
+    <div class="aside">
+      <span class="num">04 · Settled</span>
+      <h4>No board judges a choice</h4>
+      <p>The “past the edge” mark under the big radar rungs is gone. A board lists what can be asked and what it costs; whether a question is worth asking is the seeker’s job, and the moment one screen starts rating options every screen has to.</p>
     </div>
   </div>
 </section>
@@ -1163,14 +1200,6 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
     const scope = document.querySelector('[data-group="' + group + '"]');
     if (!scope) return;
     for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
-    const swipe = scope.querySelector("[data-swipe]");
-    if (swipe) {
-      swipe.classList.toggle("mid", want === "mid");
-      const ticks = scope.querySelectorAll(".pager .tick");
-      ticks.forEach((t, i) => t.classList.toggle("on", want === "mid" ? i <= 1 : i === 0));
-      const of = scope.querySelector(".pager .of");
-      if (of) of.textContent = want === "mid" ? "1 → 2" : "1 / 6";
-    }
     const strip = document.querySelector('.statebar[data-states="' + group + '"]');
     if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
   }
@@ -1188,7 +1217,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
     const blanks = [...sentence.querySelectorAll("u")];
     const blank = blanks[blanks.length - 1];
     const btn = scr.querySelector(".btn");
-    const picks = [...scr.querySelectorAll(".pick")].filter((p) => !p.closest(".peek"));
+    const picks = [...scr.querySelectorAll(".pick")];
     for (const pick of picks) {
       pick.addEventListener("click", () => {
         for (const p of picks) p.setAttribute("aria-pressed", String(p === pick));
@@ -1197,6 +1226,7 @@ table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
           : (pick.firstChild ? pick.firstChild.textContent : pick.textContent).trim();
         if (blank) {
           blank.textContent = label;
+          blank.classList.remove("blank");
           blank.classList.add("set");
         }
         if (!btn || btn.dataset.keep !== undefined) return;
