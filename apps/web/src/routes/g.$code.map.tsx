@@ -81,7 +81,6 @@ import {
 	boardStopModes,
 	closestPoiSites,
 	DEFAULT_POI_LAYERS,
-	defaultClosestPoiRadius,
 	ensurePoiType,
 	type MapPoi,
 	radiusPoiCenters,
@@ -602,10 +601,7 @@ function MapScreen() {
 		return closestSiteRegion(
 			[selectedClosestPoi.lng, selectedClosestPoi.lat],
 			others.map((poi) => [poi.lng, poi.lat] as const),
-			{
-				clip,
-				radiusMeters: tool.radiusMeters ?? undefined,
-			},
+			{ clip },
 		);
 	}, [tool, selectedClosestPoi, pickablePois, area]);
 	const radiusDraftCenters = useMemo(() => {
@@ -691,7 +687,6 @@ function MapScreen() {
 			kind: "pickingClosestPoiConstraint",
 			filterKind: poi.kind,
 			selectedId: poi.id,
-			radiusMeters: defaultClosestPoiRadius(fromYou, poi.lng, poi.lat),
 		});
 	};
 
@@ -869,11 +864,6 @@ function MapScreen() {
 				...tool,
 				filterKind: hit.item.kind,
 				selectedId: hit.item.id,
-				radiusMeters: defaultClosestPoiRadius(
-					fromYou,
-					hit.item.lng,
-					hit.item.lat,
-				),
 			});
 		}
 	};
@@ -1176,7 +1166,8 @@ function MapScreen() {
 					tool: "pickingClosestPoiConstraint",
 					poiId: selectedClosestPoi.id,
 					filterKind: tool.filterKind,
-					radiusMeters: tool.radiusMeters,
+					// The nearest tool always takes the whole cell.
+					radiusMeters: null,
 				},
 				mode,
 			};
@@ -1667,13 +1658,6 @@ function MapScreen() {
 											onClosestPoiChange={setTool}
 											radiusCenters={radiusDraftCenters}
 											remainingStopCount={stopsRemaining}
-											closestPoiCenter={
-												selectedClosestPoi
-													? [selectedClosestPoi.lng, selectedClosestPoi.lat]
-													: null
-											}
-											fromYou={fromYou}
-											fallbackRadiusMeters={defaultRadiusMeters}
 											onUndoPolygonVertex={() => {
 												if (tool.kind !== "drawingPolygonConstraint") return;
 												setTool({

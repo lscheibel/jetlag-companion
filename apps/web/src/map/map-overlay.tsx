@@ -531,7 +531,6 @@ function constraintTool(
 			kind: "pickingClosestPoiConstraint",
 			filterKind: null,
 			selectedId: null,
-			radiusMeters: null,
 		};
 	}
 	return { kind: "listingConstraints" };

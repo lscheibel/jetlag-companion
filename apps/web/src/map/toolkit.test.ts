@@ -430,13 +430,14 @@ describe("constraintEditTool", () => {
 				},
 			}),
 		);
+		// The nearest tool is whole-cell only now, so a stored radius is
+		// dropped rather than reopened as state nothing can edit.
 		expect(edit).toEqual({
 			cut: false,
 			tool: {
 				kind: "pickingClosestPoiConstraint",
 				filterKind: "museum",
 				selectedId: "poi-7",
-				radiusMeters: 800,
 			},
 		});
 	});

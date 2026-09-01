@@ -8,7 +8,7 @@ import {
 } from "@zero-lag/ui/components/toggle-button";
 import { cn } from "@zero-lag/ui/lib/utils";
 import { useState } from "react";
-import { defaultClosestPoiRadius, type MapPoi } from "./poi";
+import type { MapPoi } from "./poi";
 import { type PoiTypeId, poiTypeLabel } from "./poi-type";
 import {
 	type BoundaryListItem,
@@ -323,12 +323,10 @@ function ClosestPoiPickerSheet(
 
 	function selectPoi(poi: MapPoi) {
 		if (!picking) return;
-		const from = props.fromYou ? props.origin : null;
 		props.onToolChange({
 			...picking,
 			filterKind: poi.kind,
 			selectedId: poi.id,
-			radiusMeters: defaultClosestPoiRadius(from, poi.lng, poi.lat),
 		});
 	}
 

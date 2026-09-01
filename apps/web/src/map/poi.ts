@@ -1,5 +1,5 @@
 import type { ModeId, PoiKind } from "@zero-lag/catalog";
-import { distanceMeters, type LngLat } from "@zero-lag/geo";
+import type { LngLat } from "@zero-lag/geo";
 import { MODE_ORDER } from "../setup/modes";
 import { isStationType, type PoiTypeId } from "./poi-type";
 import type { SearchableStop } from "./toolkit";
@@ -203,20 +203,6 @@ export function closestPoiSites(
 			poi.id !== selected.id && poi.kind === selected.kind && poi.insideArea,
 	);
 	return { selected, others };
-}
-
-/**
- * Radius the nearest-POI draft starts at: the seeker's distance to the pin,
- * or null when there is no fix (or they are standing on it).
- */
-export function defaultClosestPoiRadius(
-	fromYou: LngLat | null,
-	lng: number,
-	lat: number,
-): number | null {
-	if (!fromYou) return null;
-	const meters = distanceMeters(fromYou, [lng, lat]);
-	return meters > 0 ? meters : null;
 }
 
 /**

@@ -3,7 +3,6 @@ import {
 	boardStopModes,
 	closestPoiSites,
 	DEFAULT_POI_LAYERS,
-	defaultClosestPoiRadius,
 	ensurePoiKind,
 	ensurePoiType,
 	type MapPoi,
@@ -157,21 +156,6 @@ describe("closestPoiSites", () => {
 		]);
 		expect(selected.id).toBe(OUTSIDE_ZOO.id);
 		expect(others.map((poi) => poi.id)).toEqual([ZOO.id, TIERPARK.id]);
-	});
-});
-
-describe("defaultClosestPoiRadius", () => {
-	it("is null without a GPS fix", () => {
-		expect(defaultClosestPoiRadius(null, ZOO.lng, ZOO.lat)).toBeNull();
-	});
-
-	it("is the geodesic distance from the fix", () => {
-		expect(
-			defaultClosestPoiRadius([ZOO.lng, ZOO.lat], ZOO.lng, ZOO.lat),
-		).toBeNull();
-		expect(
-			defaultClosestPoiRadius([ZOO.lng, ZOO.lat], TIERPARK.lng, TIERPARK.lat),
-		).toBeGreaterThan(0);
 	});
 });
 

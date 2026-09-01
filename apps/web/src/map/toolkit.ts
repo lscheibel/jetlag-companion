@@ -152,7 +152,6 @@ export type MapTool =
 			readonly kind: "pickingClosestPoiConstraint";
 			readonly filterKind: PoiTypeId | null;
 			readonly selectedId: string | null;
-			readonly radiusMeters: number | null;
 	  }
 	| { readonly kind: "listingConstraints" }
 	| { readonly kind: "searching" };
@@ -270,7 +269,6 @@ export function constraintEditTool(
 						kind: "pickingClosestPoiConstraint",
 						filterKind: asPoiTypeId(origin.filterKind),
 						selectedId: origin.poiId,
-						radiusMeters: origin.radiusMeters,
 					},
 				};
 		}

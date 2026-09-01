@@ -52,9 +52,6 @@ interface MapBarProps {
 	readonly onRadiusChange: (next: RadiusConstraintTool) => void;
 	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
 	readonly radiusCenters: readonly LngLat[];
-	readonly closestPoiCenter: LngLat | null;
-	readonly fromYou: LngLat | null;
-	readonly fallbackRadiusMeters: number;
 	readonly cut: boolean;
 	readonly onCutChange: (cut: boolean) => void;
 	readonly remainingStopCount: number;
@@ -83,9 +80,6 @@ export function MapBar({
 	onRadiusChange,
 	onClosestPoiChange,
 	radiusCenters,
-	closestPoiCenter,
-	fromYou,
-	fallbackRadiusMeters,
 	cut,
 	onCutChange,
 	remainingStopCount,
@@ -115,9 +109,6 @@ export function MapBar({
 				onRadiusChange={onRadiusChange}
 				onClosestPoiChange={onClosestPoiChange}
 				radiusCenters={radiusCenters}
-				closestPoiCenter={closestPoiCenter}
-				fromYou={fromYou}
-				fallbackRadiusMeters={fallbackRadiusMeters}
 				onUndoPolygonVertex={onUndoPolygonVertex}
 				tool={tool}
 			/>
@@ -186,9 +177,6 @@ function ConstraintDraft({
 	onRadiusChange,
 	onClosestPoiChange,
 	radiusCenters,
-	closestPoiCenter,
-	fromYou,
-	fallbackRadiusMeters,
 	onUndoPolygonVertex,
 }: {
 	readonly cut: boolean;
@@ -203,9 +191,6 @@ function ConstraintDraft({
 	readonly onRadiusChange: (next: RadiusConstraintTool) => void;
 	readonly onClosestPoiChange: (next: ClosestPoiTool) => void;
 	readonly radiusCenters: readonly LngLat[];
-	readonly closestPoiCenter: LngLat | null;
-	readonly fromYou: LngLat | null;
-	readonly fallbackRadiusMeters: number;
 	readonly onUndoPolygonVertex: () => void;
 }) {
 	const [name, setName] = useState(editing?.name ?? "");
@@ -378,71 +363,6 @@ function ConstraintDraft({
 						unit="m"
 						value={String(Math.round(radius.radiusMeters))}
 					/>
-				)}
-				{closest && (
-					<>
-						<ToggleModePair>
-							<ToggleButton
-								onClick={() =>
-									onClosestPoiChange({ ...closest, radiusMeters: null })
-								}
-								pressed={closest.radiusMeters === null}
-								shape="bar"
-								testId="closest-poi-radius-off"
-							>
-								Whole cell
-							</ToggleButton>
-							<ToggleButton
-								onClick={() => {
-									if (closest.radiusMeters !== null) return;
-									const meters =
-										fromYou && closestPoiCenter
-											? distanceMeters(fromYou, closestPoiCenter)
-											: fallbackRadiusMeters;
-									onClosestPoiChange({
-										...closest,
-										radiusMeters: meters > 0 ? meters : fallbackRadiusMeters,
-									});
-								}}
-								pressed={closest.radiusMeters !== null}
-								shape="bar"
-								testId="closest-poi-radius-on"
-							>
-								Limit radius
-							</ToggleButton>
-						</ToggleModePair>
-						{closest.radiusMeters !== null && (
-							<NumberStepper
-								canDecrease={
-									stepZoneMeters(closest.radiusMeters, -1) <
-									closest.radiusMeters
-								}
-								canIncrease={
-									stepZoneMeters(closest.radiusMeters, 1) > closest.radiusMeters
-								}
-								label="Radius"
-								onCommit={(raw) => {
-									const parsed = parseZoneMeters(raw);
-									if (parsed === null) return;
-									onClosestPoiChange({
-										...closest,
-										radiusMeters: clampZoneMeters(parsed),
-									});
-								}}
-								onStep={(direction) => {
-									const current = closest.radiusMeters;
-									if (current === null) return;
-									onClosestPoiChange({
-										...closest,
-										radiusMeters: stepZoneMeters(current, direction),
-									});
-								}}
-								testId="closest-poi-radius"
-								unit="m"
-								value={String(Math.round(closest.radiusMeters))}
-							/>
-						)}
-					</>
 				)}
 				{ready && (
 					<Field
