@@ -41,6 +41,17 @@ function now(): number {
 	return Date.now();
 }
 
+/**
+ * How far into the future a corrected start instant may still be accepted.
+ *
+ * A phase cannot begin later than the present, and the sheet clamps its draft
+ * to the device's idea of now — so this bound only ever catches a screen that
+ * meant something else entirely. The slack is because the check runs on the
+ * phone's clock as well as on the server's, and m0-spec §7's three clocks make
+ * a refusal the server would not have made the more likely failure of the two.
+ */
+const CLOCK_CORRECTION_TOLERANCE_MS = 60_000;
+
 const positionSource = z.enum(["gps", "network", "manual", "unavailable"]);
 
 const clientFix = z.object({
@@ -838,6 +849,116 @@ export const mutators = defineMutators({
 					actorPlayerId: playerId,
 					actorTeamId: null,
 					payload: { roundId: args.roundId, startedAt },
+				});
+			},
+		),
+
+		/**
+		 * A clock that is wrong is an instant that is wrong.
+		 *
+		 * Both phase clocks are derived from one stored instant each, so the fix
+		 * is to move that instant rather than to record an offset beside it. The
+		 * round bar, the hider's countdown and the duration `markFound`
+		 * materialises all read the same `elapsed`; a second mechanism would be a
+		 * second thing for the three of them to disagree about. m5-spec §8,
+		 * decision 4.
+		 *
+		 * The case this exists for is somebody forgetting to tap start and
+		 * remembering ten minutes in — the phase did begin ten minutes ago, and
+		 * saying so is the honest write.
+		 *
+		 * **Not host-only.** Whoever notices is usually whoever forgot, and
+		 * making them find a host first is how the clock stays wrong. m1-spec §6:
+		 * host-only is the set of actions that change the shape of the game, and
+		 * this changes none of it.
+		 *
+		 * Allowed while paused. A frozen clock is still a clock, and `elapsed`
+		 * subtracts whatever pauses the corrected interval now covers by itself.
+		 */
+		correctClock: defineMutator(
+			z.object({
+				...withEvent,
+				roundId: z.string(),
+				/**
+				 * Which clock the screen believed it was correcting, checked
+				 * against the round's actual status. A screen that has not yet seen
+				 * seeking start then moves nothing, rather than moving the other
+				 * phase's instant.
+				 */
+				phase: z.enum(["hiding", "seeking"]),
+				startedAt: z.number().int(),
+			}),
+			async ({ tx, ctx, args }) => {
+				const { playerId, gameId } = requireContext(ctx);
+				const round = await requireRoundInGame(
+					tx,
+					args.roundId,
+					gameId,
+					"correcting the clock",
+				);
+				if (
+					!round ||
+					!requireRoundPhase(
+						tx,
+						round.status,
+						args.phase,
+						"correcting the clock",
+					)
+				) {
+					return;
+				}
+				if (args.startedAt > now() + CLOCK_CORRECTION_TOLERANCE_MS) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "a start instant that has already passed",
+						actual: "a start in the future",
+					});
+					return;
+				}
+				if (
+					args.phase === "seeking" &&
+					round.hidingStartedAt !== null &&
+					args.startedAt < round.hidingStartedAt
+				) {
+					refuse(tx, {
+						code: "game_state_invalid",
+						expected: "seeking starting no earlier than hiding did",
+						actual: "a start before the hiding phase began",
+					});
+					return;
+				}
+
+				const previousStartedAt =
+					args.phase === "hiding"
+						? round.hidingStartedAt
+						: round.seekingStartedAt;
+				await tx.mutate.round.update(
+					args.phase === "hiding"
+						? { id: args.roundId, hidingStartedAt: args.startedAt }
+						: { id: args.roundId, seekingStartedAt: args.startedAt },
+				);
+				await appendEvent(tx, {
+					eventId: args.eventId,
+					gameId,
+					type: "round.clockCorrected",
+					actorPlayerId: playerId,
+					actorTeamId: null,
+					payload: {
+						roundId: args.roundId,
+						phase: args.phase,
+						startedAt: args.startedAt,
+						previousStartedAt,
+						/**
+						 * Signed in the direction the instant moved, so a reader never
+						 * has to subtract to know which way the clock went: negative is
+						 * a phase that began earlier than recorded, and therefore a
+						 * longer clock.
+						 */
+						deltaMs:
+							previousStartedAt === null
+								? null
+								: args.startedAt - previousStartedAt,
+					},
 				});
 			},
 		),

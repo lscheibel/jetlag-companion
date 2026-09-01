@@ -1,5 +1,4 @@
 import type { LngLat } from "@zero-lag/geo";
-import { webPlatform } from "@zero-lag/platform/web";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Sheet } from "@zero-lag/ui/components/sheet";
@@ -537,34 +536,4 @@ function searchLabel(result: SearchResult, fromYou: boolean): string {
 	return fromYou
 		? `${result.stop.name} · ${distance} from you`
 		: `${result.stop.name} · ${distance}`;
-}
-
-export function CoordinateCopy({ point }: { readonly point: LngLat }) {
-	const [copied, setCopied] = useState<"idle" | "yes" | "no">("idle");
-	const text = formatCoordinates(point);
-	const available = webPlatform.clipboard.capability().available;
-	return (
-		<div className="flex items-center gap-2">
-			<span className="select-all">{text}</span>
-			{available ? (
-				<button
-					className="min-h-11 rounded-control border border-hairline px-2"
-					onClick={() =>
-						void webPlatform.clipboard
-							.write(text)
-							.then((success) => setCopied(success ? "yes" : "no"))
-					}
-					type="button"
-				>
-					{copied === "yes"
-						? "Copied"
-						: copied === "no"
-							? "Copy failed"
-							: "Copy"}
-				</button>
-			) : (
-				<span>Select and copy</span>
-			)}
-		</div>
-	);
 }

@@ -6,7 +6,7 @@ import { HoldButton } from "@zero-lag/ui/components/hold-button";
 import { InlineNotice } from "@zero-lag/ui/components/notice";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
-import { formatHms } from "../game/round-bar";
+import { formatHms } from "../game/round-clock";
 import { useNow } from "../map/use-now";
 import { LobbyScreenActions } from "./lobby-actions";
 import { useLobby } from "./use-lobby";

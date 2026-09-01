@@ -45,9 +45,7 @@ export function HiderChip({
 					className="block truncate text-ink-dim text-xs"
 					data-testid="remaining-stops"
 				>
-					<span className="num">
-						{remainingStopCount.toLocaleString("en")}
-					</span>
+					<span className="num">{remainingStopCount.toLocaleString("en")}</span>
 					{remainingStopCount === 1 ? " stop remaining" : " stops remaining"}
 				</span>
 			</span>

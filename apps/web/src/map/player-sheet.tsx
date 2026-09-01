@@ -1,5 +1,6 @@
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { formatBattery } from "./battery";
+import { CoordinateCopy } from "./coordinate-copy";
 import { PlayerTeamBadge } from "./player-marker";
 import type { MapPlayer } from "./players";
 import {
@@ -68,6 +69,14 @@ export function PlayerSheet({ player, onClose }: PlayerSheetProps) {
 
 				{fix && fix.source !== "unavailable" && (
 					<>
+						<dt>Position</dt>
+						<dd>
+							<CoordinateCopy
+								point={[fix.lng, fix.lat]}
+								testId="sheet-coordinates"
+							/>
+						</dd>
+
 						<dt>Accuracy</dt>
 						<dd data-testid="sheet-accuracy">
 							{formatAccuracy(fix.accuracyMeters)} · {fix.source}

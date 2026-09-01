@@ -11,28 +11,28 @@ import { Surface } from "@zero-lag/ui/components/surface";
 import type { SearchableStop } from "../map/toolkit";
 import { useNow } from "../map/use-now";
 import { formatZone } from "../setup/game-size";
-import { formatHms } from "./round-bar";
+import { formatHms } from "./round-clock";
 import type { MyRole } from "./use-role";
 
 interface HidingSheetProps {
 	readonly role: MyRole;
 	readonly selectedStop: SearchableStop | null;
 	readonly radiusMeters: number;
-	readonly clockOffsetMs?: number;
 }
 
 export function HidingSheet({
 	role,
 	selectedStop,
 	radiusMeters,
-	clockOffsetMs = 0,
 }: HidingSheetProps) {
 	const zero = useZero();
 	const [games] = useQuery(queries.game());
 	const [commitments] = useQuery(queries.commitments());
 	const [rounds] = useQuery(queries.rounds());
 	const [pauses] = useQuery(queries.roundPauses());
-	const now = useNow(1_000) + clockOffsetMs;
+	// The device's own clock, matching the round bar. See `RoundBar` for why
+	// the ephemeral clock offset is not applied to either.
+	const now = useNow(1_000);
 
 	if (role.role !== "hider" || role.roundStatus !== "hiding") return null;
 

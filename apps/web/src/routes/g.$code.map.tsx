@@ -40,6 +40,7 @@ import { type Camera, FREE, nextCamera } from "../map/camera";
 import { CameraController } from "../map/camera-controller";
 import { CircleDraftLayer } from "../map/circle-draft-layer";
 import { ConstraintDraftLayer } from "../map/constraint-draft-layer";
+import { CoordinateCopy } from "../map/coordinate-copy";
 import type { RadiusDraft, RingDraft } from "../map/draw-gestures";
 import { DrawLayer } from "../map/draw-layer";
 import { EliminatedLayer } from "../map/eliminated-layer";
@@ -63,7 +64,7 @@ import {
 } from "../map/map-overlay";
 import type { GestureCause } from "../map/map-pointer";
 import { MapHud } from "../map/map-rail";
-import { CoordinateCopy, MapToolSheet } from "../map/map-tool-sheet";
+import { MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
 import {
@@ -1312,10 +1313,7 @@ function MapScreen() {
 			}
 			data-testid="play-map"
 		>
-			<LobbyChrome
-				controls={false}
-				status={<RoundBar clockOffsetMs={ephemeral.clockOffsetMs} />}
-			/>
+			<LobbyChrome controls={false} status={<RoundBar />} />
 			<span className="sr-only" data-testid="my-role">
 				{role.role ?? "no role"}
 			</span>
@@ -1531,7 +1529,10 @@ function MapScreen() {
 							raised
 						>
 							<OwnPositionReadout fix={ownFix} />
-							<CoordinateCopy point={[ownFix.lng, ownFix.lat]} />
+							<CoordinateCopy
+								point={[ownFix.lng, ownFix.lat]}
+								testId="own-readout-coordinates"
+							/>
 						</Surface>
 					)}
 				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
@@ -1613,7 +1614,6 @@ function MapScreen() {
 							{tool.kind === "none" && isHidingHider && (
 								<motion.div key="hiding" {...cardMotion}>
 									<HidingSheet
-										clockOffsetMs={ephemeral.clockOffsetMs ?? 0}
 										radiusMeters={defaultRadiusMeters}
 										role={role}
 										selectedStop={hidingStop}

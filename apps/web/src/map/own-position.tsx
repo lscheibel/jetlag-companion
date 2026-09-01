@@ -2,9 +2,9 @@ import { circleLngLat } from "@zero-lag/geo";
 import type { PositionSnapshot } from "@zero-lag/schema";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { useMemo } from "react";
+import { CoordinateCopy } from "./coordinate-copy";
 import { multiPolygonFeature } from "./geojson";
 import { MapMarker } from "./map-canvas";
-import { CoordinateCopy } from "./map-tool-sheet";
 import { formatAccuracy } from "./staleness";
 import { formatCoordinates } from "./toolkit";
 import { useGeoJsonLayer } from "./use-geojson-layer";
@@ -157,7 +157,10 @@ export function OwnPositionSheet({
 			{shown && shown.source !== "unavailable" && (
 				<div className="space-y-2 text-sm">
 					<OwnPositionReadout fix={shown} />
-					<CoordinateCopy point={[shown.lng, shown.lat]} />
+					<CoordinateCopy
+						point={[shown.lng, shown.lat]}
+						testId="own-position-coordinates"
+					/>
 				</div>
 			)}
 		</Sheet>

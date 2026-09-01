@@ -4,6 +4,7 @@ import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
 import { ConstraintOption, type PoiConstraintKind } from "./constraint-option";
+import { CoordinateCopy } from "./coordinate-copy";
 import { DistanceToYou } from "./distance-to-you";
 import type { MapPoi } from "./poi";
 import { isStationType, type PoiTypeId, poiTypeSingular } from "./poi-type";
@@ -60,6 +61,12 @@ export function PoiSheet({
 			<div className="space-y-3">
 				{shown && (
 					<DistanceToYou from={fromYou} lat={shown.lat} lng={shown.lng} />
+				)}
+				{shown && (
+					<CoordinateCopy
+						point={[shown.lng, shown.lat]}
+						testId="poi-coordinates"
+					/>
 				)}
 				{shown &&
 				!isStationType(shown.kind) &&

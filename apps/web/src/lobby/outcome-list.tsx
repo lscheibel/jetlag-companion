@@ -1,7 +1,7 @@
 import { useQuery } from "@rocicorp/zero/react";
 import { queries } from "@zero-lag/schema";
 import { PhotoImage } from "../game/photo-image";
-import { formatClock } from "../game/round-bar";
+import { formatClock } from "../game/round-clock";
 
 interface HiderResultProps {
 	readonly teamId: string;

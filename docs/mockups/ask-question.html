@@ -1,0 +1,1073 @@
+<title>Zero Lag Question Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Deck 09 · Ask a question ═══════════════════════════════════════════
+   Same page chrome as decks 07 and 08: neutral paper, the app's own role
+   tokens on every stage, three theme states (explicit light, explicit dark,
+   and the un-stamped system default).                                    */
+
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+
+  /* app role tokens — verbatim from packages/ui/src/styles/tokens.css */
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f;
+  --curse:#c13f94;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c; --map-hiding-area:#e0ae00; --map-eliminated:rgb(8 17 28 / .16);
+  --edge-danger:#A62A15;
+
+  /* motion, from styles/motion.css */
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --ease-travel:cubic-bezier(.32,.72,.28,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-sheet:420ms; --dur-breathe:1900ms;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+    --curse:#e86bb4;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6; --map-hiding-area:#ffe01f; --map-eliminated:rgb(5 8 14 / .74);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+  --curse:#e86bb4;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6; --map-hiding-area:#ffe01f; --map-eliminated:rgb(5 8 14 / .74);
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table,p,h1,h2,h3,h4{margin:0}
+ul{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.022em;line-height:1.05;text-wrap:balance}
+.mono,.eyebrow,.spec dt,.tag,.varlabel{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.i{display:inline-block;flex:0 0 auto;width:20px;height:20px;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i.xs{width:13px;height:13px}.i.sm{width:16px;height:16px}.i.lg{width:24px;height:24px}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:1340px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 120px}
+.eyebrow{font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── masthead ────────────────────────────────────────────────────────── */
+.masthead{padding:56px 0 34px;border-bottom:3px solid var(--text)}
+.mast-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:24px}
+.mast-top .u{background:var(--blue);color:#fff;width:23px;height:23px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Azeret Mono",monospace}
+.mast-top b{color:var(--text);font-weight:700}
+.masthead h1{font-size:clamp(40px,6.6vw,78px);max-width:16ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:22px;max-width:64ch;font-size:18.5px;color:var(--text-2)}
+.mast-foot{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-top:32px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:500;letter-spacing:.07em;border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;color:var(--text-2);background:var(--paper-2);white-space:nowrap;font-family:"Azeret Mono",monospace}
+.tag.ship{border-color:var(--green);color:var(--green)}
+.tag.new{border-color:var(--yellow);color:var(--text);background:color-mix(in oklab,var(--yellow) 22%,var(--paper-2))}
+.tag.ask{border-color:var(--red);color:var(--red)}
+
+.stagectl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stagectl .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);font-family:"Azeret Mono",monospace}
+.segbar{display:flex;flex:0 0 auto;gap:2px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;position:relative}
+.segbar button{position:relative;white-space:nowrap;flex:0 0 auto;z-index:1;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;color:var(--text-2);transition:color var(--dur-tap)}
+.segbar button[aria-pressed="true"]{color:var(--yellow-ink)}
+.segbar .thumb{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--yellow);transition:transform var(--dur-move) var(--ease-pop),width var(--dur-move) var(--ease-pop);z-index:0}
+
+/* ── bands & plates ──────────────────────────────────────────────────── */
+.band{padding:64px 0 12px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{max-width:74ch;margin-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(27px,3.4vw,40px)}
+.band-head p{color:var(--text-2);font-size:16.5px}
+.band-head p+p{margin-top:2px}
+
+.plates{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.plate{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--lift);
+}
+.plate-head{padding:18px 20px 14px;border-bottom:1px solid var(--rule-2);display:flex;flex-direction:column;gap:9px}
+.plate-title{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.plate-title h3{font-size:21px}
+.plate-title .as{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:9px;background:var(--text);color:var(--paper);font-family:"Azeret Mono",monospace;font-size:12.5px;font-weight:700}
+.plate-head p{font-size:14px;color:var(--text-2);line-height:1.5;max-width:58ch}
+.plate-ctl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--rule-2)}
+.plate-ctl .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;flex-wrap:wrap}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+.stand{flex:1 1 auto;display:grid;place-items:center;padding:26px 20px 30px;background:
+  radial-gradient(120% 80% at 50% 0%,color-mix(in oklab,var(--paper-3) 70%,transparent),transparent 70%)}
+.notes{padding:16px 20px 20px;border-top:1px solid var(--rule-2);background:var(--paper-2)}
+.spec{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13.5px}
+.spec dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding-top:3px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.spec dd{color:var(--text-2);line-height:1.5}
+.spec code,code{font-family:"Azeret Mono",monospace;font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:5px;color:var(--text)}
+.why{margin-top:13px;padding-left:12px;border-left:3px solid var(--yellow);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.cost{margin-top:9px;padding-left:12px;border-left:3px solid var(--red);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.why b,.cost b{color:var(--text);font-weight:600}
+</style>
+<style>
+/* ═══ the phone ══════════════════════════════════════════════════════════ */
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38,0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.statusbar{height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink);letter-spacing:.02em}
+.appbar{flex:0 0 auto;padding:2px 14px 10px;display:flex;align-items:center;gap:10px}
+.appbar .back{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border-radius:12px;background:var(--surface);color:var(--ink-dim);border:1px solid var(--hairline)}
+.appbar .tt{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.appbar h4{font-size:17px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr{flex:1 1 auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;position:relative}
+.scr.flush{padding-left:0;padding-right:0}
+.scr .pad{padding:0 12px}
+.cut{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:7px}
+.cut::after{content:"";position:absolute;left:0;right:0;bottom:0;height:44px;pointer-events:none;
+  background:linear-gradient(to top,var(--ground),transparent)}
+.row{display:flex;align-items:center;gap:9px}
+.grow{flex:1 1 auto;min-width:0}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim{color:var(--ink-dim)}
+.faint{color:var(--ink-faint)}
+.mn{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums}
+.lbl{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* the cost chip: what the hider draws and keeps */
+.cards{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;border-radius:999px;
+  padding:2px 7px 2px 5px;background:var(--surface-raised);border:1px solid var(--hairline);
+  font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.04em;color:var(--ink-dim)}
+.cards .i{width:11px;height:11px}
+.cards.hot{background:color-mix(in oklab,var(--danger) 16%,var(--surface-raised));border-color:color-mix(in oklab,var(--danger) 45%,var(--hairline));color:var(--danger)}
+.cards.cool{background:color-mix(in oklab,var(--live) 15%,var(--surface-raised));border-color:color-mix(in oklab,var(--live) 40%,var(--hairline));color:var(--live)}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:16px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;min-height:52px;
+  background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press);position:relative;overflow:hidden}
+.btn.tall{min-height:60px;font-size:17px;border-radius:19px}
+.btn small{font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
+.btn.off{background:var(--surface-raised);color:var(--ink-faint);box-shadow:none;border:1px solid var(--hairline)}
+.btn.beacon::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite}
+@keyframes sheen{0%,74%{transform:translateX(-120%)}94%,100%{transform:translateX(120%)}}
+@media (prefers-reduced-motion:reduce){.btn.beacon::after{animation:none;opacity:0}}
+
+/* ── A · six doors ───────────────────────────────────────────────────── */
+.tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;flex:1 1 auto;min-height:0}
+.tile{display:flex;flex-direction:column;gap:5px;min-height:96px;padding:11px 11px 10px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--hairline);transition:transform var(--dur-press) var(--ease-pop)}
+.tile:active{transform:scale(.97)}
+.tile .top{display:flex;align-items:center;gap:7px}
+.tile .glyph{display:grid;place-items:center;width:28px;height:28px;flex:0 0 auto;border-radius:10px;
+  background:var(--surface-raised);color:var(--ink)}
+.tile h5{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:14.5px;letter-spacing:-.01em;margin:0}
+.tile .shape{font-size:11px;line-height:1.35;color:var(--ink-dim)}
+.tile .foot{margin-top:auto;display:flex;align-items:center;gap:6px}
+.tile .n{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.06em;color:var(--ink-faint)}
+.tile.locked{opacity:.55}
+.tile.locked .glyph{color:var(--ink-faint)}
+
+/* ── question rows, shared by every layout ───────────────────────────── */
+.gh{display:flex;align-items:center;gap:8px;padding:9px 2px 3px;position:sticky;top:0;background:var(--ground);z-index:2}
+.gh .t{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint)}
+.gh .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.qrow{display:flex;align-items:center;gap:9px;min-height:44px;padding:7px 11px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--hairline);transition:transform var(--dur-press) var(--ease-pop)}
+.qrow:active{transform:scale(.985)}
+.qrow .grow{display:flex;flex-direction:column;gap:1px}
+.qrow .nm{font-size:13.5px;font-weight:600;line-height:1.25}
+.qrow .note{font-size:10.5px;color:var(--ink-faint);line-height:1.3}
+.qrow .chev{color:var(--ink-faint);flex:0 0 auto}
+.qrow.spent{background:transparent;border-style:dashed;color:var(--ink-faint)}
+.qrow.spent .nm{font-weight:500;text-decoration:line-through;text-decoration-color:var(--hairline-strong)}
+.qrow .lead{flex:0 0 auto;display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:var(--surface-raised);color:var(--ink-dim)}
+.qrow.tap{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in oklab,var(--action) 30%,transparent)}
+
+/* ── B · one list ────────────────────────────────────────────────────── */
+.searchbox{display:flex;align-items:center;gap:9px;min-height:42px;border-radius:14px;background:var(--surface);
+  border:1.5px solid var(--hairline);padding:0 12px;color:var(--ink-faint);flex:0 0 auto}
+.searchbox input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;font-size:13.5px;color:var(--ink)}
+.filters{display:flex;gap:6px;overflow:hidden;flex:0 0 auto;-webkit-mask-image:linear-gradient(to right,#000 86%,transparent)}
+.fchip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 11px;
+  background:var(--surface);border:1px solid var(--hairline);font-size:11.5px;font-weight:600;color:var(--ink-dim);white-space:nowrap}
+.fchip[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--action-ink)}
+.fchip .i{width:13px;height:13px}
+.cut.railed{padding-right:26px}
+.jump{position:absolute;right:0;top:6px;bottom:52px;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  padding:5px 3px;border-radius:999px;background:color-mix(in oklab,var(--surface) 72%,transparent);backdrop-filter:blur(5px)}
+.jump span{font-family:"Azeret Mono",monospace;font-size:8.5px;font-weight:700;color:var(--ink-faint);text-align:center;width:18px;line-height:1.5}
+.jump span.on{color:var(--action-press)}
+
+/* ── C · what it rules out ───────────────────────────────────────────── */
+.effect{display:flex;align-items:center;gap:8px;padding:10px 2px 4px}
+.effect .dg{flex:0 0 auto;width:26px;height:26px}
+.effect .t{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:13px;letter-spacing:-.01em;white-space:nowrap}
+.effect .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.effect .pct{font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-faint);letter-spacing:.05em;white-space:nowrap}
+.bar{position:relative;height:4px;border-radius:999px;background:var(--surface-raised);overflow:hidden;margin-top:5px}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--action);display:block}
+.bar i.cool{background:var(--transit-u)}
+.bar i.warm{background:var(--live)}
+.qrow.wide{align-items:flex-start;flex-direction:column;gap:4px;padding:9px 11px}
+.qrow.wide .line{display:flex;align-items:center;gap:9px;width:100%}
+.share{font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;color:var(--ink);flex:0 0 auto}
+
+/* ── D · the board ───────────────────────────────────────────────────── */
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface-sunken);border:1px solid var(--hairline);flex:0 0 auto}
+.tabs button{flex:1 1 0;display:grid;place-items:center;gap:2px;padding:6px 2px 5px;border-radius:999px;color:var(--ink-faint)}
+.tabs button[aria-pressed="true"]{background:var(--action);color:var(--action-ink)}
+.tabs .nm{font-family:"Azeret Mono",monospace;font-size:8px;letter-spacing:.05em;text-transform:uppercase}
+.sentence{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;line-height:1.2;letter-spacing:-.02em;padding:2px 2px 0}
+.sentence u{text-decoration:none;display:inline-block;min-width:66px;border-bottom:3px solid var(--action);text-align:center;color:var(--ink-faint);font-weight:600;font-size:16px}
+.sentence u.set{color:var(--ink);font-weight:800;font-size:19px;font-family:"Azeret Mono",monospace}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pick{display:grid;place-items:center;min-height:46px;border-radius:14px;background:var(--surface);border:1.5px solid var(--hairline);
+  font-family:"Azeret Mono",monospace;font-size:13px;font-weight:700;transition:transform var(--dur-press) var(--ease-pop)}
+.pick:active{transform:scale(.95)}
+.pick[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--action-ink)}
+.pick.wide{grid-column:span 3;font-family:"Archivo",sans-serif;font-size:13.5px;font-weight:600;min-height:42px}
+.pick small{display:block;font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;color:var(--ink-faint);font-weight:500}
+.pick[aria-pressed="true"] small{color:var(--action-ink);opacity:.75}
+
+/* ── the detail sheet, shared ────────────────────────────────────────── */
+.scrim{position:absolute;inset:0;z-index:4;background:var(--scrim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;border-radius:26px 26px 0 0;background:var(--sheet-fill,var(--surface));
+  border-top:1px solid var(--hairline);padding:9px 14px 16px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 -20px 40px -28px rgb(0 0 0/.7)}
+.grip{width:38px;height:4px;border-radius:999px;background:var(--hairline-strong);margin:0 auto 2px}
+.readout{display:flex;align-items:center;gap:9px;min-height:44px;border-radius:14px;background:var(--surface-raised);
+  border:1px solid var(--hairline);padding:0 11px;width:100%}
+.readout .v{flex:1 1 auto;min-width:0;font-family:"Azeret Mono",monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rules{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;color:var(--ink-dim);
+  background:var(--surface-raised);border-radius:14px;padding:10px 12px}
+.rules dt{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
+.rules dd{margin:0;line-height:1.35}
+.wait .grow{display:flex;flex-direction:column;gap:1px}
+.wait{display:flex;align-items:center;gap:8px;border-radius:14px;padding:9px 11px;background:var(--surface);border:1px solid var(--hairline)}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--live);flex:0 0 auto;animation:breathe var(--dur-breathe) ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+/* ── stage state switching ───────────────────────────────────────────── */
+.st{display:none}
+.st.on{display:flex}
+
+/* ── the inventory table ─────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:18px;background:var(--paper-2);box-shadow:var(--lift)}
+table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+.inv th,.inv td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--rule-2);vertical-align:top}
+.inv thead th{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);font-weight:500;white-space:nowrap}
+.inv tbody tr:last-child td{border-bottom:0}
+.inv td.k{font-weight:700;white-space:nowrap}
+.inv td.k .i{margin-right:7px;color:var(--text-2)}
+.inv td.q{color:var(--text-2);font-style:italic}
+.inv td.n,.inv td.c{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.inv td.c{color:var(--text-2)}
+.inv tbody tr:hover{background:color-mix(in oklab,var(--yellow) 8%,transparent)}
+
+/* ── route strips ────────────────────────────────────────────────────── */
+.routes{display:flex;flex-direction:column;gap:10px}
+.route{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px}
+.route .who{flex:0 0 96px;font-weight:700;color:var(--text);font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.route .step{display:inline-flex;align-items:center;gap:7px;border-radius:11px;background:var(--paper-3);border:1px solid var(--rule);padding:5px 10px;color:var(--text-2)}
+.route .step .i{width:15px;height:15px}
+.route .step.end{background:color-mix(in oklab,var(--yellow) 24%,var(--paper-3));border-color:color-mix(in oklab,var(--yellow) 50%,var(--rule));color:var(--text);font-weight:600}
+.route .sep{color:var(--text-3);font-family:"Azeret Mono",monospace;font-size:11px}
+.route .n{margin-left:auto;font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+@media (max-width:640px){.route .who{flex:1 1 100%}.route .n{margin-left:0}}
+
+.setaside{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr))}
+.aside{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:15px 17px;box-shadow:var(--lift);display:flex;flex-direction:column;gap:7px}
+.aside h4{font-size:16.5px}
+.aside p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+.aside .num{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+.aside.call{border-left:4px solid var(--red)}
+.aside.call .num{color:var(--red)}
+</style>
+<style>
+/* team identity — Okabe–Ito, mirrored from apps/web/src/lobby/palette.ts */
+:root{--t-vermillion:#D55E00;--t-cobalt:#0072B2;--t-jade:#009E73;--t-orchid:#CC79A7;--t-amber:#E69F00}
+.badge{display:grid;place-items:center;width:22px;height:22px;flex:0 0 auto;border-radius:50%;font-size:12px;
+  box-shadow:inset 0 0 0 2px rgb(255 255 255/.25)}
+.badge.sm{width:18px;height:18px;font-size:10px}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- the six categories -->
+    <symbol id="ic-match" viewBox="0 0 24 24"><circle cx="9" cy="12" r="6.2"/><circle cx="15" cy="12" r="6.2"/></symbol>
+    <symbol id="ic-measure" viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="2"/><path d="M7 8v3M12 8v4M17 8v3"/></symbol>
+    <symbol id="ic-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 6.5a5.5 5.5 0 0 1 0 11"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19"/><path d="M12 6.5a5.5 5.5 0 0 0 0 11" opacity=".35"/></symbol>
+    <symbol id="ic-thermo" viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4.5 4.5 0 1 0 4 0z"/><path d="M12 9v6"/></symbol>
+    <symbol id="ic-photo" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H8l1.4-2h5.2L16 6h2.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></symbol>
+    <symbol id="ic-tentacle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8V4M14.2 12H20M12 14.2V20M9.8 12H4"/><circle cx="12" cy="3" r="1.4"/><circle cx="21" cy="12" r="1.4"/><circle cx="12" cy="21" r="1.4"/><circle cx="3" cy="12" r="1.4"/></symbol>
+    <!-- chrome -->
+    <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="ic-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="ic-cards" viewBox="0 0 24 24"><rect x="8" y="4" width="12" height="16" rx="2.2"/><path d="M5.5 7v11a2 2 0 0 0 2 2h8"/></symbol>
+    <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+    <symbol id="ic-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.6 4.5L19 7.5"/></symbol>
+    <symbol id="ic-map" viewBox="0 0 24 24"><path d="m3 6.5 6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v15.5M15 6.5V22"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="ic-bubble" viewBox="0 0 24 24"><path d="M20.5 12.5c0 4.2-3.8 7.5-8.5 7.5-1.2 0-2.3-.2-3.3-.6L3.5 21l1.4-4A7.2 7.2 0 0 1 3.5 12.5C3.5 8.3 7.3 5 12 5s8.5 3.3 8.5 7.5z"/><path d="M9.8 10.4a2.3 2.3 0 1 1 2.9 2.3v1.1"/><path d="M12.6 16.2h.01"/></symbol>
+    <symbol id="ic-shuffle" viewBox="0 0 24 24"><path d="M3 6h4l10 12h4M17 4l4 2-4 2M3 18h4l3-3.6M14 9.4 17 6M17 20l4-2-4-2"/></symbol>
+    <!-- what an answer does to the map -->
+    <symbol id="dg-circle" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><circle cx="12" cy="12" r="6" fill="currentColor" fill-opacity=".22"/></symbol>
+    <symbol id="dg-half" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><path d="M2.5 17 21.5 6.5v12a3 3 0 0 1-3 3h-16z" fill="currentColor" fill-opacity=".22" stroke="none"/><path d="M2.5 17 21.5 6.5"/></symbol>
+    <symbol id="dg-cell" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><path d="M9 2.5v19M15.5 2.5v19M2.5 9h19M2.5 15.5h19" opacity=".55"/><rect x="9" y="9" width="6.5" height="6.5" fill="currentColor" fill-opacity=".3" stroke="none"/></symbol>
+    <symbol id="dg-eye" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3" stroke-dasharray="3 3"/><path d="M6 12s2.6-3.6 6-3.6S18 12 18 12s-2.6 3.6-6 3.6S6 12 6 12z"/><circle cx="12" cy="12" r="1.6"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+
+<header class="masthead">
+  <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 09</span><span>·</span><span>Ask a question</span><span>·</span><span>1 Sep 2026</span>
+  </div>
+  <h1>Sixty-two questions, <em>one thumb</em>, a train in four minutes.</h1>
+  <p class="deck">The seeker taps <b>Ask</b>, picks the hider team, and then has to find one question out of six families — each with its own answer shape, its own wait, and its own price in cards for the team being hunted. Four ways to lay that menu out, drawn against the same game: a medium board in Berlin, team Eule hunting Fuchsbau, 28 minutes on the round clock.</p>
+  <div class="mast-foot">
+    <div class="legend">
+      <span class="tag ship">Ships today</span>
+      <span class="tag new">Proposed</span>
+      <span class="tag ask">Needs your call</span>
+    </div>
+    <div class="stagectl">
+      <span class="lab">Theme</span>
+      <div class="segbar" id="themebar" role="group" aria-label="Theme">
+        <span class="thumb" aria-hidden="true"></span>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ what is actually in the menu ════════════════════════════════════ -->
+<section class="band" id="inventory">
+  <div class="band-head">
+    <span class="kicker">The stock</span>
+    <h2>Six families, and they are not the same size</h2>
+    <p>Radar is ten choices of one number. Matching is twenty different things to be nearest to, in five groups. Photo changes with the size of the board and Tentacle does not exist on a small one. Any layout that treats the six as equal doors is already lying about the contents — that is the first thing the four proposals disagree about.</p>
+    <p>Costs below are what the <em>hider</em> gets for answering: the reason a seeker weighs one question against another rather than asking the strongest one every time.</p>
+  </div>
+  <div class="tablewrap">
+    <table class="inv">
+      <thead>
+        <tr><th>Family</th><th>What the seeker says</th><th>Answer</th><th>Wait</th><th>Hider draws</th><th>On this board</th><th>Shape of the list</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-match"/></svg>Matching</td>
+          <td class="q">Is your nearest ___ the same as mine?</td>
+          <td class="c">Yes / no</td><td class="c">5 min</td><td class="c">3 → keep 1</td><td class="n">20</td>
+          <td>Five groups: transit, administrative, natural, places, utilities</td>
+        </tr>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-measure"/></svg>Measuring</td>
+          <td class="q">Compared to me, are you closer to or further from ___?</td>
+          <td class="c">Closer / further</td><td class="c">5 min</td><td class="c">3 → keep 1</td><td class="n">20</td>
+          <td>Same five groups, plus borders and sea level</td>
+        </tr>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-radar"/></svg>Radar</td>
+          <td class="q">Are you within ___ of me?</td>
+          <td class="c">Yes / no</td><td class="c">5 min</td><td class="c">2 → keep 1</td><td class="n">9 + free</td>
+          <td>One ladder of distances, and a distance you type</td>
+        </tr>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-thermo"/></svg>Thermometer</td>
+          <td class="q">After travelling ___, am I hotter or colder?</td>
+          <td class="c">Hotter / colder</td><td class="c">5 min</td><td class="c">2 → keep 1</td><td class="n">3</td>
+          <td>Two steps: start it here, finish it after you have moved</td>
+        </tr>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-photo"/></svg>Photo</td>
+          <td class="q">Send me a photo of ___.</td>
+          <td class="c">A photo, or “I can’t”</td><td class="c">10 min</td><td class="c">1 → keep 1</td><td class="n">14</td>
+          <td>Grows with the board: 6 small, 14 medium, 18 large</td>
+        </tr>
+        <tr>
+          <td class="k"><svg class="i sm"><use href="#ic-tentacle"/></svg>Tentacle</td>
+          <td class="q">Within ___ of me, which ___ are you nearest to?</td>
+          <td class="c">A name, or out of reach</td><td class="c">5 min</td><td class="c">4 → keep 2</td><td class="n">4</td>
+          <td>Not on a small board. Four kinds at 1.5 km here, eight at 25 km on a large one</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ the four layouts ════════════════════════════════════════════════ -->
+<section class="band" id="layouts">
+  <div class="band-head">
+    <span class="kicker">Four proposals</span>
+    <h2>The same sixty-two questions, sorted four ways</h2>
+    <p>Each phone below is the screen that opens after <b>Ask → Fuchsbau</b>. They differ only in how the menu is organised: by family, by nothing at all, by what the answer does to the map, or by keeping every family one tap away at all times. Everything downstream — the question card, the position you ask from, the wait — is shared, and is drawn once further down.</p>
+  </div>
+  <div class="plates">
+
+    <!-- ── A ─────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">A</span><h3>Six doors</h3><span class="tag new">3 taps to ask</span></div>
+        <p>The families are the menu. Six tiles, each carrying its sentence, its stock and its price, and behind each one the list of things you can put in the blank.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">Step</span>
+        <div class="statebar" data-states="a">
+          <button type="button" data-state="doors" aria-pressed="true">The doors</button>
+          <button type="button" data-state="inside" aria-pressed="false">Inside matching</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="a">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+
+            <div class="st on" data-st="doors" style="flex-direction:column;flex:1 1 auto;min-height:0">
+              <div class="appbar">
+                <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+                <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
+                <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+              </div>
+              <div class="scr">
+                <div class="cut">
+                  <div class="tiles">
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-match"/></svg></span><h5>Matching</h5></div>
+                      <span class="shape">Is your nearest ___ the same as mine?</span>
+                      <div class="foot"><span class="n">20</span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></div>
+                    </button>
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-measure"/></svg></span><h5>Measuring</h5></div>
+                      <span class="shape">Closer to it than me, or further?</span>
+                      <div class="foot"><span class="n">20</span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></div>
+                    </button>
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-radar"/></svg></span><h5>Radar</h5></div>
+                      <span class="shape">Are you within ___ of me?</span>
+                      <div class="foot"><span class="n">10</span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span></div>
+                    </button>
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-thermo"/></svg></span><h5>Thermometer</h5></div>
+                      <span class="shape">Move, then hotter or colder?</span>
+                      <div class="foot"><span class="n">3</span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span></div>
+                    </button>
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-photo"/></svg></span><h5>Photo</h5></div>
+                      <span class="shape">Send me a photo of ___.</span>
+                      <div class="foot"><span class="n">14</span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>1→1</span></div>
+                    </button>
+                    <button class="tile" type="button">
+                      <div class="top"><span class="glyph"><svg class="i sm"><use href="#ic-tentacle"/></svg></span><h5>Tentacle</h5></div>
+                      <span class="shape">Which ___ are you nearest to?</span>
+                      <div class="foot"><span class="n">4</span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span></div>
+                    </button>
+                  </div>
+                </div>
+                <div class="row" style="gap:7px;padding:2px 2px 0">
+                  <svg class="i sm faint"><use href="#ic-clock"/></svg>
+                  <span class="lbl" style="letter-spacing:.06em;text-transform:none;font-size:10px">Fuchsbau answered your last one in 1:12</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="st" data-st="inside" style="flex-direction:column;flex:1 1 auto;min-height:0">
+              <div class="appbar">
+                <button class="back" type="button" aria-label="Back to the families"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+                <div class="tt"><h4>Matching</h4><span class="sub">Yes or no · 5 min · 3→1 cards</span></div>
+              </div>
+              <div class="scr">
+                <div class="cut">
+                  <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Airport</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Transit line</span><span class="note">you must be riding it</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Length of the station name</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Street or path</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <div class="gh"><span class="t">Where on the map</span><span class="hr"></span></div>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">State</span><span class="note">Berlin, Brandenburg</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">District</span><span class="note">Mitte, Pankow</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Neighbourhood</span><span class="note">Moabit, Wedding</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <div class="gh"><span class="t">Out in the open</span><span class="hr"></span></div>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Park</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="grow"><span class="nm">Mountain</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Tile</dt><dd>Name, the sentence with the blank in it, how many things fit the blank, and what answering pays the hider</dd>
+          <dt>Depth</dt><dd>Family → thing → the question card. Three taps to send, two of them on a 96 px target</dd>
+          <dt>Small board</dt><dd>Tentacle is drawn locked with the reason on the tile, not hidden — the rule is part of what a seeker should know</dd>
+        </dl>
+        <p class="why"><b>Why it is the safe one.</b> It teaches the game. A seeker who has never played sees six sentences and understands the whole instrument in one screen, and the price sits next to the name at the moment of choosing, not after.</p>
+        <p class="cost"><b>What it costs.</b> Radar is nine numbers behind a door, and radar is what people ask. The most-used question in the game is two taps deep, and the fourth tap of the evening still starts from the same six tiles.</p>
+      </div>
+    </article>
+
+    <!-- ── B ─────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">B</span><h3>One list, all of it</h3><span class="tag new">2 taps to ask</span></div>
+        <p>No doors. Sixty-two rows in one scroll under sticky family headings, a search field that reaches every one of them, and the ones you have already spent struck out where they lie.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">State</span>
+        <div class="statebar" data-states="b">
+          <button type="button" data-state="rest" aria-pressed="true">Scrolling</button>
+          <button type="button" data-state="find" aria-pressed="false">Typing “hosp”</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="b">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+
+            <div class="st on" data-st="rest" style="flex-direction:column;flex:1 1 auto;min-height:0">
+              <div class="scr">
+                <div class="searchbox"><svg class="i sm"><use href="#ic-search"/></svg><input placeholder="Search 62 questions" readonly></div>
+                <div class="filters">
+                  <button class="fchip" type="button" aria-pressed="true">All</button>
+                  <button class="fchip" type="button"><svg class="i"><use href="#ic-radar"/></svg>Radar</button>
+                  <button class="fchip" type="button"><svg class="i"><use href="#ic-match"/></svg>Matching</button>
+                  <button class="fchip" type="button"><svg class="i"><use href="#ic-measure"/></svg>Meas</button>
+                </div>
+                <div class="cut railed">
+                  <div class="jump" aria-hidden="true"><span class="on">RA</span><span>MA</span><span>ME</span><span>TH</span><span>PH</span><span>TE</span></div>
+                  <div class="gh"><span class="t">Radar · yes / no · 2→1</span><span class="hr"></span></div>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-radar"/></svg></span><span class="grow"><span class="nm mn">Within 500 m</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow spent" type="button"><span class="lead"><svg class="i xs"><use href="#ic-radar"/></svg></span><span class="grow"><span class="nm mn">Within 1 km</span><span class="note">asked 15:52, no</span></span></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-radar"/></svg></span><span class="grow"><span class="nm mn">Within 3 km</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-radar"/></svg></span><span class="grow"><span class="nm mn">Within 5 km</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-radar"/></svg></span><span class="grow"><span class="nm">A distance you choose</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <div class="gh"><span class="t">Matching · yes / no · 3→1</span><span class="hr"></span></div>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-match"/></svg></span><span class="grow"><span class="nm">Same airport</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-match"/></svg></span><span class="grow"><span class="nm">Same district</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="st" data-st="find" style="flex-direction:column;flex:1 1 auto;min-height:0">
+              <div class="scr">
+                <div class="searchbox" style="border-color:var(--focus)"><svg class="i sm" style="color:var(--focus)"><use href="#ic-search"/></svg><input value="hosp" readonly><svg class="i sm"><use href="#ic-x"/></svg></div>
+                <div class="row" style="padding:0 2px"><span class="lbl">3 questions · 2 families</span></div>
+                <div class="cut">
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-match"/></svg></span><span class="grow"><span class="nm">Same <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital as me</span><span class="note">Matching · yes / no · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-measure"/></svg></span><span class="grow"><span class="nm">Nearer a <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital than me?</span><span class="note">Measuring · closer / further · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></button>
+                  <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-tentacle"/></svg></span><span class="grow"><span class="nm">Nearest <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital within 1.5 km</span><span class="note">Tentacle · a name · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span></button>
+                  <div class="gh" style="margin-top:6px"><span class="t">Not on this board</span><span class="hr"></span></div>
+                  <div class="qrow spent"><span class="lead"><svg class="i xs"><use href="#ic-lock"/></svg></span><span class="grow"><span class="nm">Nearest hospital within 25 km</span><span class="note">Tentacle · large boards only</span></span></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Row</dt><dd>Family glyph, the question as a phrase, and the price only where it differs from the heading above</dd>
+          <dt>Search</dt><dd>Cuts across families — “hosp” finds the same place under three different sentences, which is the choice a seeker is actually making</dd>
+          <dt>Spent</dt><dd>Asked questions stay in place, struck out, with the answer you got. Nothing disappears from a list you are learning</dd>
+        </dl>
+        <p class="why"><b>Why it wins by the third round.</b> Two taps to any question in the game and no memory of which family a thing lives in. The seeker who knows what they want gets there without being asked to categorise it first.</p>
+        <p class="cost"><b>What it costs.</b> A 62-row scroll on the first evening is a wall. The headings carry all the teaching — a family’s answer shape and price live in a sticky bar that is easy to scroll past and never read.</p>
+      </div>
+    </article>
+
+    <!-- ── C ─────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">C</span><h3>By what it does to the map</h3><span class="tag ask">Needs your call</span></div>
+        <p>The families are an artefact of the rulebook. What a seeker is actually choosing between is a circle, a straight cut, a single cell, and a photograph — so the menu is grouped by the shape of the deduction, with the price opposite.</p>
+      </div>
+      <div class="stand">
+        <div class="device">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">72% ruled out · 28:40 left</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+            <div class="scr">
+              <div class="cut">
+
+                <div class="effect"><svg class="i dg" style="color:var(--action-press)"><use href="#dg-circle"/></svg><span class="t">Cuts a circle</span><span class="hr"></span><span class="pct">Radar</span></div>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm mn">Within 3 km of me</span></span><span class="share">≈ 46%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i style="width:46%"></i></span></span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span></span>
+                </button>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm mn">Within 5 km of me</span></span><span class="share">≈ 21%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i style="width:21%"></i></span></span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span></span>
+                </button>
+
+                <div class="effect"><svg class="i dg" style="color:var(--transit-u)"><use href="#dg-half"/></svg><span class="t">Splits what is left</span><span class="hr"></span><span class="pct">Measuring</span></div>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm">Closer to a rail station than me?</span></span><span class="share">≈ 50%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i class="cool" style="width:50%"></i></span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></span>
+                </button>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm">Hotter or colder after 5 km?</span><span class="note">You have to travel it first</span></span><span class="share">≈ 50%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i class="cool" style="width:50%"></i></span></span><span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span></span>
+                </button>
+
+                <div class="effect"><svg class="i dg" style="color:var(--live)"><use href="#dg-cell"/></svg><span class="t">Down to one piece</span><span class="hr"></span><span class="pct">Matching</span></div>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm">Same district as me?</span><span class="note">Yes leaves Mitte alone</span></span><span class="share">≈ 88%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i class="warm" style="width:88%"></i></span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></span>
+                </button>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm">Nearest museum within 1.5 km</span><span class="note">A name, or 1.5 km cleared</span></span><span class="share">≈ 94%</span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                  <span class="line"><span class="grow"><span class="bar"><i class="warm" style="width:94%"></i></span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span></span>
+                </button>
+
+                <div class="effect"><svg class="i dg" style="color:var(--ink-faint)"><use href="#dg-eye"/></svg><span class="t">No cut, just a look</span><span class="hr"></span><span class="pct">Photo</span></div>
+                <button class="qrow wide" type="button">
+                  <span class="line"><span class="grow"><span class="nm">The tallest building you can see</span><span class="note">From the station entrance · 10 min</span></span><svg class="i sm chev"><use href="#ic-caret-right"/></svg></span>
+                </button>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Share</dt><dd>How much of what is still standing this question is expected to take off the map, from the deductions already on it</dd>
+          <dt>Order</dt><dd>Strongest first inside each shape. The bar is the same number drawn, so a glance ranks them without reading</dd>
+          <dt>Price</dt><dd>Sits opposite the share, deliberately: the 94 % question is also the one that hands Fuchsbau four cards</dd>
+        </dl>
+        <p class="why"><b>Why it is the interesting one.</b> It answers the question a seeker actually has — <em>what should I ask next</em> — instead of the one the rulebook answers. It also matches how the app already thinks: every answer is a constraint, and constraints have shapes.</p>
+        <p class="cost"><b>What it costs, and the call I need from you.</b> The percentages have to be real, or the screen is worse than useless. Computing an expected reduction against the live deduction set is a genuine piece of work, and it edges towards playing the game for the seeker. Three options: ship the numbers, ship the grouping without numbers, or keep this shape for a later “what should I ask?” screen rather than the menu itself.</p>
+      </div>
+    </article>
+
+    <!-- ── D ─────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">D</span><h3>The board</h3><span class="tag new">2 taps to ask</span></div>
+        <p>No drilling and no scrolling past families you did not want. Six tabs across the top, the sentence underneath with its blank showing, and the blank’s options as one screenful of thumb-sized targets.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">Tab</span>
+        <div class="statebar" data-states="d">
+          <button type="button" data-state="radar" aria-pressed="true">Radar</button>
+          <button type="button" data-state="tentacle" aria-pressed="false">Tentacle</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="d">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+            <div class="scr">
+              <div class="tabs" role="group" aria-label="Question family">
+                <button type="button" aria-pressed="true" data-tab="radar"><svg class="i sm"><use href="#ic-radar"/></svg><span class="nm">Radar</span></button>
+                <button type="button" aria-pressed="false"><svg class="i sm"><use href="#ic-match"/></svg><span class="nm">Match</span></button>
+                <button type="button" aria-pressed="false"><svg class="i sm"><use href="#ic-measure"/></svg><span class="nm">Meas</span></button>
+                <button type="button" aria-pressed="false"><svg class="i sm"><use href="#ic-thermo"/></svg><span class="nm">Therm</span></button>
+                <button type="button" aria-pressed="false"><svg class="i sm"><use href="#ic-photo"/></svg><span class="nm">Photo</span></button>
+                <button type="button" aria-pressed="false" data-tab="tentacle"><svg class="i sm"><use href="#ic-tentacle"/></svg><span class="nm">Tent</span></button>
+              </div>
+
+              <div class="st on" data-st="radar" style="flex-direction:column;flex:1 1 auto;min-height:0;gap:9px">
+                <p class="sentence">Are you within <u class="set">3 km</u> of me?</p>
+                <span class="lbl">Yes or no · 5 minutes · Fuchsbau draws 2, keeps 1</span>
+                <div class="grid3">
+                  <button class="pick" type="button">500 m</button>
+                  <button class="pick" type="button">1 km<small>asked</small></button>
+                  <button class="pick" type="button" aria-pressed="true">3 km</button>
+                  <button class="pick" type="button">5 km</button>
+                  <button class="pick" type="button">10 km</button>
+                  <button class="pick" type="button">25 km</button>
+                  <button class="pick" type="button">50 km</button>
+                  <button class="pick" type="button">100 km</button>
+                  <button class="pick" type="button">160 km</button>
+                  <button class="pick wide" type="button">A distance you choose</button>
+                </div>
+                <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+                  <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+                  <button class="btn tall beacon" type="button">Ask<small>3 km</small></button>
+                </div>
+              </div>
+
+              <div class="st" data-st="tentacle" style="flex-direction:column;flex:1 1 auto;min-height:0;gap:9px">
+                <p class="sentence">Within <u class="set">1.5 km</u> of me, which <u>___</u> are you nearest to?</p>
+                <span class="lbl">A name · 5 minutes · Fuchsbau draws 4, keeps 2</span>
+                <div class="grid3">
+                  <button class="pick wide" type="button">Museum</button>
+                  <button class="pick wide" type="button">Library</button>
+                  <button class="pick wide" type="button">Cinema</button>
+                  <button class="pick wide" type="button">Hospital</button>
+                </div>
+                <div class="row" style="gap:7px;align-items:flex-start;padding:0 2px">
+                  <svg class="i sm faint" style="margin-top:2px"><use href="#ic-lock"/></svg>
+                  <span class="note" style="font-size:11px;color:var(--ink-faint);line-height:1.35">Metro lines, zoos, aquariums and amusement parks need a large board. This one is medium.</span>
+                </div>
+                <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+                  <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+                  <button class="btn tall off" type="button">Pick one to ask</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Tab</dt><dd>Six, always on screen, switching costs one tap and never a back. The chosen family is the only yellow thing up there</dd>
+          <dt>Sentence</dt><dd>The question is written out with its blanks. Picking fills a blank; the button below says what will be sent</dd>
+          <dt>Ask here</dt><dd>The position you are asking from is on this screen already — the card downstream collapses into one row</dd>
+        </dl>
+        <p class="why"><b>Why the sentence matters.</b> Every other layout shows you a name and hopes you remember what it does. Here you read the thing you are about to send, and a tentacle question with two blanks stops being confusing because both blanks are visible at once.</p>
+        <p class="cost"><b>What it costs.</b> Matching’s twenty subjects in five groups do not fit one screenful of chips — that tab has to scroll, and then D is layout B inside a tab. Six icon tabs is also the most abbreviation on any of these screens: “Therm”, “Meas”, “Tent”.</p>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ═══ what all four share ═════════════════════════════════════════════ -->
+<section class="band" id="shared">
+  <div class="band-head">
+    <span class="kicker">Downstream</span>
+    <h2>Whatever the menu looks like, the last screen is the same</h2>
+    <p>Picking a question is not sending it. Every layout lands on one card that states the sentence in full, the rule that decides an argument at 16:04, what it pays the hider, and the position the question goes out with — which the seeker can change, because a question sent from the wrong platform is a question wasted.</p>
+  </div>
+  <div class="plates">
+
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><h3>The question card</h3><span class="tag ship">Position picker ships today</span></div>
+        <p>One sheet, four facts and one action. The position readout is deck 08’s, unchanged — tapping it opens the same source sheet, and “choose on the map” arms the same crosshair.</p>
+      </div>
+      <div class="stand">
+        <div class="device">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Radar</h4><span class="sub">Yes or no · 5 min</span></div>
+            </div>
+            <div class="scr" style="opacity:.5">
+              <div class="cut">
+                <div class="gh"><span class="t">Radar · yes / no · 2→1</span><span class="hr"></span></div>
+                <div class="qrow"><span class="grow"><span class="nm mn">Within 500 m</span></span></div>
+                <div class="qrow tap"><span class="grow"><span class="nm mn">Within 3 km</span></span></div>
+                <div class="qrow"><span class="grow"><span class="nm mn">Within 5 km</span></span></div>
+              </div>
+            </div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <span class="grip"></span>
+              <p class="sentence" style="font-size:20px">Are you within <span style="color:var(--action-press)">3 km</span> of me?</p>
+              <dl class="rules">
+                <dt>Answer</dt><dd>Yes or no, within five minutes</dd>
+                <dt>Fuchsbau</dt><dd>Draws 2 cards, keeps 1</dd>
+                <dt>The rule</dt><dd>It is about where they are standing when they answer, not their hiding zone</dd>
+              </dl>
+              <div>
+                <span class="lbl" style="display:block;padding:0 2px 4px">Asking from</span>
+                <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">52.51005, 13.43450</span><span class="note faint" style="font-size:10px">Ostbahnhof</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+              </div>
+              <button class="btn tall beacon" type="button">Ask Fuchsbau<small>3 km</small></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Sentence</dt><dd>Written out with the blank filled, in display type. It is the last chance to notice you picked 3 km and meant 300 m</dd>
+          <dt>The rule</dt><dd>One line, only where the rulebook has a trap in it: riding the transit line, the map icon, the current position rather than the zone</dd>
+          <dt>Asking from</dt><dd>Your position at the moment the sheet opened, editable. Radar, measuring and thermometer are meaningless without it</dd>
+        </dl>
+        <p class="why"><b>Why the card survives every layout.</b> It is where the price is paid and the position is fixed, and it is the only screen a seeker can be held to afterwards. D folds it into the board because the board already shows the sentence and the position — the other three cannot.</p>
+      </div>
+    </article>
+
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><h3>While it is out, and after</h3><span class="tag new">Proposed</span></div>
+        <p>The question does not vanish into a log. It sits at the top of the same list the constraints live in, counting down, and when the answer lands it turns into the thing it did to the map.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">State</span>
+        <div class="statebar" data-states="w">
+          <button type="button" data-state="out" aria-pressed="true">Waiting</button>
+          <button type="button" data-state="in" aria-pressed="false">Answered</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="w">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Fuchsbau</h4><span class="sub">4 questions · 72% ruled out</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+            <div class="scr">
+              <div class="st on" data-st="out" style="flex-direction:column;gap:9px;flex:1 1 auto;min-height:0">
+                <div class="wait" style="border-color:color-mix(in oklab,var(--live) 45%,var(--hairline))">
+                  <span class="pulse"></span>
+                  <span class="grow"><span class="nm" style="font-size:13px;font-weight:600">Are you within 3 km of me?</span><span class="note" style="font-size:10.5px;color:var(--ink-faint)">Sent 16:04 from Ostbahnhof</span></span>
+                  <span class="mn" style="font-size:15px;font-weight:700;color:var(--live)">4:12</span>
+                </div>
+                <div class="row" style="padding:0 2px"><span class="lbl">Earlier</span></div>
+                <div class="qrow"><span class="lead" style="color:var(--live)"><svg class="i xs"><use href="#ic-check"/></svg></span><span class="grow"><span class="nm">Same district? · No</span><span class="note">15:41 · Mitte and 5 others cleared</span></span></div>
+                <div class="qrow"><span class="lead" style="color:var(--danger)"><svg class="i xs"><use href="#ic-x"/></svg></span><span class="grow"><span class="nm mn">Within 1 km? · No</span><span class="note">15:52 · circle cut out</span></span></div>
+              </div>
+              <div class="st" data-st="in" style="flex-direction:column;gap:9px;flex:1 1 auto;min-height:0">
+                <div class="wait" style="border-color:color-mix(in oklab,var(--action) 60%,var(--hairline));background:color-mix(in oklab,var(--action) 12%,var(--surface))">
+                  <span class="grow"><span class="nm" style="font-size:13px;font-weight:600">Within 3 km? · Yes</span><span class="note" style="font-size:10.5px;color:var(--ink-dim)">Answered in 1:47 by Nils · 46% of what was left is gone</span></span>
+                </div>
+                <button class="btn" type="button" style="min-height:44px;font-size:14px">Show it on the map</button>
+                <div class="row" style="padding:0 2px"><span class="lbl">Earlier</span></div>
+                <div class="qrow"><span class="lead" style="color:var(--live)"><svg class="i xs"><use href="#ic-check"/></svg></span><span class="grow"><span class="nm">Same district? · No</span><span class="note">15:41 · Mitte and 5 others cleared</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Countdown</dt><dd>Displayed, never enforced — the five minutes is a rule between people, and the app has no business ending a round over it</dd>
+          <dt>One list</dt><dd>Questions and the constraints they produced are the same list, as settled on the seeker map deck</dd>
+          <dt>Who answered</dt><dd>Named, because on the hider’s side whoever answers first wins the race and the loser needs to see why</dd>
+        </dl>
+        <p class="cost"><b>Open.</b> A thermometer is only half-sent at this point — the seeker still has to travel and submit the second position. It probably wants a different card here, with a “I have arrived” action rather than a countdown.</p>
+      </div>
+    </article>
+
+  </div>
+
+  <div style="margin-top:34px;display:flex;flex-direction:column;gap:16px">
+    <span class="kicker">Taps, from the map to sent</span>
+    <div class="routes">
+      <div class="route"><span class="who">A · Doors</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">Radar</span><span class="sep">→</span>
+        <span class="step">3 km</span><span class="sep">→</span>
+        <span class="step end">Ask</span><span class="n">5 taps</span></div>
+      <div class="route"><span class="who">B · One list</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">Within 3 km</span><span class="sep">→</span>
+        <span class="step end">Ask</span><span class="n">4 taps</span></div>
+      <div class="route"><span class="who">C · By effect</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">Within 3 km · 46%</span><span class="sep">→</span>
+        <span class="step end">Ask</span><span class="n">4 taps</span></div>
+      <div class="route"><span class="who">D · Board</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">Fuchsbau</span><span class="sep">→</span>
+        <span class="step">3 km</span><span class="sep">→</span>
+        <span class="step end">Ask</span><span class="n">4 taps · +1 to change family</span></div>
+      <div class="route"><span class="who">One hider team</span>
+        <span class="step"><svg class="i"><use href="#ic-bubble"/></svg>Ask</span><span class="sep">→</span>
+        <span class="step">the menu</span><span class="sep">→</span>
+        <span class="step end">Ask</span><span class="n">the “who” step is skipped</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ open calls ══════════════════════════════════════════════════════ -->
+<section class="band" id="calls">
+  <div class="band-head">
+    <span class="kicker">Needs your call</span>
+    <h2>Seven things I had to decide to draw anything at all</h2>
+    <p>Each of these is drawn one way above. None of them is settled, and a different answer changes the menu rather than the styling.</p>
+  </div>
+  <div class="setaside">
+    <div class="aside call">
+      <span class="num">01 · Distances</span>
+      <h4>A clean metric ladder, or the rulebook’s own numbers</h4>
+      <p>Jet Lag’s radar rungs are ¼, ½, 1, 3, 5, 10, 25, 50 and 100 miles. Drawn above as 500 m, 1, 3, 5, 10, 25, 50, 100 and 160 km, which is what the code already does with its three test radii — readable, and a different game by a few hundred metres. Faithful conversion gives 400 m, 800 m, 1.6, 4.8, 8, 16, 40, 80, 160 km.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">02 · Cards</span>
+      <h4>Is the hider’s reward in this game at all?</h4>
+      <p>Every screen above prices a question in cards the hider draws. If Zero Lag is not running the deck, all six price chips come off and layout C loses the counterweight to its percentages — the menu gets simpler and the choice gets flatter.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">03 · Percentages</span>
+      <h4>How far the app is allowed to help</h4>
+      <p>Layout C’s share estimates are the difference between a menu and an advisor. Ship them, ship the grouping without them, or keep the whole shape for a later screen that only appears when a seeker asks for a suggestion.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">04 · Divisions</span>
+      <h4>“District”, or “2nd administrative division”</h4>
+      <p>Drawn with local words and examples — State · Berlin, District · Mitte, Neighbourhood · Moabit. That is a per-country table somebody has to write, and it is wrong the moment the game is played in Zürich. The alternative is the rulebook’s numbering, which is exactly the technical vocabulary we agreed to keep out.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">05 · Thermometer</span>
+      <h4>A question that finishes somewhere else</h4>
+      <p>You announce it, you travel, then you send the second position. Above it is one row in the menu and a countdown that does not fit it. It may deserve to leave the menu entirely and live on the map as a tool you start and stop, like the ruler.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">06 · Photos</span>
+      <h4>Ten minutes, twenty, and where the picture lands</h4>
+      <p>Photo questions are the only ones whose answer is not a constraint. They need somewhere to arrive — a card in the same list with the image in it — and the large-board variants are timed differently. None of that is drawn.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">07 · Board size</span>
+      <h4>Lock and explain, or hide</h4>
+      <p>Tentacle does not exist on a small board and photo grows with the board. Drawn locked with the reason showing, so the menu teaches the game. Hiding them makes a shorter screen and a seeker who never learns why their friend’s game had a question theirs did not.</p>
+    </div>
+    <div class="aside">
+      <span class="num">Where I would start</span>
+      <h4>B, with D’s tab rail doing the filtering</h4>
+      <p>One list is the only layout that stays fast on the fourth question of the evening, and the family chips at its top are D’s rail with a different job — one build, not two. Keep A’s sentences as the headings so the list still teaches, and hold C back for a “what should I ask?” screen once the deduction engine can price a question honestly.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+
+  /* theme */
+  const bar = document.getElementById("themebar");
+  const thumb = bar.querySelector(".thumb");
+  const moveThumb = (btn) => {
+    thumb.style.width = btn.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + (btn.offsetLeft - 3) + "px)";
+  };
+  bar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-theme-set]");
+    if (!btn) return;
+    for (const b of bar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+    const mode = btn.dataset.themeSet;
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    moveThumb(btn);
+  });
+  const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
+  settle();
+  window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+  /* one state switcher for every stage that has states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    for (const el of scope.querySelectorAll(".tabs button[data-tab]")) {
+      el.setAttribute("aria-pressed", String(el.dataset.tab === want));
+    }
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+  }
+  for (const strip of document.querySelectorAll(".statebar[data-states]")) {
+    strip.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-state]");
+      if (btn) show(strip.dataset.states, btn.dataset.state);
+    });
+  }
+
+  /* the board's own tabs drive the same switch */
+  for (const tab of document.querySelectorAll('[data-group="d"] .tabs button[data-tab]')) {
+    tab.addEventListener("click", () => show("d", tab.dataset.tab));
+  }
+
+  /* picking a radius on the board rewrites the sentence and the button */
+  const board = document.querySelector('[data-group="d"] [data-st="radar"]');
+  if (board) {
+    const blank = board.querySelector(".sentence u");
+    const send = board.querySelector(".btn small");
+    for (const pick of board.querySelectorAll(".pick")) {
+      pick.addEventListener("click", () => {
+        for (const p of board.querySelectorAll(".pick")) p.setAttribute("aria-pressed", String(p === pick));
+        const value = pick.classList.contains("wide") ? "a distance" : pick.firstChild.textContent.trim();
+        blank.textContent = value;
+        send.textContent = value;
+      });
+    }
+  }
+})();
+</script>

@@ -4,6 +4,7 @@ import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { useState } from "react";
 import { ConstraintOption, type PoiConstraintKind } from "./constraint-option";
+import { CoordinateCopy } from "./coordinate-copy";
 import { DistanceToYou } from "./distance-to-you";
 import { isStationType, poiTypeSingular } from "./poi-type";
 import type { SearchableStop } from "./toolkit";
@@ -108,6 +109,12 @@ export function StopSheet({
 				)}
 				{shown && (
 					<DistanceToYou from={fromYou} lat={shown.lat} lng={shown.lng} />
+				)}
+				{shown && (
+					<CoordinateCopy
+						point={[shown.lng, shown.lat]}
+						testId="stop-coordinates"
+					/>
 				)}
 				{onAddConstraint && shown && !choosing && (
 					<button

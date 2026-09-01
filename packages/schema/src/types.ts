@@ -160,6 +160,14 @@ export const EVENT_TYPES = [
 	"round.hidingDurationSet",
 	"round.hidingStarted",
 	"round.seekingStarted",
+	/**
+	 * A phase's start instant, moved after the fact. Somebody forgot to tap
+	 * start and remembered ten minutes in, so the clock everybody reads is ten
+	 * minutes short. What was wrong is when the phase began, so that is what is
+	 * corrected — not a second offset sitting beside it that every derivation
+	 * would then have to remember to apply.
+	 */
+	"round.clockCorrected",
 	"round.ended",
 	"round.zoneCommitted",
 	"round.zoneUncommitted",

@@ -1,0 +1,1215 @@
+<title>Zero Lag Question Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Deck 10 · The board ═══════════════════════════════════════════
+   Same page chrome as decks 07 and 08: neutral paper, the app's own role
+   tokens on every stage, three theme states (explicit light, explicit dark,
+   and the un-stamped system default).                                    */
+
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+
+  /* app role tokens — verbatim from packages/ui/src/styles/tokens.css */
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f;
+  --curse:#c13f94;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c; --map-hiding-area:#e0ae00; --map-eliminated:rgb(8 17 28 / .16);
+  --edge-danger:#A62A15;
+
+  /* motion, from styles/motion.css */
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --ease-travel:cubic-bezier(.32,.72,.28,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-sheet:420ms; --dur-breathe:1900ms;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+    --curse:#e86bb4;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6; --map-hiding-area:#ffe01f; --map-eliminated:rgb(5 8 14 / .74);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+  --curse:#e86bb4;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#0e1420; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6; --map-hiding-area:#ffe01f; --map-eliminated:rgb(5 8 14 / .74);
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table,p,h1,h2,h3,h4{margin:0}
+ul{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.022em;line-height:1.05;text-wrap:balance}
+.mono,.eyebrow,.spec dt,.tag,.varlabel{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.i{display:inline-block;flex:0 0 auto;width:20px;height:20px;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i.xs{width:13px;height:13px}.i.sm{width:16px;height:16px}.i.lg{width:24px;height:24px}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:1340px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 120px}
+.eyebrow{font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── masthead ────────────────────────────────────────────────────────── */
+.masthead{padding:56px 0 34px;border-bottom:3px solid var(--text)}
+.mast-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:24px}
+.mast-top .u{background:var(--blue);color:#fff;width:23px;height:23px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Azeret Mono",monospace}
+.mast-top b{color:var(--text);font-weight:700}
+.masthead h1{font-size:clamp(40px,6.6vw,78px);max-width:16ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:22px;max-width:64ch;font-size:18.5px;color:var(--text-2)}
+.mast-foot{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-top:32px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:500;letter-spacing:.07em;border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;color:var(--text-2);background:var(--paper-2);white-space:nowrap;font-family:"Azeret Mono",monospace}
+.tag.ship{border-color:var(--green);color:var(--green)}
+.tag.new{border-color:var(--yellow);color:var(--text);background:color-mix(in oklab,var(--yellow) 22%,var(--paper-2))}
+.tag.ask{border-color:var(--red);color:var(--red)}
+
+.stagectl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stagectl .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);font-family:"Azeret Mono",monospace}
+.segbar{display:flex;flex:0 0 auto;gap:2px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;position:relative}
+.segbar button{position:relative;white-space:nowrap;flex:0 0 auto;z-index:1;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;color:var(--text-2);transition:color var(--dur-tap)}
+.segbar button[aria-pressed="true"]{color:var(--yellow-ink)}
+.segbar .thumb{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--yellow);transition:transform var(--dur-move) var(--ease-pop),width var(--dur-move) var(--ease-pop);z-index:0}
+
+/* ── bands & plates ──────────────────────────────────────────────────── */
+.band{padding:64px 0 12px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{max-width:74ch;margin-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(27px,3.4vw,40px)}
+.band-head p{color:var(--text-2);font-size:16.5px}
+.band-head p+p{margin-top:2px}
+
+.plates{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.plate{
+  background:var(--paper-2);border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--lift);
+}
+.plate-head{padding:18px 20px 14px;border-bottom:1px solid var(--rule-2);display:flex;flex-direction:column;gap:9px}
+.plate-title{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.plate-title h3{font-size:21px}
+.plate-title .as{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:9px;background:var(--text);color:var(--paper);font-family:"Azeret Mono",monospace;font-size:12.5px;font-weight:700}
+.plate-head p{font-size:14px;color:var(--text-2);line-height:1.5;max-width:58ch}
+.plate-ctl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--rule-2)}
+.plate-ctl .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;flex-wrap:wrap}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+.stand{flex:1 1 auto;display:grid;place-items:center;padding:26px 20px 30px;background:
+  radial-gradient(120% 80% at 50% 0%,color-mix(in oklab,var(--paper-3) 70%,transparent),transparent 70%)}
+.notes{padding:16px 20px 20px;border-top:1px solid var(--rule-2);background:var(--paper-2)}
+.spec{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13.5px}
+.spec dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding-top:3px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.spec dd{color:var(--text-2);line-height:1.5}
+.spec code,code{font-family:"Azeret Mono",monospace;font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:5px;color:var(--text)}
+.why{margin-top:13px;padding-left:12px;border-left:3px solid var(--yellow);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.cost{margin-top:9px;padding-left:12px;border-left:3px solid var(--red);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.why b,.cost b{color:var(--text);font-weight:600}
+</style>
+<style>
+/* ═══ the phone ══════════════════════════════════════════════════════════ */
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38,0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.statusbar{height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink);letter-spacing:.02em}
+.appbar{flex:0 0 auto;padding:2px 14px 10px;display:flex;align-items:center;gap:10px}
+.appbar .back{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border-radius:12px;background:var(--surface);color:var(--ink-dim);border:1px solid var(--hairline)}
+.appbar .tt{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.appbar h4{font-size:17px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr{flex:1 1 auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;position:relative}
+.scr.flush{padding-left:0;padding-right:0}
+.scr .pad{padding:0 12px}
+.cut{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:7px}
+.cut.foot::after{display:none}
+.cut::after{content:"";position:absolute;left:0;right:0;bottom:0;height:44px;pointer-events:none;
+  background:linear-gradient(to top,var(--ground),transparent)}
+.row{display:flex;align-items:center;gap:9px}
+.grow{flex:1 1 auto;min-width:0}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim{color:var(--ink-dim)}
+.faint{color:var(--ink-faint)}
+.mn{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums}
+.lbl{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* the cost chip: what the hider draws and keeps */
+.cards{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;border-radius:999px;
+  padding:2px 7px 2px 5px;background:var(--surface-raised);border:1px solid var(--hairline);
+  font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.04em;color:var(--ink-dim)}
+.cards .i{width:11px;height:11px}
+.cards.hot{background:color-mix(in oklab,var(--danger) 16%,var(--surface-raised));border-color:color-mix(in oklab,var(--danger) 45%,var(--hairline));color:var(--danger)}
+.cards.cool{background:color-mix(in oklab,var(--live) 15%,var(--surface-raised));border-color:color-mix(in oklab,var(--live) 40%,var(--hairline));color:var(--live)}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:16px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;min-height:52px;
+  background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press);position:relative;overflow:hidden}
+.btn.tall{min-height:60px;font-size:17px;border-radius:19px}
+.btn small{font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
+.btn.off{background:var(--surface-raised);color:var(--ink-faint);box-shadow:none;border:1px solid var(--hairline)}
+.btn.beacon::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite}
+@keyframes sheen{0%,74%{transform:translateX(-120%)}94%,100%{transform:translateX(120%)}}
+@media (prefers-reduced-motion:reduce){.btn.beacon::after{animation:none;opacity:0}}
+
+/* ── A · six doors ───────────────────────────────────────────────────── */
+.tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;flex:1 1 auto;min-height:0}
+.tile{display:flex;flex-direction:column;gap:5px;min-height:96px;padding:11px 11px 10px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--hairline);transition:transform var(--dur-press) var(--ease-pop)}
+.tile:active{transform:scale(.97)}
+.tile .top{display:flex;align-items:center;gap:7px}
+.tile .glyph{display:grid;place-items:center;width:28px;height:28px;flex:0 0 auto;border-radius:10px;
+  background:var(--surface-raised);color:var(--ink)}
+.tile h5{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:14.5px;letter-spacing:-.01em;margin:0}
+.tile .shape{font-size:11px;line-height:1.35;color:var(--ink-dim)}
+.tile .foot{margin-top:auto;display:flex;align-items:center;gap:6px}
+.tile .n{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.06em;color:var(--ink-faint)}
+.tile.locked{opacity:.55}
+.tile.locked .glyph{color:var(--ink-faint)}
+
+/* ── question rows, shared by every layout ───────────────────────────── */
+.gh{display:flex;align-items:center;gap:8px;padding:9px 2px 3px;position:sticky;top:0;background:var(--ground);z-index:2}
+.gh .t{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint)}
+.gh .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.qrow{display:flex;align-items:center;gap:9px;min-height:44px;padding:7px 11px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--hairline);transition:transform var(--dur-press) var(--ease-pop)}
+.qrow:active{transform:scale(.985)}
+.qrow .grow{display:flex;flex-direction:column;gap:1px}
+.qrow .nm{font-size:13.5px;font-weight:600;line-height:1.25}
+.qrow .note{font-size:10.5px;color:var(--ink-faint);line-height:1.3}
+.qrow .chev{color:var(--ink-faint);flex:0 0 auto}
+.qrow.spent{background:transparent;border-style:dashed;color:var(--ink-faint)}
+.qrow.spent .nm{font-weight:500;text-decoration:line-through;text-decoration-color:var(--hairline-strong)}
+.qrow .lead{flex:0 0 auto;display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:var(--surface-raised);color:var(--ink-dim)}
+.qrow.tap{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in oklab,var(--action) 30%,transparent)}
+
+/* ── B · one list ────────────────────────────────────────────────────── */
+.searchbox{display:flex;align-items:center;gap:9px;min-height:42px;border-radius:14px;background:var(--surface);
+  border:1.5px solid var(--hairline);padding:0 12px;color:var(--ink-faint);flex:0 0 auto}
+.searchbox input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;font-size:13.5px;color:var(--ink)}
+.filters{display:flex;gap:6px;overflow:hidden;flex:0 0 auto;-webkit-mask-image:linear-gradient(to right,#000 86%,transparent)}
+.fchip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 11px;
+  background:var(--surface);border:1px solid var(--hairline);font-size:11.5px;font-weight:600;color:var(--ink-dim);white-space:nowrap}
+.fchip[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--action-ink)}
+.fchip .i{width:13px;height:13px}
+.cut.railed{padding-right:26px}
+.jump{position:absolute;right:0;top:6px;bottom:52px;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  padding:5px 3px;border-radius:999px;background:color-mix(in oklab,var(--surface) 72%,transparent);backdrop-filter:blur(5px)}
+.jump span{font-family:"Azeret Mono",monospace;font-size:8.5px;font-weight:700;color:var(--ink-faint);text-align:center;width:18px;line-height:1.5}
+.jump span.on{color:var(--action-press)}
+
+/* ── C · what it rules out ───────────────────────────────────────────── */
+.effect{display:flex;align-items:center;gap:8px;padding:10px 2px 4px}
+.effect .dg{flex:0 0 auto;width:26px;height:26px}
+.effect .t{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:13px;letter-spacing:-.01em;white-space:nowrap}
+.effect .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.effect .pct{font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-faint);letter-spacing:.05em;white-space:nowrap}
+.bar{position:relative;height:4px;border-radius:999px;background:var(--surface-raised);overflow:hidden;margin-top:5px}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--action);display:block}
+.bar i.cool{background:var(--transit-u)}
+.bar i.warm{background:var(--live)}
+.qrow.wide{align-items:flex-start;flex-direction:column;gap:4px;padding:9px 11px}
+.qrow.wide .line{display:flex;align-items:center;gap:9px;width:100%}
+.share{font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;color:var(--ink);flex:0 0 auto}
+
+/* ── D · the board ───────────────────────────────────────────────────── */
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface-sunken);border:1px solid var(--hairline);flex:0 0 auto}
+.tabs button{flex:1 1 0;display:grid;place-items:center;gap:2px;padding:6px 2px 5px;border-radius:999px;color:var(--ink-faint)}
+.tabs button[aria-pressed="true"]{background:var(--action);color:var(--action-ink)}
+.tabs .nm{font-family:"Azeret Mono",monospace;font-size:8px;letter-spacing:.05em;text-transform:uppercase}
+.sentence{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;line-height:1.2;letter-spacing:-.02em;padding:2px 2px 0}
+.sentence u{text-decoration:none;display:inline-block;min-width:66px;border-bottom:3px solid var(--action);text-align:center;color:var(--ink-faint);font-weight:600;font-size:16px}
+.sentence u.set{color:var(--ink);font-weight:800;font-size:19px;font-family:"Azeret Mono",monospace}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pick{display:grid;place-items:center;min-height:46px;border-radius:14px;background:var(--surface);border:1.5px solid var(--hairline);
+  font-family:"Azeret Mono",monospace;font-size:13px;font-weight:700;transition:transform var(--dur-press) var(--ease-pop)}
+.pick:active{transform:scale(.95)}
+.pick[aria-pressed="true"]{background:var(--action);border-color:var(--action);color:var(--action-ink)}
+.pick.wide{grid-column:span 3;font-family:"Archivo",sans-serif;font-size:13.5px;font-weight:600;min-height:42px}
+.pick small{display:block;font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;color:var(--ink-faint);font-weight:500}
+.pick[aria-pressed="true"] small{color:var(--action-ink);opacity:.75}
+
+/* ── the detail sheet, shared ────────────────────────────────────────── */
+.scrim{position:absolute;inset:0;z-index:4;background:var(--scrim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;border-radius:26px 26px 0 0;background:var(--sheet-fill,var(--surface));
+  border-top:1px solid var(--hairline);padding:9px 14px 16px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 -20px 40px -28px rgb(0 0 0/.7)}
+.grip{width:38px;height:4px;border-radius:999px;background:var(--hairline-strong);margin:0 auto 2px}
+.readout{display:flex;align-items:center;gap:9px;min-height:44px;border-radius:14px;background:var(--surface-raised);
+  border:1px solid var(--hairline);padding:0 11px;width:100%}
+.readout .v{flex:1 1 auto;min-width:0;font-family:"Azeret Mono",monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rules{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;color:var(--ink-dim);
+  background:var(--surface-raised);border-radius:14px;padding:10px 12px}
+.rules dt{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);padding-top:2px}
+.rules dd{margin:0;line-height:1.35}
+.wait .grow{display:flex;flex-direction:column;gap:1px}
+.wait{display:flex;align-items:center;gap:8px;border-radius:14px;padding:9px 11px;background:var(--surface);border:1px solid var(--hairline)}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--live);flex:0 0 auto;animation:breathe var(--dur-breathe) ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+/* ── stage state switching ───────────────────────────────────────────── */
+.st{display:none}
+.st.on{display:flex}
+
+/* ── the inventory table ─────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:18px;background:var(--paper-2);box-shadow:var(--lift)}
+table.inv{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+.inv th,.inv td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--rule-2);vertical-align:top}
+.inv thead th{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);font-weight:500;white-space:nowrap}
+.inv tbody tr:last-child td{border-bottom:0}
+.inv td.k{font-weight:700;white-space:nowrap}
+.inv td.k .i{margin-right:7px;color:var(--text-2)}
+.inv td.q{color:var(--text-2);font-style:italic}
+.inv td.n,.inv td.c{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.inv td.c{color:var(--text-2)}
+.inv tbody tr:hover{background:color-mix(in oklab,var(--yellow) 8%,transparent)}
+
+/* ── route strips ────────────────────────────────────────────────────── */
+.routes{display:flex;flex-direction:column;gap:10px}
+.route{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px}
+.route .who{flex:0 0 96px;font-weight:700;color:var(--text);font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.route .step{display:inline-flex;align-items:center;gap:7px;border-radius:11px;background:var(--paper-3);border:1px solid var(--rule);padding:5px 10px;color:var(--text-2)}
+.route .step .i{width:15px;height:15px}
+.route .step.end{background:color-mix(in oklab,var(--yellow) 24%,var(--paper-3));border-color:color-mix(in oklab,var(--yellow) 50%,var(--rule));color:var(--text);font-weight:600}
+.route .sep{color:var(--text-3);font-family:"Azeret Mono",monospace;font-size:11px}
+.route .n{margin-left:auto;font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+@media (max-width:640px){.route .who{flex:1 1 100%}.route .n{margin-left:0}}
+
+.setaside{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr))}
+.aside{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:15px 17px;box-shadow:var(--lift);display:flex;flex-direction:column;gap:7px}
+.aside h4{font-size:16.5px}
+.aside p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+.aside .num{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+.aside.call{border-left:4px solid var(--red)}
+.aside.call .num{color:var(--red)}
+</style>
+<style>
+/* team identity — Okabe–Ito, mirrored from apps/web/src/lobby/palette.ts */
+:root{--t-vermillion:#D55E00;--t-cobalt:#0072B2;--t-jade:#009E73;--t-orchid:#CC79A7;--t-amber:#E69F00}
+.badge{display:grid;place-items:center;width:22px;height:22px;flex:0 0 auto;border-radius:50%;font-size:12px;
+  box-shadow:inset 0 0 0 2px rgb(255 255 255/.25)}
+.badge.sm{width:18px;height:18px;font-size:10px}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- the six categories -->
+    <symbol id="ic-match" viewBox="0 0 24 24"><circle cx="9" cy="12" r="6.2"/><circle cx="15" cy="12" r="6.2"/></symbol>
+    <symbol id="ic-measure" viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="2"/><path d="M7 8v3M12 8v4M17 8v3"/></symbol>
+    <symbol id="ic-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 6.5a5.5 5.5 0 0 1 0 11"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19"/><path d="M12 6.5a5.5 5.5 0 0 0 0 11" opacity=".35"/></symbol>
+    <symbol id="ic-thermo" viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4.5 4.5 0 1 0 4 0z"/><path d="M12 9v6"/></symbol>
+    <symbol id="ic-photo" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H8l1.4-2h5.2L16 6h2.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></symbol>
+    <symbol id="ic-tentacle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8V4M14.2 12H20M12 14.2V20M9.8 12H4"/><circle cx="12" cy="3" r="1.4"/><circle cx="21" cy="12" r="1.4"/><circle cx="12" cy="21" r="1.4"/><circle cx="3" cy="12" r="1.4"/></symbol>
+    <!-- chrome -->
+    <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="ic-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="ic-cards" viewBox="0 0 24 24"><rect x="8" y="4" width="12" height="16" rx="2.2"/><path d="M5.5 7v11a2 2 0 0 0 2 2h8"/></symbol>
+    <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+    <symbol id="ic-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.6 4.5L19 7.5"/></symbol>
+    <symbol id="ic-map" viewBox="0 0 24 24"><path d="m3 6.5 6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v15.5M15 6.5V22"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="ic-bubble" viewBox="0 0 24 24"><path d="M20.5 12.5c0 4.2-3.8 7.5-8.5 7.5-1.2 0-2.3-.2-3.3-.6L3.5 21l1.4-4A7.2 7.2 0 0 1 3.5 12.5C3.5 8.3 7.3 5 12 5s8.5 3.3 8.5 7.5z"/><path d="M9.8 10.4a2.3 2.3 0 1 1 2.9 2.3v1.1"/><path d="M12.6 16.2h.01"/></symbol>
+    <symbol id="ic-shuffle" viewBox="0 0 24 24"><path d="M3 6h4l10 12h4M17 4l4 2-4 2M3 18h4l3-3.6M14 9.4 17 6M17 20l4-2-4-2"/></symbol>
+    <!-- what an answer does to the map -->
+    <symbol id="dg-circle" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><circle cx="12" cy="12" r="6" fill="currentColor" fill-opacity=".22"/></symbol>
+    <symbol id="dg-half" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><path d="M2.5 17 21.5 6.5v12a3 3 0 0 1-3 3h-16z" fill="currentColor" fill-opacity=".22" stroke="none"/><path d="M2.5 17 21.5 6.5"/></symbol>
+    <symbol id="dg-cell" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3"/><path d="M9 2.5v19M15.5 2.5v19M2.5 9h19M2.5 15.5h19" opacity=".55"/><rect x="9" y="9" width="6.5" height="6.5" fill="currentColor" fill-opacity=".3" stroke="none"/></symbol>
+    <symbol id="dg-eye" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="3" stroke-dasharray="3 3"/><path d="M6 12s2.6-3.6 6-3.6S18 12 18 12s-2.6 3.6-6 3.6S6 12 6 12z"/><circle cx="12" cy="12" r="1.6"/></symbol>
+    <symbol id="ic-caret-down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="ic-swipe" viewBox="0 0 24 24"><path d="M4 12h9"/><path d="m8 8-4 4 4 4"/><path d="M20 6v12"/><path d="M16 9v6"/></symbol>
+    <symbol id="ic-size" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2.4"/><path d="M8 7v10M13 7v10"/></symbol>
+    <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+  </defs>
+</svg>
+
+<style>
+/* ═══ Deck 10 additions ═════════════════════════════════════════════════ */
+
+/* the six screens, racked */
+.rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:40px 30px;align-items:start}
+.mock{display:flex;flex-direction:column;gap:16px;min-width:0}
+.mock-label{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mock-label .n{font-family:"Azeret Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;background:var(--text);color:var(--paper);border-radius:4px;padding:3px 7px}
+.mock-label h3{font-size:20px}
+.mock-label .who{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.anno{display:flex;flex-direction:column;gap:9px;font-size:13.5px;color:var(--text-2);line-height:1.5}
+.anno li{padding-left:13px;border-left:3px solid var(--rule)}
+.anno li.y{border-color:var(--yellow)}
+.anno li.g{border-color:var(--green)}
+.anno li.r{border-color:var(--red)}
+.anno b{color:var(--text);font-weight:600}
+
+/* P1 · the family name is the header */
+.hdrpick{display:flex;align-items:center;gap:7px;padding:3px 9px 3px 7px;border-radius:14px;background:var(--surface);border:1px solid var(--hairline)}
+.hdrpick h4{font-size:17.5px;white-space:nowrap}
+.appbar .lbl{flex:0 0 auto;white-space:nowrap;text-align:right;line-height:1.25}
+.hdrpick .i{color:var(--ink-faint)}
+.famrow{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 11px;border-radius:15px;background:var(--surface);border:1px solid var(--hairline)}
+.famrow .glyph{display:grid;place-items:center;width:30px;height:30px;flex:0 0 auto;border-radius:11px;background:var(--surface-raised);color:var(--ink)}
+.famrow .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.famrow .nm{font-size:13.5px;font-weight:700}
+.famrow .sh{font-size:10.5px;color:var(--ink-faint);line-height:1.3}
+.famrow.on{border-color:var(--action);background:color-mix(in oklab,var(--action) 13%,var(--surface))}
+.famrow.away{background:transparent;border-style:dashed}
+.famrow.away .glyph{background:transparent;color:var(--ink-faint)}
+.famrow.away .nm{color:var(--ink-dim);font-weight:600}
+
+/* P2 · the family bar sits in the thumb */
+.botbar{display:flex;gap:3px;padding:5px;border-radius:18px;background:var(--surface-sunken);border:1px solid var(--hairline)}
+.botbar button{flex:1 1 0;display:grid;place-items:center;gap:3px;min-height:46px;border-radius:14px;color:var(--ink-faint)}
+.botbar button[aria-pressed="true"]{background:var(--action);color:var(--action-ink)}
+.botbar .nm{font-family:"Azeret Mono",monospace;font-size:7.5px;letter-spacing:.04em;text-transform:uppercase}
+.botbar button .dotmark{width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
+
+/* P3 · swipe, and the sentence says where you are */
+.pager{display:flex;align-items:center;gap:6px;padding:2px}
+.pager .tick{flex:1 1 0;height:3px;border-radius:999px;background:var(--surface-raised)}
+.pager .tick.on{background:var(--action)}
+.pager .of{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.09em;color:var(--ink-faint);white-space:nowrap}
+.swipe{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:9px}
+.peek{position:absolute;top:0;bottom:0;right:-152px;width:146px;border-radius:18px;background:var(--surface);border:1px solid var(--hairline);
+  padding:11px;display:flex;flex-direction:column;gap:7px;opacity:.75}
+.peek h5{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px}
+.peek .sh{font-size:11px;color:var(--ink-faint);line-height:1.3}
+.swipe.mid{transform:translateX(-124px);transition:transform var(--dur-move) var(--ease-travel)}
+.hint{display:flex;align-items:center;gap:6px;font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* boards with more in them than nine chips */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pick.l{grid-column:span 2;justify-items:start;place-items:center start;text-align:left;padding:0 11px;font-family:"Archivo",sans-serif;font-size:13px;font-weight:600;min-height:44px}
+.pick.s{min-height:42px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:600;padding:0 8px;text-align:center}
+.pick .tagline{display:block;font-family:"Azeret Mono",monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
+
+/* the part of the menu this board cannot use */
+.elsewhere{margin-top:4px;border-top:1px dashed var(--hairline-strong);padding-top:9px;display:flex;flex-direction:column;gap:6px}
+.elsewhere .head{display:flex;align-items:center;gap:7px;padding:0 2px}
+.elsewhere .head .t{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.elsewhere .head .sz{font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;border-radius:999px;padding:2px 7px;
+  background:var(--surface-raised);border:1px solid var(--hairline);color:var(--ink-dim)}
+.away-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:6px 10px;border-radius:13px;border:1px dashed var(--hairline-strong);color:var(--ink-dim);font-size:12.5px}
+.away-item .i{color:var(--ink-faint)}
+.away-item .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.away-item .why{margin:0;padding:0;border:0;font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+</style>
+
+<div class="shell">
+
+<header class="masthead">
+  <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 10</span><span>·</span><span>The board</span><span>·</span><span>1 Sep 2026</span>
+  </div>
+  <h1>The board wins. Now: <em>how do you change lane?</em></h1>
+  <p class="deck">Deck 09’s layout D is the direction — the family stays one tap away, the question is written out with its blanks, and the blank’s options are the screen. What is still open is the control that switches family, so here are three of them. Then all six boards, drawn from <code>docs/questions</code> with the real lists and the rounded metric distances, and the questions this board’s size excludes moved into a section of their own instead of being greyed out where they lie.</p>
+  <div class="mast-foot">
+    <div class="legend">
+      <span class="tag ship">Settled</span>
+      <span class="tag new">Proposed</span>
+      <span class="tag ask">Needs your call</span>
+    </div>
+    <div class="stagectl">
+      <span class="lab">Theme</span>
+      <div class="segbar" id="themebar" role="group" aria-label="Theme">
+        <span class="thumb" aria-hidden="true"></span>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ three category pickers ══════════════════════════════════════════ -->
+<section class="band" id="pickers">
+  <div class="band-head">
+    <span class="kicker">Three pickers</span>
+    <h2>Six families, and the control that moves between them</h2>
+    <p>The icon rail from deck 09 works and reads as a compromise: six abbreviations across 306 px, none of them a word anyone says out loud. Each of these takes a different position on what the switch is for — a menu you open, a bar under your thumb, or no control at all.</p>
+    <p>All three are drawn on the radar board, with the distances as they now stand in <code>docs/questions/03-radar-questions.md</code>.</p>
+  </div>
+  <div class="plates">
+
+    <!-- ── P1 ────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">1</span><h3>The name is the control</h3><span class="tag new">Header</span></div>
+        <p>The family sits in the app bar as its own name with a caret. Tapping it opens the six as a sheet — the overview from layout A, on demand rather than permanently.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">State</span>
+        <div class="statebar" data-states="p1">
+          <button type="button" data-state="shut" aria-pressed="true">The board</button>
+          <button type="button" data-state="open" aria-pressed="false">Picking a family</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="p1">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-radar"/></svg><h4>Radar</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+              <span class="grow"></span>
+              <span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+            </div>
+            <div class="scr">
+              <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
+              <span class="lbl">Yes or no · 5 min · 2→1 cards</span>
+              <div class="grid3">
+                <button class="pick" type="button">500 m</button>
+                <button class="pick" type="button">1 km<small>asked</small></button>
+                <button class="pick" type="button">2 km</button>
+                <button class="pick" type="button" aria-pressed="true">5 km</button>
+                <button class="pick" type="button">10 km</button>
+                <button class="pick" type="button">15 km</button>
+                <button class="pick" type="button">40 km</button>
+                <button class="pick" type="button">80 km<small>past the edge</small></button>
+                <button class="pick" type="button">160 km<small>past the edge</small></button>
+                <button class="pick wide" type="button">A distance you choose</button>
+              </div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+                <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+                <button class="btn tall beacon" type="button">Ask<small>5 km</small></button>
+              </div>
+            </div>
+            <div class="st" data-st="open" style="position:absolute;inset:0;z-index:6;flex-direction:column">
+              <div class="scrim" style="position:absolute"></div>
+              <div class="sheet" style="max-height:none">
+                <span class="grip"></span>
+                <div class="row" style="padding:0 2px 2px"><span class="lbl grow">Which kind of question</span><button class="lbl" type="button" style="color:var(--focus)">Search all 62</button></div>
+                <button class="famrow on" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-radar"/></svg></span>
+                  <span class="grow"><span class="nm">Radar</span><span class="sh">Are you within ___ of me?</span></span>
+                  <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span>
+                </button>
+                <button class="famrow" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-match"/></svg></span>
+                  <span class="grow"><span class="nm">Matching</span><span class="sh">Is your nearest ___ the same as mine?</span></span>
+                  <span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span>
+                </button>
+                <button class="famrow" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-measure"/></svg></span>
+                  <span class="grow"><span class="nm">Measuring</span><span class="sh">Closer to it than me, or further?</span></span>
+                  <span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span>
+                </button>
+                <button class="famrow" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-thermo"/></svg></span>
+                  <span class="grow"><span class="nm">Thermometer</span><span class="sh">Move, then hotter or colder?</span></span>
+                  <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span>
+                </button>
+                <button class="famrow" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-photo"/></svg></span>
+                  <span class="grow"><span class="nm">Photo</span><span class="sh">Send me a photo of ___.</span></span>
+                  <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>1→1</span>
+                </button>
+                <button class="famrow" type="button">
+                  <span class="glyph"><svg class="i sm"><use href="#ic-tentacle"/></svg></span>
+                  <span class="grow"><span class="nm">Tentacle</span><span class="sh">Which ___ are you nearest to?</span></span>
+                  <span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Board</dt><dd>Gets the whole screen. Nothing permanent is spent on a control used once every few questions</dd>
+          <dt>Sheet</dt><dd>Name, sentence and price for all six — the teaching layout A had, without paying for it on every screen</dd>
+          <dt>Search</dt><dd>The one line in the sheet that leads to the other screen: all 62 questions, one field</dd>
+        </dl>
+        <p class="why"><b>Why this is my pick.</b> Switching family is rare; picking a blank is constant. This is the only one of the three that spends its screen accordingly, and the sheet is where a size-excluded family can explain itself in a full sentence rather than a struck-through icon.</p>
+        <p class="cost"><b>What it costs.</b> Two taps to change family instead of one, and the current family is a word in a bar rather than a lit segment — you have to read it to know where you are.</p>
+      </div>
+    </article>
+
+    <!-- ── P2 ────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">2</span><h3>The bar under your thumb</h3><span class="tag new">Bottom</span></div>
+        <p>The same six segments, moved to where the hand already is and given room to be tapped: 46 px targets on the bottom edge, directly above the action they feed.</p>
+      </div>
+      <div class="stand">
+        <div class="device">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+            <div class="scr">
+              <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
+              <span class="lbl">Yes or no · 5 min · 2→1 cards</span>
+              <div class="grid3">
+                <button class="pick" type="button">500 m</button>
+                <button class="pick" type="button">1 km<small>asked</small></button>
+                <button class="pick" type="button">2 km</button>
+                <button class="pick" type="button" aria-pressed="true">5 km</button>
+                <button class="pick" type="button">10 km</button>
+                <button class="pick" type="button">15 km</button>
+                <button class="pick" type="button">40 km</button>
+                <button class="pick" type="button">80 km</button>
+                <button class="pick" type="button">160 km</button>
+                <button class="pick wide" type="button">A distance you choose</button>
+              </div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px">
+                <button class="btn tall beacon" type="button">Ask<small>5 km · from Ostbahnhof</small></button>
+                <div class="botbar" role="group" aria-label="Question family">
+                  <button type="button" aria-pressed="true"><svg class="i sm"><use href="#ic-radar"/></svg><span class="nm">Radar</span></button>
+                  <button type="button"><svg class="i sm"><use href="#ic-match"/></svg><span class="nm">Match</span></button>
+                  <button type="button"><svg class="i sm"><use href="#ic-measure"/></svg><span class="nm">Measure</span></button>
+                  <button type="button"><svg class="i sm"><use href="#ic-thermo"/></svg><span class="nm">Therm</span></button>
+                  <button type="button"><svg class="i sm"><use href="#ic-photo"/></svg><span class="nm">Photo</span></button>
+                  <button type="button"><svg class="i sm"><use href="#ic-tentacle"/></svg><span class="nm">Tentacle</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Reach</dt><dd>46 px tall on the bottom edge, six across at 48 px wide. Deck 09’s top rail was 30 px targets at the far end of the thumb’s arc</dd>
+          <dt>Order</dt><dd>Fixed, never re-sorted by use — a bar that moves under the thumb is worse than a bar that is far away</dd>
+          <dt>Cost in pixels</dt><dd>62 px permanently, which is roughly two rows of the matching board</dd>
+          <dt>Position</dt><dd>Folded into the button’s second line — the bar took the row the readout would have used, so changing where you ask from means opening the card</dd>
+        </dl>
+        <p class="why"><b>Why it might still win.</b> One tap, always, and the seeker never has to remember what family they are in — it is lit under their thumb. On a screen operated one-handed on a moving train, that is not nothing.</p>
+        <p class="cost"><b>What it costs.</b> The abbreviations. “Measure”, “Therm”, “Tentacle” at 7.5 px is the smallest type in the app, and it sits next to the largest button. It also puts a six-way switch directly beside <b>Ask</b>, which is the one control that spends a question.</p>
+      </div>
+    </article>
+
+    <!-- ── P3 ────────────────────────────────────────────────────────── -->
+    <article class="plate">
+      <div class="plate-head">
+        <div class="plate-title"><span class="as">3</span><h3>No control at all</h3><span class="tag ask">The risk</span></div>
+        <p>The sentence already names the family, so the family gets no widget: swipe the board sideways and the next one comes in. Six ticks say where you are and how many there are.</p>
+      </div>
+      <div class="plate-ctl">
+        <span class="lab">State</span>
+        <div class="statebar" data-states="p3">
+          <button type="button" data-state="rest" aria-pressed="true">Resting</button>
+          <button type="button" data-state="mid" aria-pressed="false">Mid-swipe</button>
+        </div>
+      </div>
+      <div class="stand">
+        <div class="device" data-group="p3">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <div class="tt"><h4>Ask Fuchsbau</h4><span class="sub">Question 4 · 28:40 left</span></div>
+              <span class="badge" style="background:var(--t-vermillion)">🦊</span>
+            </div>
+            <div class="scr" style="overflow:hidden">
+              <div class="pager" aria-hidden="true">
+                <span class="tick on"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span><span class="tick"></span>
+                <span class="of">1 / 6</span>
+              </div>
+              <div class="swipe" data-swipe>
+                <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
+                <span class="lbl">Radar · yes or no · 2→1 cards</span>
+                <div class="grid3">
+                  <button class="pick" type="button">500 m</button>
+                  <button class="pick" type="button">1 km<small>asked</small></button>
+                  <button class="pick" type="button">2 km</button>
+                  <button class="pick" type="button" aria-pressed="true">5 km</button>
+                  <button class="pick" type="button">10 km</button>
+                  <button class="pick" type="button">15 km</button>
+                  <button class="pick" type="button">40 km</button>
+                  <button class="pick" type="button">80 km</button>
+                  <button class="pick" type="button">160 km</button>
+                  <button class="pick wide" type="button">A distance you choose</button>
+                </div>
+                <div class="hint" style="margin-top:6px"><svg class="i xs"><use href="#ic-swipe"/></svg>Swipe for matching</div>
+                <div class="peek">
+                  <h5>Matching</h5>
+                  <span class="sh">Is your nearest ___ the same as mine?</span>
+                  <div class="grid2" style="gap:5px">
+                    <span class="pick s">Airport</span>
+                    <span class="pick s">District</span>
+                    <span class="pick s">Park</span>
+                    <span class="pick s">Museum</span>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:9px">
+                <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+                <button class="btn tall beacon" type="button">Ask<small>5 km</small></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <dl class="spec">
+          <dt>Ticks</dt><dd>Six, the current one yellow, with “1 / 6” beside them. The only chrome the switch gets</dd>
+          <dt>Order</dt><dd>Has to be fixed and learnable — radar, matching, measuring, thermometer, photo, tentacle — because position is now the only address a family has</dd>
+          <dt>Fallback</dt><dd>Tapping the ticks jumps, so the gesture is never the only way through</dd>
+        </dl>
+        <p class="why"><b>Why it is worth drawing.</b> It gives the board every pixel and makes the sentence the whole interface. Between two families it is the fastest thing here — no target to hit, just a thumb moving sideways.</p>
+        <p class="cost"><b>What it costs, and the risk.</b> Going from radar to tentacle is five swipes or a tap on a 3 px tick. The board is also full of horizontally-arranged chips, so a sideways drag that starts on one is ambiguous — and this is a phone being used while walking. I would not ship it as the only way to change family.</p>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ═══ all six boards ══════════════════════════════════════════════════ -->
+<section class="band" id="boards">
+  <div class="band-head">
+    <span class="kicker">Six boards</span>
+    <h2>Every family, drawn from the rulebook you wrote down</h2>
+    <p>Lists, wording and distances come from <code>docs/questions</code>. They are drawn with picker 1 so each board has the full screen; swap in picker 2 or 3 and the boards below lose 62 px or nothing at all respectively.</p>
+    <p>The board is <b>medium</b> — Berlin, team Eule hunting Fuchsbau. Questions this size does not have are not greyed out where they lie: they are lifted out into a section of their own at the foot of the board, under a dashed rule.</p>
+  </div>
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B1</span><h3>Radar</h3><span class="who">9 + free</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-radar"/></svg><h4>Radar</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">Are you within <u class="set">5 km</u> of me?</p>
+            <span class="lbl">Yes or no · 5 min · 2→1 cards</span>
+            <div class="grid3">
+              <button class="pick" type="button">500 m</button>
+              <button class="pick" type="button">1 km<small>asked</small></button>
+              <button class="pick" type="button">2 km</button>
+              <button class="pick" type="button" aria-pressed="true">5 km</button>
+              <button class="pick" type="button">10 km</button>
+              <button class="pick" type="button">15 km</button>
+              <button class="pick" type="button">40 km</button>
+              <button class="pick" type="button">80 km<small>past the edge</small></button>
+              <button class="pick" type="button">160 km<small>past the edge</small></button>
+              <button class="pick wide" type="button">A distance you choose</button>
+            </div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+              <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+              <button class="btn tall beacon" type="button">Ask<small>5 km</small></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Nothing is lifted out.</b> Radar has no size rule — every rung is legal on every board. The two rungs bigger than the map say so quietly rather than being moved or dimmed, because a yes still tells you something.</li>
+        <li><b>“Asked” under 1 km</b> is the same mark on every board: a distance already spent, still tappable, because asking it again is a legal if wasteful move.</li>
+        <li class="r"><b>Open:</b> is “past the edge” help or interference? It is the only place a board comments on the quality of a choice.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B2</span><h3>Matching</h3><span class="who">20 in five groups</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-match"/></svg><h4>Matching</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">Is your nearest <u>___</u> the same as mine?</p>
+            <span class="lbl">Yes or no · 5 min · 3→1 cards</span>
+            <div class="cut">
+              <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Airport</button>
+                <button class="pick s" type="button">Transit line</button>
+                <button class="pick s l" type="button">Length of the station name</button>
+                <button class="pick s l" type="button">Street or path</button>
+              </div>
+              <div class="gh"><span class="t">Where on the map</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">State<span class="tagline">Berlin</span></button>
+                <button class="pick s" type="button">District<span class="tagline">Mitte</span></button>
+                <button class="pick s" type="button">Town<span class="tagline">Berlin</span></button>
+                <button class="pick s" type="button">Neighbourhood<span class="tagline">Moabit</span></button>
+              </div>
+              <div class="gh"><span class="t">Out in the open</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Mountain</button>
+                <button class="pick s" type="button">Park</button>
+                <button class="pick s l" type="button">Landmass</button>
+              </div>
+              <div class="gh"><span class="t">Places</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Museum</button>
+                <button class="pick s" type="button">Cinema</button>
+                <button class="pick s" type="button">Zoo</button>
+                <button class="pick s" type="button">Aquarium</button>
+              </div>
+            </div>
+            <button class="btn tall off" type="button">Pick one to ask</button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Twenty does not fit a screenful of chips</b>, so this board scrolls and the groups become headings. Two columns, one row for a long name — the group is the unit, not the column.</li>
+        <li class="g"><b>The examples do the explaining.</b> “District · Mitte” says what a district is here without the phrase “2nd administrative division” appearing anywhere.</li>
+        <li class="r"><b><code>01-matching-questions.md</code> is missing</b> from <code>docs/questions</code>. This list is from the fan rulebook page — the four administrative levels, landmass, and station-name length are the parts worth checking against what you meant to write down.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B3</span><h3>Measuring</h3><span class="who">20 in five groups</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-measure"/></svg><h4>Measuring</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">Are you closer to <u>___</u> than me, or further?</p>
+            <span class="lbl">Closer or further · 5 min · 3→1 cards</span>
+            <div class="cut">
+              <div class="gh"><span class="t">Getting around</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Airport</button>
+                <button class="pick s" type="button">Rail station</button>
+                <button class="pick s l" type="button">High-speed line</button>
+              </div>
+              <div class="gh"><span class="t">Borders</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Country border</button>
+                <button class="pick s" type="button">State border</button>
+                <button class="pick s l" type="button">District border</button>
+              </div>
+              <div class="gh"><span class="t">Natural</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Sea level<span class="tagline">your altitude</span></button>
+                <button class="pick s" type="button">Water</button>
+                <button class="pick s" type="button">Coastline</button>
+                <button class="pick s" type="button">Mountain</button>
+                <button class="pick s l" type="button">Park</button>
+              </div>
+              <div class="gh"><span class="t">Places</span><span class="hr"></span></div>
+              <div class="grid2">
+                <button class="pick s" type="button">Museum</button>
+                <button class="pick s" type="button">Cinema</button>
+              </div>
+            </div>
+            <button class="btn tall off" type="button">Pick one to ask</button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Same shape as matching, deliberately.</b> The two families share nearly the whole list; a seeker who learns one board can read the other, and the sentence at the top is the only thing that changed.</li>
+        <li class="g"><b>“Sea level · your altitude”</b> is the one entry that is not a place on the map. It earns its tagline.</li>
+        <li><b>Null answers.</b> Nothing outside the board exists, and a question with no qualifying feature still costs a question and still pays the hider. That belongs on the question card, not here.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B4</span><h3>Thermometer</h3><span class="who">3 here, 1 elsewhere</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-thermo"/></svg><h4>Thermometer</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">After travelling <u class="set">5 km</u>, am I hotter or colder?</p>
+            <span class="lbl">Hotter or colder · 5 min · 2→1 cards</span>
+            <div class="grid3">
+              <button class="pick" type="button">1 km</button>
+              <button class="pick" type="button" aria-pressed="true">5 km</button>
+              <button class="pick" type="button">15 km</button>
+            </div>
+            <div class="elsewhere">
+              <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
+              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>75 km</span><span class="why">A large board — this one is medium</span></span></div>
+            </div>
+            <div class="rules" style="margin-top:9px">
+              <dt>Step 1</dt><dd>Send where you are now — this does it</dd>
+              <dt>Step 2</dt><dd>Travel 5 km in a straight line, then send where you ended up</dd>
+            </div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+              <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+              <button class="btn tall beacon" type="button" data-keep>Start from here<small>step 1 of 2</small></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Three rungs, and a fourth in its own box.</b> The 75 km rung is not dimmed in the row of chips where it would look tappable — it is lifted below the rule, in a dashed box that names the reason.</li>
+        <li class="g"><b>The button does not say “Ask”.</b> This question is two sends with a journey between them, so the board says which half it is doing, and the second half is a card in the question list.</li>
+        <li class="r"><b>Open:</b> a thermometer might not belong on a board at all — it could be a tool you start on the map and finish there, the way the ruler works.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B5</span><h3>Photo</h3><span class="who">14 here, 4 elsewhere</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-photo"/></svg><h4>Photo</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">Send me a photo of <u>___</u>.</p>
+            <span class="lbl">A photo, or “I can’t” · 10 min · 1→1 cards</span>
+            <div class="cut foot" style="mask-image:linear-gradient(to bottom,transparent,#000 34px)">
+              <div class="grid2" style="gap:6px">
+                <button class="pick s l" type="button">A restaurant, through the window</button>
+                <button class="pick s l" type="button">A park</button>
+                <button class="pick s l" type="button">A supermarket aisle</button>
+                <button class="pick s l" type="button">A place of worship<span class="tagline">2 × 2 m, three distinct things</span></button>
+                <button class="pick s l" type="button">A train platform<span class="tagline">2 × 2 m, three distinct things</span></button>
+              </div>
+              <div class="elsewhere">
+                <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
+                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>1 km of streets, traced</span><span class="why">Five turns, no doubling back</span></span></div>
+                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The tallest mountain from a station</span></span></div>
+                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>The biggest water in your zone</span></span></div>
+                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Five buildings</span></span></div>
+                <div class="row" style="gap:6px;padding:2px 2px 0"><svg class="i xs faint"><use href="#ic-info"/></svg><span class="why" style="font-family:'Azeret Mono',monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)">Large boards also give 20 minutes to answer</span></div>
+              </div>
+            </div>
+            <button class="btn tall off" type="button">Pick one to ask</button>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Scrolled to the foot.</b> Fourteen photo subjects have long names, so this board is a single column of rows — and the four it does not have sit under the dashed rule at the bottom where the list ends.</li>
+        <li class="g"><b>Read, not disabled.</b> The lifted items keep their full names and their conditions. A seeker learns that a large game has street-tracing in it, which is exactly the sort of thing that makes somebody ask for a bigger board next time.</li>
+        <li class="r"><b>Open:</b> is a lifted item tappable? Drawn as not — no chevron, no press. The alternative is a tap that opens the rule and says where it is available.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">B6</span><h3>Tentacle</h3><span class="who">4 here, 4 elsewhere</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-tentacle"/></svg><h4>Tentacle</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Fuchsbau<br>28:40</span>
+          </div>
+          <div class="scr">
+            <p class="sentence">Within <u class="set">2 km</u> of me, which <u>___</u> are you nearest to?</p>
+            <span class="lbl">A name, or out of range · 5 min · 4→2 cards</span>
+            <div class="grid2">
+              <button class="pick s" type="button">Museums</button>
+              <button class="pick s" type="button">Libraries</button>
+              <button class="pick s" type="button">Cinemas</button>
+              <button class="pick s" type="button">Hospitals</button>
+            </div>
+            <div class="elsewhere">
+              <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large · 25 km</span></div>
+              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Metro lines</span></span></div>
+              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Zoos</span></span></div>
+              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Aquariums</span></span></div>
+              <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Amusement parks</span></span></div>
+            </div>
+            <div class="row" style="gap:7px;align-items:flex-start;padding:6px 2px 0">
+              <svg class="i sm faint" style="margin-top:1px"><use href="#ic-info"/></svg>
+              <span style="font-size:11px;color:var(--ink-faint);line-height:1.35">Every museum in range is a tentacle reaching out from you. One of them touches Fuchsbau and reports back.</span>
+            </div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+              <button class="readout" type="button"><svg class="i sm faint"><use href="#ic-crosshair"/></svg><span class="v">Ostbahnhof · 52.51005, 13.43450</span><svg class="i sm faint"><use href="#ic-caret-right"/></svg></button>
+              <button class="btn tall off" type="button">Pick one to ask</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>The clearest case for lifting rather than dimming.</b> Half this family is somewhere else, and the two halves have different radii — 2 km here, 25 km there. Interleaved and greyed, that reads as a bug.</li>
+        <li class="g"><b>On a small board</b> the whole family is lifted: the picker shows tentacle with the same dashed treatment and the board says the family is not in this game, in one sentence.</li>
+        <li><b>The mental model in one line</b>, taken from your notes. It is the only family that needs a sentence of explanation, and it is cheaper than a help screen.</li>
+      </ul>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ═══ the rule, and the screen you asked for next ═════════════════════ -->
+<section class="band" id="offsize">
+  <div class="band-head">
+    <span class="kicker">Two more screens</span>
+    <h2>A family can be missing too, and search is its own place</h2>
+    <p>The same separation applies one level up: on a small board tentacle is not a family with nothing in it, it is a family that is not in this game — so the picker lifts it out under the same dashed rule. And the search you asked about: reached from one line in the picker, it is deck 09’s layout B, unchanged.</p>
+  </div>
+  <div class="rack">
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">X1</span><h3>The picker, small board</h3><span class="who">five families, not six</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <button class="hdrpick" type="button"><svg class="i sm"><use href="#ic-radar"/></svg><h4>Radar</h4><svg class="i sm"><use href="#ic-caret-down"/></svg></button>
+            <span class="grow"></span><span class="lbl" style="text-align:right">Dachs<br>41:12</span>
+          </div>
+          <div class="scr" style="opacity:.35">
+            <p class="sentence">Are you within <u class="set">2 km</u> of me?</p>
+            <div class="grid3">
+              <span class="pick">500 m</span><span class="pick">1 km</span><span class="pick">2 km</span>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <span class="grip"></span>
+            <div class="row" style="padding:0 2px 2px"><span class="lbl grow">Which kind of question</span><button class="lbl" type="button" style="color:var(--focus)">Search all 44</button></div>
+            <button class="famrow on" type="button">
+              <span class="glyph"><svg class="i sm"><use href="#ic-radar"/></svg></span>
+              <span class="grow"><span class="nm">Radar</span><span class="sh">Are you within ___ of me?</span></span>
+              <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span>
+            </button>
+            <button class="famrow" type="button">
+              <span class="glyph"><svg class="i sm"><use href="#ic-match"/></svg></span>
+              <span class="grow"><span class="nm">Matching</span><span class="sh">Is your nearest ___ the same as mine?</span></span>
+              <span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span>
+            </button>
+            <button class="famrow" type="button">
+              <span class="glyph"><svg class="i sm"><use href="#ic-measure"/></svg></span>
+              <span class="grow"><span class="nm">Measuring</span><span class="sh">Closer to it than me, or further?</span></span>
+              <span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span>
+            </button>
+            <button class="famrow" type="button">
+              <span class="glyph"><svg class="i sm"><use href="#ic-thermo"/></svg></span>
+              <span class="grow"><span class="nm">Thermometer</span><span class="sh">Move, then hotter or colder?</span></span>
+              <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>2→1</span>
+            </button>
+            <button class="famrow" type="button">
+              <span class="glyph"><svg class="i sm"><use href="#ic-photo"/></svg></span>
+              <span class="grow"><span class="nm">Photo</span><span class="sh">Send me a photo of ___.</span></span>
+              <span class="cards cool"><svg class="i"><use href="#ic-cards"/></svg>1→1</span>
+            </button>
+            <div class="elsewhere">
+              <div class="head"><span class="t">Not in this game</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Medium and up</span></div>
+              <div class="famrow away">
+                <span class="glyph"><svg class="i sm"><use href="#ic-tentacle"/></svg></span>
+                <span class="grow"><span class="nm">Tentacle</span><span class="sh">Small boards do not have this family</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>One rule, two levels.</b> A missing subject is lifted to the foot of its board; a missing family is lifted to the foot of the picker. Same dashed rule, same reason line, no grey.</li>
+        <li class="g"><b>Counts follow the board.</b> “Search all 44” on a small game, 62 here — the number is what this game actually has.</li>
+      </ul>
+    </figure>
+
+    <figure class="mock">
+      <div class="mock-label"><span class="n">X2</span><h3>Search, from the picker</h3><span class="who">deck 09, layout B</span></div>
+      <div class="device">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+          <div class="appbar">
+            <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+            <div class="tt"><h4>All questions</h4><span class="sub">62 on this board</span></div>
+          </div>
+          <div class="scr">
+            <div class="searchbox" style="border-color:var(--focus)"><svg class="i sm" style="color:var(--focus)"><use href="#ic-search"/></svg><input value="hosp" readonly><svg class="i sm"><use href="#ic-x"/></svg></div>
+            <div class="row" style="padding:0 2px"><span class="lbl">3 questions · 3 families</span></div>
+            <div class="cut">
+              <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-match"/></svg></span><span class="grow"><span class="nm">Same <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital as me</span><span class="note">Matching · yes / no · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></button>
+              <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-measure"/></svg></span><span class="grow"><span class="nm">Nearer a <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital than me?</span><span class="note">Measuring · closer / further · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>3→1</span></button>
+              <button class="qrow" type="button"><span class="lead"><svg class="i xs"><use href="#ic-tentacle"/></svg></span><span class="grow"><span class="nm">Nearest <b style="background:color-mix(in oklab,var(--action) 55%,transparent);border-radius:3px">hosp</b>ital within 2 km</span><span class="note">Tentacle · a name · 5 min</span></span><span class="cards hot"><svg class="i"><use href="#ic-cards"/></svg>4→2</span></button>
+              <div class="elsewhere" style="margin-top:8px">
+                <div class="head"><span class="t">Not on this board</span><span class="hr" style="flex:1 1 auto;height:1px;background:var(--hairline)"></span><span class="sz">Large only</span></div>
+                <div class="away-item"><svg class="i xs"><use href="#ic-size"/></svg><span class="grow"><span>Nearest hospital within 25 km</span><span class="why">Tentacle · large boards</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="anno">
+        <li class="y"><b>Search is a screen, not a field on the board.</b> It answers a different question — “where is the hospital one?” — and it reaches across families, which is the only place that crossing is useful.</li>
+        <li class="g"><b>Picking a result lands on that family’s board</b> with the blank already filled, so search never becomes a second way to ask that behaves differently from the first.</li>
+        <li><b>The same lifted section</b> appears here, so a search that finds a large-board question tells you that rather than silently returning less.</li>
+      </ul>
+    </figure>
+
+  </div>
+
+  <div class="setaside" style="margin-top:40px">
+    <div class="aside call">
+      <span class="num">01 · Missing file</span>
+      <h4><code>01-matching-questions.md</code> is not in <code>docs/questions</code></h4>
+      <p>Board B2 is drawn from the fan rulebook page instead. Twenty subjects in five groups, including four administrative levels, landmass and station-name length — worth a check against what you meant to write down.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">02 · Divisions</span>
+      <h4>Local words, or the rulebook’s numbering</h4>
+      <p>Matching and measuring both lean on administrative levels. Drawn as State · Berlin, District · Mitte, Neighbourhood · Moabit — readable, and a per-country table somebody has to write and keep right. The rulebook’s “2nd administrative division” needs no table and no seeker says it out loud.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">03 · Lifted items</span>
+      <h4>Do they respond to a tap?</h4>
+      <p>Drawn inert: dashed, no chevron, reason on the line. The alternative is a tap that opens the full rule and says which board size has it — more to build, and it makes a thing you cannot ask feel like a thing you can.</p>
+    </div>
+    <div class="aside call">
+      <span class="num">04 · Past the edge</span>
+      <h4>Should radar comment on a pointless rung?</h4>
+      <p>80 and 160 km cover this whole board, so a yes tells you nothing. Drawn with a two-word mark under the chip. It is the only place any board judges a choice, and that is either a kindness or the app playing for you.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+
+  /* theme */
+  const bar = document.getElementById("themebar");
+  const thumb = bar.querySelector(".thumb");
+  const moveThumb = (btn) => {
+    thumb.style.width = btn.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + (btn.offsetLeft - 3) + "px)";
+  };
+  bar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-theme-set]");
+    if (!btn) return;
+    for (const b of bar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+    const mode = btn.dataset.themeSet;
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    moveThumb(btn);
+  });
+  const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
+  settle();
+  window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+  /* stage states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    const swipe = scope.querySelector("[data-swipe]");
+    if (swipe) {
+      swipe.classList.toggle("mid", want === "mid");
+      const ticks = scope.querySelectorAll(".pager .tick");
+      ticks.forEach((t, i) => t.classList.toggle("on", want === "mid" ? i <= 1 : i === 0));
+      const of = scope.querySelector(".pager .of");
+      if (of) of.textContent = want === "mid" ? "1 → 2" : "1 / 6";
+    }
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+  }
+  for (const strip of document.querySelectorAll(".statebar[data-states]")) {
+    strip.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-state]");
+      if (btn) show(strip.dataset.states, btn.dataset.state);
+    });
+  }
+
+  /* every board: picking fills the blank and arms the button */
+  for (const scr of document.querySelectorAll(".device .scr")) {
+    const sentence = scr.querySelector(".sentence");
+    if (!sentence) continue;
+    const blanks = [...sentence.querySelectorAll("u")];
+    const blank = blanks[blanks.length - 1];
+    const btn = scr.querySelector(".btn");
+    const picks = [...scr.querySelectorAll(".pick")].filter((p) => !p.closest(".peek"));
+    for (const pick of picks) {
+      pick.addEventListener("click", () => {
+        for (const p of picks) p.setAttribute("aria-pressed", String(p === pick));
+        const label = pick.classList.contains("wide")
+          ? "a distance"
+          : (pick.firstChild ? pick.firstChild.textContent : pick.textContent).trim();
+        if (blank) {
+          blank.textContent = label;
+          blank.classList.add("set");
+        }
+        if (!btn || btn.dataset.keep !== undefined) return;
+        if (btn.classList.contains("off")) {
+          btn.classList.remove("off");
+          btn.classList.add("beacon");
+          btn.innerHTML = "Ask<small>" + label + "</small>";
+        } else {
+          const small = btn.querySelector("small");
+          if (small) small.textContent = label;
+        }
+      });
+    }
+  }
+})();
+</script>
