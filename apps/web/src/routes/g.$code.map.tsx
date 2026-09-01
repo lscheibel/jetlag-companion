@@ -24,6 +24,7 @@ import { Screen } from "@zero-lag/ui/components/screen";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { FoundCard, SeekerActionsSheet } from "../game/found-sheet";
 import { HiderTeamSheet } from "../game/hider-selector";
 import { HidingSheet } from "../game/hiding-sheet";
@@ -223,6 +224,7 @@ export default function MapRoute() {
 
 function MapScreen() {
 	const { session, ephemeral, tracking } = useGameShell();
+	const navigate = useNavigate();
 	const reducedMotion = useReducedMotion();
 	const cardMotion = mapCardMotionProps(reducedMotion);
 	const role = useMyRole(session.playerId);
@@ -1682,6 +1684,10 @@ function MapScreen() {
 					found={selectedHiderFound}
 					onClose={() => setSeekerOverlay("none")}
 					onFoundThem={() => setSeekerOverlay("found")}
+					onAsk={() => {
+						setSeekerOverlay("none");
+						void navigate(`/g/${session.code}/ask`);
+					}}
 					onNarrowDown={() => {
 						setSeekerOverlay("none");
 						setConstraintPickerOpen(true);

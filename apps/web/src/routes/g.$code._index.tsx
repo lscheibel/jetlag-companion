@@ -43,8 +43,8 @@ import { StartSeekingAction } from "../lobby/start-seeking";
 import { TeamDrawer } from "../lobby/team-drawer";
 import { TeamRow } from "../lobby/team-row";
 import { useLobby } from "../lobby/use-lobby";
-import { YouAre } from "../lobby/you-are";
 import { rejectionMessage } from "../lobby/use-rejections";
+import { YouAre } from "../lobby/you-are";
 import { clearSession } from "../session";
 import { editorHomePath } from "../setup/area/tool-nav";
 

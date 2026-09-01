@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
  */
 
 /** Square icon ActionButton: the press edge, not a drop shadow. */
-const SQUARE_ACTION =
+export const SQUARE_ACTION =
 	"shrink-0 [&_.zl-press-face]:size-tap [&_.zl-press-face]:items-center [&_.zl-press-face]:justify-center [&_.zl-press-face]:px-0";
 
 interface LobbyHeaderProps {
@@ -69,7 +69,7 @@ export function LobbyHeader({
 			eyebrow={round ? `Round ${round.ordinal}` : "Round"}
 			leading={
 				place ? (
-					<PlaceAction
+					<HeaderAction
 						icon={place.icon}
 						label={place.label}
 						onClick={place.onClick}
@@ -116,16 +116,21 @@ export function LobbyHeader({
 	);
 }
 
-function PlaceAction({
+/**
+ * The square grey control on a header's leading edge: the other place in the
+ * game from the lobby and the map, and back out of the question board. One
+ * shape in one corner, so a thumb learns it once.
+ */
+export function HeaderAction({
 	label,
 	icon,
 	onClick,
 	testId,
 }: {
-	label: string;
-	icon: IconName;
-	onClick: () => void;
-	testId: string;
+	readonly label: string;
+	readonly icon: IconName;
+	readonly onClick: () => void;
+	readonly testId: string;
 }) {
 	return (
 		<ActionButton

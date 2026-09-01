@@ -17,9 +17,10 @@ interface SeekerActionsSheetProps {
 	readonly onFoundThem: () => void;
 	readonly onUndoFound: () => void;
 	readonly onNarrowDown: () => void;
+	readonly onAsk: () => void;
 }
 
-/** Found them first; ask is last, and still a stub. */
+/** Found them first; ask is last, and opens the question board. */
 export function SeekerActionsSheet({
 	open,
 	found,
@@ -29,6 +30,7 @@ export function SeekerActionsSheet({
 	onFoundThem,
 	onUndoFound,
 	onNarrowDown,
+	onAsk,
 }: SeekerActionsSheetProps) {
 	return (
 		<Sheet
@@ -65,7 +67,7 @@ export function SeekerActionsSheet({
 			<ActionButton
 				data-testid="ask-question"
 				disabled={!canAsk}
-				onClick={() => {}}
+				onClick={onAsk}
 			>
 				Ask a question
 			</ActionButton>

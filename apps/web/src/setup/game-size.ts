@@ -97,6 +97,26 @@ export const SIZE_BANDS: Readonly<Record<GameSize, SizeBand>> = {
 };
 
 /**
+ * The size a map that was built at this preset is played at.
+ *
+ * The inverse of `SIZE_BANDS[size].scalePreset`, extended over the two presets
+ * no size band chooses: a `state` or `ticket` map is bigger than the largest
+ * band, and the question board that reads this treats it as large. A preset is
+ * what the host's area actually recorded, so it is the honest source for a
+ * board size — the size they picked in setup was only a prefill.
+ */
+export function gameSizeFromScalePreset(preset: ScalePreset): GameSize {
+	switch (preset) {
+		case "district":
+			return "small";
+		case "city":
+			return "medium";
+		default:
+			return "large";
+	}
+}
+
+/**
  * What the area itself suggests.
  *
  * Two readings, and the **smaller** band wins: a dense city packs several

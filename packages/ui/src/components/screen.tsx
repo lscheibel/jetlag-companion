@@ -71,7 +71,7 @@ export function ScreenHeader({
 				className,
 			)}
 		>
-			<div className="flex min-w-0 flex-1 items-center gap-2">
+			<div className="flex min-w-0 flex-1 items-center gap-3">
 				{leading}
 				{onBack && (
 					<button
