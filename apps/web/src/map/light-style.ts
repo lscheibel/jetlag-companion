@@ -1,5 +1,6 @@
 import type {
 	DataDrivenPropertyValueSpecification,
+	FilterSpecification,
 	StyleSpecification,
 } from "maplibre-gl";
 
@@ -88,6 +89,34 @@ const PALETTE = {
 	labelWater: "#2c5f8f",
 	halo: "rgba(255,255,255,0.85)",
 } as const;
+
+/**
+ * Everything on `class: transit`, tunnels included.
+ *
+ * Upstream's filter ends in `["match", ["get", "brunnel"], ["tunnel"], false,
+ * true]`, which throws tunnelled track away — and Berlin's U-Bahn is tunnel
+ * almost end to end, as is the S-Bahn's Nord-Süd line. On their styles the
+ * city's rapid transit is simply absent. A line you cannot see from the street
+ * is still a line you can get on.
+ */
+const TRANSIT_FILTER: FilterSpecification = [
+	"all",
+	["match", ["geometry-type"], ["LineString", "MultiLineString"], true, false],
+	["==", ["get", "class"], "transit"],
+];
+
+/**
+ * Underground, drawn back. Not a dash: these are already thin lines and a
+ * dashed thin line at 2px is a smudge. Opacity says "below you" without costing
+ * legibility.
+ */
+const TUNNEL_OPACITY: DataDrivenPropertyValueSpecification<number> = [
+	"match",
+	["get", "brunnel"],
+	"tunnel",
+	0.6,
+	1,
+];
 
 /**
  * The transit network, coloured by what kind of line it is. `subclass` is the
@@ -894,27 +923,14 @@ export const LIGHT_MAP_STYLE = {
 			source: "openmaptiles",
 			"source-layer": "transportation",
 			minzoom: 11,
-			filter: [
-				"all",
-				[
-					"match",
-					["geometry-type"],
-					["LineString", "MultiLineString"],
-					true,
-					false,
-				],
-				[
-					"all",
-					["==", ["get", "class"], "transit"],
-					["match", ["get", "brunnel"], ["tunnel"], false, true],
-				],
-			],
+			filter: TRANSIT_FILTER,
 			layout: {
 				"line-join": "round",
 			},
 			paint: {
 				"line-color": TRANSIT_COLOR,
 				"line-width": TRANSIT_WIDTH,
+				"line-opacity": TUNNEL_OPACITY,
 			},
 		},
 		{

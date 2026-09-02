@@ -5,12 +5,28 @@ import { build, DARK_SPEC, LIGHT_SPEC, railExpressions } from "./build.mjs";
 const OUT_DIR = new URL("../../apps/web/src/map/", import.meta.url);
 
 const TYPES = {
+	TRANSIT_FILTER: "FilterSpecification",
+	TUNNEL_OPACITY: "DataDrivenPropertyValueSpecification<number>",
 	TRANSIT_COLOR: "DataDrivenPropertyValueSpecification<string>",
 	RAIL_WIDTH: "DataDrivenPropertyValueSpecification<number>",
 	TRANSIT_WIDTH: "DataDrivenPropertyValueSpecification<number>",
 };
 
 const DOCS = {
+	TRANSIT_FILTER: `/**
+ * Everything on \`class: transit\`, tunnels included.
+ *
+ * Upstream's filter ends in \`["match", ["get", "brunnel"], ["tunnel"], false,
+ * true]\`, which throws tunnelled track away — and Berlin's U-Bahn is tunnel
+ * almost end to end, as is the S-Bahn's Nord-Süd line. On their styles the
+ * city's rapid transit is simply absent. A line you cannot see from the street
+ * is still a line you can get on.
+ */`,
+	TUNNEL_OPACITY: `/**
+ * Underground, drawn back. Not a dash: these are already thin lines and a
+ * dashed thin line at 2px is a smudge. Opacity says "below you" without costing
+ * legibility.
+ */`,
 	TRANSIT_COLOR: `/**
  * The transit network, coloured by what kind of line it is. \`subclass\` is the
  * tiles' own word for it, and these are the signage colours the city uses:

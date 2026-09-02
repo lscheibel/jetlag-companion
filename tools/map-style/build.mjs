@@ -32,12 +32,12 @@ export const DARK = {
 	roadMinor: "#1d2836",
 	roadMajorCasing: "#2c3c50",
 	roadMajorInner: "#0e1621",
-	motorwayCasing: "#55420f",
+	motorwayCasing: "#3b3013",
 	motorwayInner: "#1c1405",
 	railMain: "#4a5f7c",
-	railSBahn: "#1b6446",
+	railSBahn: "#335446",
 	railUBahn: "#2b6cb8",
-	railTram: "#8f3527",
+	railTram: "#402521",
 	boundary: "#33405a",
 	label: "#8b9bb0",
 	labelMinor: "#6c7d93",
@@ -68,12 +68,12 @@ export const LIGHT = {
 	roadMinor: "#ffffff",
 	roadMajorCasing: "#c3d0df",
 	roadMajorInner: "#ffffff",
-	motorwayCasing: "#e2c176",
-	motorwayInner: "#ffeec0",
+	motorwayCasing: "#f0d189",
+	motorwayInner: "#fff5d9",
 	railMain: "#9aa8b8",
-	railSBahn: "#00794a",
-	railUBahn: "#0f5fc2",
-	railTram: "#a45136",
+	railSBahn: "#0d9460",
+	railUBahn: "#126cdb",
+	railTram: "#ffa494",
 	boundary: "#9aa8bd",
 	label: "#22303f",
 	labelMinor: "#55637a",
@@ -98,6 +98,28 @@ const transitColor = (P) => [
 	P.railTram,
 	P.railMain,
 ];
+
+/**
+ * Everything on `class: transit`, tunnels included.
+ *
+ * Upstream's filter ends in `["match", ["get", "brunnel"], ["tunnel"], false,
+ * true]`, which throws tunnelled track away — and Berlin's U-Bahn is tunnel
+ * almost end to end, as is the S-Bahn's Nord-Süd line. On their styles the
+ * city's rapid transit is simply absent. A line you cannot see from the street
+ * is still a line you can get on.
+ */
+const TRANSIT_FILTER = [
+	"all",
+	["match", ["geometry-type"], ["LineString", "MultiLineString"], true, false],
+	["==", ["get", "class"], "transit"],
+];
+
+/**
+ * Underground, drawn back. Not a dash: these are already thin lines and a
+ * dashed thin line at 2px is a smudge. Opacity says "below you" without
+ * costing legibility.
+ */
+const TUNNEL_OPACITY = ["match", ["get", "brunnel"], "tunnel", 0.6, 1];
 
 /** Thin at the zoom a whole city fits on, full width where a street does. */
 const RAIL_WIDTH = [
@@ -158,9 +180,11 @@ const rails = (P, ground, ids, symbolic) => {
 		},
 		[ids.transit]: {
 			minzoom: 11,
+			filter: use("TRANSIT_FILTER"),
 			paint: {
 				"line-color": use("TRANSIT_COLOR"),
 				"line-width": use("TRANSIT_WIDTH"),
+				"line-opacity": use("TUNNEL_OPACITY"),
 			},
 		},
 		[ids.service]: { paint: { "line-color": P.railMain } },
@@ -168,6 +192,8 @@ const rails = (P, ground, ids, symbolic) => {
 };
 
 export const railExpressions = (P) => ({
+	TRANSIT_FILTER,
+	TUNNEL_OPACITY,
 	TRANSIT_COLOR: transitColor(P),
 	RAIL_WIDTH,
 	TRANSIT_WIDTH,
@@ -388,6 +414,7 @@ export function build(spec, symbolic = false) {
 		const rail = patch[layer.id];
 		if (rail) {
 			if (rail.minzoom !== undefined) layer.minzoom = rail.minzoom;
+			if (rail.filter) layer.filter = rail.filter;
 			layer.paint = { ...layer.paint, ...rail.paint };
 		}
 	}
