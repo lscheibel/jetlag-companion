@@ -1,0 +1,48 @@
+import type {
+	DataDrivenPropertyValueSpecification,
+	StyleSpecification,
+} from "maplibre-gl";
+
+/**
+ * Zero Lag's own light basemap, the daylight half of `dark-style.ts`. m2-spec §3.
+ *
+ * Derived from OpenFreeMap's Positron rather than from their dark style — the
+ * two are different styles with different layer lists, so this is a second file
+ * rather than a second palette. Positron's logic is kept, because it is right:
+ * white roads on a quiet ground, and nothing else competing with them. What
+ * changes is what the quiet ground is quiet *about*.
+ *
+ * 1. **Colour carries the categories.** Positron renders water, parks and rail
+ *    as four separate greys, which reads beautifully on a desk and vanishes on
+ *    a phone held at arm's length in the sun. Water is water-blue, parks are
+ *    green, motorways are tram amber, and the ground is the same
+ *    `--map-land` the app paints behind the map.
+ *
+ * 2. **The network leads and the motorways follow.** Same change as the dark
+ *    style, same reasoning — solid rail from z8, transit lines from z11, and
+ *    Positron's motorway amber pulled back so the railways are what the eye
+ *    lands on at country scale. Its rail hatch goes too: at the widths these
+ *    lines are drawn at, a hatch reads as a dotted smudge rather than as a
+ *    railway.
+ *
+ *    Those floors are the data's. OpenMapTiles carries heavy rail from z8 and
+ *    `light_rail` from z11, but `subway` and `tram` geometry only from z14.
+ *
+ *    Transit is also ordered *above* heavy rail, which upstream draws last.
+ *    Berlin's S-Bahn mostly runs alongside the long-distance tracks, and in
+ *    upstream's order the steel painted over the green — the line the players
+ *    ride vanishing into the freight beside it.
+ *
+ * Woodland is a flat fill rather than upstream's `wood-pattern`, which is not
+ * in the sprite sheet OpenFreeMap serves.
+ *
+ * `landcover_grass` is ours. Positron has a `park` layer, but it draws the
+ * OpenMapTiles `park` source-layer, which holds nature reserves and protected
+ * areas — Berlin's actual parks arrive as `landcover` class `grass` and go
+ * unpainted, which is why Tiergarten is bare ground on their map.
+ *
+ * Tiles, sprite and glyphs are still OpenFreeMap's; ATTRIBUTION is unchanged
+ * and still required. To re-derive: fetch
+ * `https://tiles.openfreemap.org/styles/positron` and diff its layer list
+ * against the one below.
+ */

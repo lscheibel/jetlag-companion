@@ -11,6 +11,8 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { DARK_MAP_STYLE } from "./dark-style";
+import { LIGHT_MAP_STYLE } from "./light-style";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 /**
@@ -23,16 +25,22 @@ import "maplibre-gl/dist/maplibre-gl.css";
  */
 
 /**
- * OpenFreeMap's public instance. m2-spec §3.
+ * Both basemaps are ours. m2-spec §3.
  *
- * No key, no registration, no request ceiling, and nothing of ours to host.
- * Positron in the light, Dark at night. Same provider, so a theme change is a
- * style URL rather than a second map stack. Bright and Liberty would bury a
- * 24px marker in café pins.
+ * They are still OpenFreeMap's data — every tile, sprite and glyph is asked of
+ * their public instance, which needs no key, no registration and has no request
+ * ceiling — but the styling is this app's, because the two things their styles
+ * are built for are not the two things this screen is. Positron is a desk map
+ * and their dark is a night-time desk map; this one is read outdoors, at a
+ * glance, at arm's length, by somebody who is also walking.
+ *
+ * `light-style.ts` and `dark-style.ts` carry what each changed and why. Style
+ * objects rather than URLs, so a theme change is a swap between two constants,
+ * and there is no style request on the way to the first tile.
  */
-export const MAP_STYLE_URLS = {
-	light: "https://tiles.openfreemap.org/styles/positron",
-	dark: "https://tiles.openfreemap.org/styles/dark",
+export const MAP_STYLES = {
+	light: LIGHT_MAP_STYLE,
+	dark: DARK_MAP_STYLE,
 } as const;
 
 /**
@@ -85,7 +93,7 @@ export function MapCanvas({
 	children,
 }: MapCanvasProps) {
 	const { resolved } = useTheme();
-	const styleUrl = MAP_STYLE_URLS[resolved];
+	const style = MAP_STYLES[resolved];
 	const container = useRef<HTMLDivElement | null>(null);
 	const [map, setMap] = useState<MapLibreMap | null>(null);
 	const [revealed, setRevealed] = useState(false);
@@ -119,7 +127,7 @@ export function MapCanvas({
 		const camera = restoredCamera.current ?? opening.current.initialCamera;
 		const created = new MapLibreMap({
 			container: node,
-			style: styleUrl,
+			style,
 			center: camera
 				? [camera.center[0], camera.center[1]]
 				: [opening.current.initialCenter[0], opening.current.initialCenter[1]],
@@ -188,7 +196,12 @@ export function MapCanvas({
 			setMap(null);
 			created.remove();
 		};
-	}, [styleUrl]);
+		/**
+		 * `style` is one of two module constants, so this is the theme changing
+		 * and nothing else — a new object every render would rebuild the map on
+		 * every render.
+		 */
+	}, [style]);
 
 	/**
 	 * Two elements rather than one: MapLibre's own stylesheet sets

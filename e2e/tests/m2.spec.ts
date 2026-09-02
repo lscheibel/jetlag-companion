@@ -852,25 +852,30 @@ test("12. the map asks the configured provider, and its tile worker is alive", a
 	await waitForSync(ana);
 	await openMap(ana, code);
 
-	// Positron in the light, by name. Intercepted, never forwarded.
-	await expect
-		.poll(
-			() =>
-				ana.tileRequests.filter((url) => url.includes("/styles/positron"))
-					.length,
-			{ timeout: 30_000 },
-		)
-		.toBeGreaterThan(0);
+	/**
+	 * Nothing from `/styles/`: both styles are the app's own —
+	 * `apps/web/src/map/light-style.ts` and `dark-style.ts` — so what
+	 * OpenFreeMap is asked for is the data underneath them. The TileJSON named
+	 * by the `openmaptiles` source is the first of those asks.
+	 */
+	const tileJson = () =>
+		ana.tileRequests.filter((url) => url.includes("/planet")).length;
 
+	await expect.poll(tileJson, { timeout: 30_000 }).toBeGreaterThan(0);
+	expect(
+		ana.tileRequests.filter((url) => url.includes("/styles/")),
+	).toHaveLength(0);
+
+	/**
+	 * A theme change is a different style, and a different style is a new map —
+	 * which asks for the source again. Two styles that only differ in their
+	 * paint are indistinguishable at this interceptor, so this is the assertion
+	 * that the swap happened at all.
+	 */
+	const before = tileJson();
 	await ana.page.emulateMedia({ colorScheme: "dark" });
 
-	await expect
-		.poll(
-			() =>
-				ana.tileRequests.filter((url) => url.includes("/styles/dark")).length,
-			{ timeout: 30_000 },
-		)
-		.toBeGreaterThan(0);
+	await expect.poll(tileJson, { timeout: 30_000 }).toBeGreaterThan(before);
 
 	// And the worker got far enough to ask for tiles.
 	await expect

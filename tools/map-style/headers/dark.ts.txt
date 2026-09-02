@@ -1,0 +1,63 @@
+import type {
+	DataDrivenPropertyValueSpecification,
+	StyleSpecification,
+} from "maplibre-gl";
+
+/**
+ * Zero Lag's own dark basemap. m2-spec §3.
+ *
+ * OpenFreeMap's `dark` style is a near-black grey wash: correct, restrained,
+ * and built for a screen that will be looked at indoors. This game is played
+ * outdoors at night, on a phone that is also the only light source and the only
+ * battery, and the map is read at a glance between glances at the street.
+ *
+ * So the style is ours rather than theirs — OpenFreeMap's quick start says to
+ * host the style JSON yourself once you change it, and this is that JSON, kept
+ * as source. Three things move away from upstream:
+ *
+ * 1. **The ground is true black.** Not `rgb(12,12,12)`. On the OLED panel in
+ *    every phone this app targets, a black pixel is an unlit pixel — it costs
+ *    no battery and it has no glow, which is the difference between reading the
+ *    map and lighting up your own hiding place.
+ *
+ * 2. **Colour carries the categories.** Water, parks and the transit network
+ *    are the landmarks a hider actually navigates by, and on the upstream style
+ *    they are four greys apart from everything else. The values sit
+ *    deliberately low against black — the point is legibility at a glance in
+ *    the dark, not a lit-up map.
+ *
+ * 3. **The network leads and the motorways follow.** Upstream draws rail as a
+ *    hatch from z13 and everything else from z16; here rail is a solid line
+ *    from z8 — the zoom its geometry first exists at — the transit lines from
+ *    z11, and the motorway amber is pulled back so that at country scale the
+ *    railways are what the eye lands on. This is a game about public transport;
+ *    the map should be about public transport. The same change is made in
+ *    `light-style.ts`.
+ *
+ *    The floors are the data's, not a preference: OpenMapTiles carries heavy
+ *    rail from z8 and `light_rail` from z11, but `subway` and `tram` geometry
+ *    only from z14. No style can draw a tram at z12.
+ *
+ *    Transit is also ordered *above* heavy rail, which upstream draws last.
+ *    Berlin's S-Bahn mostly runs alongside the long-distance tracks, and in
+ *    upstream's order the steel painted over the green — the line the players
+ *    ride vanishing into the freight beside it.
+ *
+ * The tiles, sprite and glyphs are still OpenFreeMap's, so ATTRIBUTION in
+ * `map-canvas` is unchanged and still required.
+ *
+ * Woodland is a flat fill rather than upstream's `wood-pattern`: that sprite
+ * image is not in the sprite sheet OpenFreeMap serves, so every map built on
+ * their dark style logs a missing-image warning and paints nothing there.
+ *
+ * Two layers exist here that upstream has no equivalent of: `landcover_grass`
+ * and `park`. OpenFreeMap's dark style paints `landuse` class `park`, and in
+ * OpenMapTiles that class does not exist — Berlin's parks arrive as `landcover`
+ * class `grass`, so Tiergarten and Tempelhofer Feld render as bare ground on
+ * every one of their dark maps. A park is a hiding place; it gets to be visible.
+ *
+ * To re-derive against a newer upstream: fetch
+ * `https://tiles.openfreemap.org/styles/dark`, diff its layer list against the
+ * one below, and carry over anything new. The palette is the only thing here
+ * worth hand-editing.
+ */

@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>zero-lag dark map preview</title>
+<link rel="stylesheet" href="./maplibre/maplibre-gl.css" />
+<style>
+	html, body { margin: 0; height: 100%; background: #000; color: #fff; font: 12px system-ui; }
+	#wrap { display: flex; height: 100%; }
+	.pane { position: relative; flex: 1; }
+	.pane + .pane { border-left: 1px solid #333; }
+	.tag { position: absolute; z-index: 2; top: 8px; left: 8px; background: rgba(0,0,0,.7); padding: 3px 8px; border-radius: 999px; }
+	.map { position: absolute; inset: 0; }
+</style>
+<div id="wrap">
+	<div class="pane"><div class="tag">upstream dark</div><div class="map" id="a"></div></div>
+	<div class="pane"><div class="tag">zero lag dark</div><div class="map" id="b"></div></div>
+</div>
+<script type="module">
+	import { Map as MapLibreMap } from "./maplibre/maplibre-gl.mjs";
+
+	const params = new URLSearchParams(location.search);
+	const center = [Number(params.get("lng") ?? 13.4133), Number(params.get("lat") ?? 52.5219)];
+	const zoom = Number(params.get("z") ?? 14);
+	const common = { center, zoom, attributionControl: false };
+	const theme = params.get("style") ?? "dark";
+	const upstream = theme === "light"
+		? "https://tiles.openfreemap.org/styles/positron"
+		: "https://tiles.openfreemap.org/styles/dark";
+	document.querySelectorAll(".tag")[0].textContent = `upstream ${theme === "light" ? "positron" : "dark"}`;
+	document.querySelectorAll(".tag")[1].textContent = `zero lag ${theme}`;
+	if (theme === "light") document.body.style.background = "#fff";
+	const a = new MapLibreMap({ container: "a", style: upstream, ...common });
+	const b = new MapLibreMap({ container: "b", style: `./preview/${theme}.json?v=${Date.now()}`, ...common });
+	let syncing = false;
+	const sync = (from, to) => from.on("move", () => {
+		if (syncing) return;
+		syncing = true;
+		to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(), bearing: from.getBearing(), pitch: from.getPitch() });
+		syncing = false;
+	});
+	sync(a, b); sync(b, a);
+	window.maps = { a, b };
+</script>

@@ -128,6 +128,19 @@ const STUB_STYLE = JSON.stringify({
 	],
 });
 
+/** What `openmaptiles`' `url` resolves to when the app supplies its own style. */
+const STUB_TILEJSON = JSON.stringify({
+	tilejson: "2.2.0",
+	tiles: [STUB_TILE_URL],
+	minzoom: 0,
+	maxzoom: 14,
+	vector_layers: [],
+});
+
+/** 1x1 transparent PNG: a sprite sheet with nothing on it. */
+const TRANSPARENT_PNG =
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
 const LOCAL_ORIGINS = new Set([
 	"http://localhost:3000",
 	"http://localhost:4848",
@@ -174,6 +187,13 @@ async function installTiles(
 			await route.abort("internetdisconnected");
 			return;
 		}
+		/**
+		 * Nothing asks for this any more — both styles are the app's own, and
+		 * m2.spec's twelfth test asserts that. It stays because the failure it
+		 * prevents is a silent one: a style fetched by URL and answered with the
+		 * empty vector tile below is a map that never loads, reported as a tile
+		 * problem.
+		 */
 		if (url.includes("/styles/")) {
 			await route.fulfill({
 				status: 200,
@@ -182,8 +202,41 @@ async function installTiles(
 			});
 			return;
 		}
+		/**
+		 * Both styles are the app's own — `apps/web/src/map/light-style.ts` and
+		 * `dark-style.ts` — so nothing is fetched from `/styles/` to be swapped
+		 * for the stub, and the three things those styles name by URL arrive here
+		 * instead. They are answered rather than stubbed away because the real
+		 * ones are asked for in production and a request that 404s teaches this
+		 * suite nothing.
+		 *
+		 * The TileJSON is the load-bearing one: it is what points MapLibre's worker
+		 * at a tile URL at all, and without it the map has no source and the
+		 * tile-request assertion below has nothing to see.
+		 */
+		if (url.includes("/planet")) {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: STUB_TILEJSON,
+			});
+			return;
+		}
+		if (url.includes("/sprites/")) {
+			await route.fulfill(
+				url.endsWith(".json")
+					? { status: 200, contentType: "application/json", body: "{}" }
+					: {
+							status: 200,
+							contentType: "image/png",
+							body: Buffer.from(TRANSPARENT_PNG, "base64"),
+						},
+			);
+			return;
+		}
 		// An empty body is a valid empty vector tile: the request is the part that
-		// matters here, and painting nothing keeps the canvas predictable.
+		// matters here, and painting nothing keeps the canvas predictable. Glyph
+		// ranges take the same answer — labels the suite never reads.
 		await route.fulfill({
 			status: 200,
 			contentType: "application/x-protobuf",

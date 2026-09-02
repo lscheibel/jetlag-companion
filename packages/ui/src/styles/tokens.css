@@ -104,6 +104,12 @@
 	/**
 	 * Map roles. The basemap is theme-aware too — a dark map under a light UI
 	 * reads as a bug rather than a style.
+	 *
+	 * --map-land is the ground the basemap paints on, and the two styles in
+	 * apps/web/src/map mirror it: this value is `PALETTE.ground` in
+	 * light-style.ts, and the dark one below is `PALETTE.void`. It is what shows
+	 * in the frame the map has not covered yet, so a mismatch is a flash of a
+	 * different map before the first tiles land.
 	 */
 	--map-land: #e9eff5;
 	--map-block: #dae3ec;
@@ -149,7 +155,12 @@
 		--transit-s: var(--s-bahn-green);
 		--transit-tram: var(--tram-amber);
 
-		--map-land: #0e1420;
+		/**
+		 * True black, matching the dark basemap's own ground. This paints the frame
+		 * the map has not covered yet; anything lighter is a flash of a different
+		 * map before the first tiles land.
+		 */
+		--map-land: #000000;
 		--map-block: #131c29;
 		--map-water: #153450;
 		--map-park: #123020;
@@ -191,7 +202,8 @@
 	--transit-s: var(--s-bahn-green);
 	--transit-tram: var(--tram-amber);
 
-	--map-land: #0e1420;
+	/** True black, matching dark-style.ts. See the light block above. */
+	--map-land: #000000;
 	--map-block: #131c29;
 	--map-water: #153450;
 	--map-park: #123020;
