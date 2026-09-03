@@ -44,6 +44,13 @@ import type {
  *    upstream's order the steel painted over the green — the line the players
  *    ride vanishing into the freight beside it.
  *
+ * The landcover fills are ordered *below* `water`, which is not where
+ * upstream puts them. OpenMapTiles folds `leisure=garden`, `leisure=park` and their
+ * neighbours into `landcover` class `grass`, and those polygons are drawn whole
+ * — a park that contains a lake is not hole-punched around it. Drawn after
+ * water, the grass paints over the lake: the Britzer Garten's Hauptsee came out
+ * green. Water goes last of the ground fills, and the lakes stay lakes.
+ *
  * The tiles, sprite and glyphs are still OpenFreeMap's, so ATTRIBUTION in
  * `map-canvas` is unchanged and still required.
  *
@@ -211,53 +218,6 @@ export const DARK_MAP_STYLE = {
 			},
 		},
 		{
-			id: "water",
-			type: "fill",
-			source: "openmaptiles",
-			"source-layer": "water",
-			filter: [
-				"all",
-				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
-				["!=", ["get", "brunnel"], "tunnel"],
-			],
-			paint: {
-				"fill-antialias": false,
-				"fill-color": PALETTE.water,
-			},
-		},
-		{
-			id: "landcover_ice_shelf",
-			type: "fill",
-			source: "openmaptiles",
-			"source-layer": "landcover",
-			maxzoom: 8,
-			filter: [
-				"all",
-				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
-				["==", ["get", "subclass"], "ice_shelf"],
-			],
-			paint: {
-				"fill-color": PALETTE.void,
-				"fill-opacity": 0.7,
-			},
-		},
-		{
-			id: "landcover_glacier",
-			type: "fill",
-			source: "openmaptiles",
-			"source-layer": "landcover",
-			maxzoom: 8,
-			filter: [
-				"all",
-				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
-				["==", ["get", "subclass"], "glacier"],
-			],
-			paint: {
-				"fill-color": PALETTE.residential,
-				"fill-opacity": ["interpolate", ["linear"], ["zoom"], 0, 1, 8, 0.5],
-			},
-		},
-		{
 			id: "landuse_residential",
 			type: "fill",
 			source: "openmaptiles",
@@ -327,6 +287,53 @@ export const DARK_MAP_STYLE = {
 			],
 			paint: {
 				"fill-color": PALETTE.park,
+			},
+		},
+		{
+			id: "water",
+			type: "fill",
+			source: "openmaptiles",
+			"source-layer": "water",
+			filter: [
+				"all",
+				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
+				["!=", ["get", "brunnel"], "tunnel"],
+			],
+			paint: {
+				"fill-antialias": false,
+				"fill-color": PALETTE.water,
+			},
+		},
+		{
+			id: "landcover_ice_shelf",
+			type: "fill",
+			source: "openmaptiles",
+			"source-layer": "landcover",
+			maxzoom: 8,
+			filter: [
+				"all",
+				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
+				["==", ["get", "subclass"], "ice_shelf"],
+			],
+			paint: {
+				"fill-color": PALETTE.void,
+				"fill-opacity": 0.7,
+			},
+		},
+		{
+			id: "landcover_glacier",
+			type: "fill",
+			source: "openmaptiles",
+			"source-layer": "landcover",
+			maxzoom: 8,
+			filter: [
+				"all",
+				["match", ["geometry-type"], ["MultiPolygon", "Polygon"], true, false],
+				["==", ["get", "subclass"], "glacier"],
+			],
+			paint: {
+				"fill-color": PALETTE.residential,
+				"fill-opacity": ["interpolate", ["linear"], ["zoom"], 0, 1, 8, 0.5],
 			},
 		},
 		{
