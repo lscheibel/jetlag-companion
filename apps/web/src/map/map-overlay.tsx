@@ -1,4 +1,4 @@
-import type { LngLat } from "@zero-lag/geo";
+import type { LngLat, MultiPolygon } from "@zero-lag/geo";
 import type { LocationIssue } from "@zero-lag/platform";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
@@ -8,12 +8,19 @@ import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
 import { Switch } from "@zero-lag/ui/components/switch";
 import { cn } from "@zero-lag/ui/lib/utils";
-import { useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ruledOutFraction } from "../game/search-area";
 import { COLOR_OPTIONS } from "../lobby/palette";
+import {
+	ConstraintThumb,
+	type ThumbFrame,
+	thumbFrame,
+} from "./constraint-thumb";
 import { COMPACT_SECONDARY } from "./map-bar";
 import type { MapPin } from "./pin-layer";
 import { PointField } from "./point-field";
+import { absoluteTime } from "./staleness";
 import {
 	BOUNDARY_CONSTRAINT_LEVELS,
 	type ConstraintListItem,
@@ -538,136 +545,261 @@ function constraintTool(
 
 interface CutsCardProps {
 	readonly constraints: readonly ConstraintListItem[];
+	/** The game's valid hiding area: the thumbnails' frame, and the fold's seed. */
+	readonly seed: MultiPolygon | null;
+	readonly stopsRemaining: number;
 	readonly onToggle: (id: string, enabled: boolean) => void;
 	readonly onRename: (id: string, name: string) => void;
 	readonly onRemove: (id: string) => void;
 	readonly onEdit: (id: string) => void;
+	readonly onClose: () => void;
 }
 
+/**
+ * The cuts, as a ruled list. Deck 12 R1.
+ *
+ * A ledger rather than a stack of cards: hairlines instead of borders, an index
+ * down the left because the order a cut was made in is the only order there is,
+ * and one right-aligned column of square kilometres that can be read straight
+ * down. Nothing regroups and nothing moves when a switch moves — a list that
+ * rearranges itself under a thumb is a list you have to re-read after every tap.
+ *
+ * Both the thumbnails' frame and the per-row numbers cost real geometry, so they
+ * are computed here rather than in the map screen: this card is mounted only
+ * while the list is open, which is the only time anybody reads either.
+ */
 export function CutsCard({
 	constraints,
+	seed,
+	stopsRemaining,
 	onToggle,
 	onRename,
 	onRemove,
 	onEdit,
+	onClose,
 }: CutsCardProps) {
+	const [openId, setOpenId] = useState<string | null>(null);
+	const frame = useMemo(() => thumbFrame(seed), [seed]);
+	const ruledOut = useMemo(
+		() => ruledOutFraction(seed, constraints),
+		[seed, constraints],
+	);
+	// The newest cut is the one you just made, so that is where the list opens.
+	// Set on the scroller rather than by `scrollIntoView`, which would also
+	// scroll whatever the map screen happens to be sitting inside.
+	const scroller = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const list = scroller.current;
+		if (list) list.scrollTop = list.scrollHeight;
+	}, []);
+
+	/*
+	 * Capped at just over half, so the map is never less than half the screen:
+	 * the fold redrawing under a thumb is the reason this list is on the map at
+	 * all. The cap resolves now that the dock has a height of its own to measure
+	 * against — see `mapCardMotionProps`.
+	 */
 	return (
 		<Surface
-			className="pointer-events-auto flex max-h-[33%] w-full flex-col gap-2 overflow-hidden px-3 py-2.5"
+			className="pointer-events-auto flex max-h-[55%] w-full min-w-0 flex-col overflow-hidden p-0"
 			data-testid="constraint-list-sheet"
 			raised
 		>
-			<span className="eyebrow shrink-0">Cuts</span>
+			<div className="flex shrink-0 items-start gap-2 px-4 pt-4 pb-3">
+				<div className="min-w-0 flex-1">
+					<p className="font-display font-extrabold text-base leading-none">
+						{constraints.length} {constraints.length === 1 ? "cut" : "cuts"}
+					</p>
+					<p className="eyebrow mt-1 truncate">
+						{ruledOut === null
+							? "no map yet"
+							: `${Math.round(ruledOut * 100)}% ruled out`}{" "}
+						· {stopsRemaining} stops left
+					</p>
+				</div>
+			</div>
 			{constraints.length === 0 ? (
-				<p className="text-ink-dim text-sm">None yet.</p>
+				<p className="px-3 pb-3 text-ink-dim text-sm">None yet.</p>
 			) : (
-				<div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-					{constraints.map((row) => (
-						<ConstraintRow
-							key={row.id}
-							onEdit={
-								constraintEditTool(row) ? () => onEdit(row.id) : undefined
-							}
-							onRemove={
-								row.source === "manual" ? () => onRemove(row.id) : undefined
-							}
-							onRename={(name) => onRename(row.id, name)}
-							onToggle={() => onToggle(row.id, !row.enabled)}
-							row={row}
-						/>
-					))}
+				<div
+					className="flex flex-col flex-1 px-3 pb-3 min-h-0"
+
+				>
+					<ul className="rounded-xl border border-hairline bg-surface overflow-y-auto min-h-0 flex-1" ref={scroller}>
+						{constraints.map((row) => (
+							<ConstraintRow
+								frame={frame}
+								key={row.id}
+								onEdit={
+									constraintEditTool(row) ? () => onEdit(row.id) : undefined
+								}
+								onOpen={() =>
+									setOpenId((current) => (current === row.id ? null : row.id))
+								}
+								onRemove={
+									row.source === "manual" ? () => onRemove(row.id) : undefined
+								}
+								onRename={(name) => onRename(row.id, name)}
+								onToggle={() => onToggle(row.id, !row.enabled)}
+								open={openId === row.id}
+								row={row}
+							/>
+						))}
+					</ul>
 				</div>
 			)}
+			<div className="px-3 pb-4 w-full">
+
+			<ActionButton
+				className="w-full"
+				data-testid="pin-cancel"
+				inline
+				onClick={onClose}
+				size="comfortable"
+				tone="secondary"
+				type="button"
+			>
+				Done
+			</ActionButton>
+			</div>
 		</Surface>
 	);
 }
 
 function ConstraintRow({
 	row,
+	frame,
+	open,
+	onOpen,
 	onToggle,
 	onRename,
 	onRemove,
 	onEdit,
 }: {
 	readonly row: ConstraintListItem;
+	readonly frame: ThumbFrame | null;
+	readonly open: boolean;
+	readonly onOpen: () => void;
 	readonly onToggle: () => void;
 	readonly onRename: (name: string) => void;
 	readonly onRemove?: () => void;
 	readonly onEdit?: () => void;
 }) {
-	const minus = row.mode === "exclude";
 	const kind = constraintKindLabel(row.geometry);
-	// Not `row.origin`: that is the tool, this is where the cut came from.
-	const sourceLabel = row.source === "answer" ? "from an answer" : "placed";
+	const label = row.name?.trim() || kind;
+
 	return (
-		<div
-			className={cn(
-				"flex items-center gap-2.5 rounded-[15px] border border-hairline bg-surface py-2 pr-2 pl-2.5",
-				minus ? "border-l-4 border-l-danger" : "border-l-4 border-l-live",
-				row.enabled ? "" : "opacity-55",
-			)}
+		<li
+			className="border-hairline border-t first:border-t-0"
 			data-testid={`constraint-${row.id}`}
 		>
-			<span
-				aria-hidden
-				className={cn(
-					"grid size-6 shrink-0 place-items-center rounded-lg font-bold text-sm",
-					minus ? "bg-danger/20 text-danger" : "bg-live/20 text-live",
-				)}
-			>
-				<Icon name={minus ? "minus" : "plus"} size="xs" />
-			</span>
-			<label className="min-w-0 flex-1">
-				<span className="sr-only">Constraint name</span>
-				<input
-					className="block w-full truncate bg-transparent font-bold text-[0.8rem] leading-tight outline-none"
-					data-testid={`constraint-name-${row.id}`}
-					defaultValue={row.name ?? ""}
-					key={`${row.id}:${row.name ?? ""}`}
-					maxLength={80}
-					onBlur={(event) => {
-						const next = event.target.value.trim();
-						if (next !== (row.name ?? "")) onRename(next);
-					}}
-					placeholder={`${kind} · ${row.mode}`}
+			<div className={cn("flex items-center gap-2.5 py-2 pr-2.5")}>
+				{/*
+				 * Opening is the row's tap and toggling is the switch's, so the two
+				 * do not share a target: a mis-tap costs a sheet, never a redraw.
+				 */}
+				<button
+					aria-expanded={open}
+					className="flex min-w-0 flex-1 items-center gap-2.5 text-left pl-2.5 pr-1"
+					data-testid={`constraint-open-${row.id}`}
+					onClick={onOpen}
+					type="button"
+				>
+					<ConstraintThumb
+						className={row.enabled ? "" : "opacity-45 grayscale"}
+						frame={frame}
+						geometry={row.geometry}
+						mode={row.mode}
+					/>
+					<span className="min-w-0 flex-1">
+						<span
+							className={cn(
+								"block truncate font-bold text-[0.8rem] leading-tight",
+								row.enabled
+									? ""
+									: "font-medium text-ink-faint line-through decoration-hairline-strong",
+							)}
+						>
+							{label}
+						</span>
+					</span>
+					<span className="shrink-0 font-mono text-[0.6rem] text-ink-faint tabular-nums">
+						{absoluteTime(row.createdAt)}
+					</span>
+				</button>
+				<Switch
+					label={row.enabled ? "Turn this cut off" : "Turn this cut on"}
+					on={row.enabled}
+					onChange={() => onToggle()}
+					testId={`toggle-constraint-${row.id}`}
 				/>
-				<span className="mt-0.5 block font-mono text-[0.55rem] text-ink-faint uppercase tracking-[0.07em]">
-					{kind} · {sourceLabel}
-				</span>
-			</label>
-			{/*
-			 * Reopening the tool is the row's edit; renaming happens in place, in
-			 * the field above. Absent when nothing can be reopened — an answer's
-			 * cut, or a polygon from before origins were recorded.
-			 */}
-			{onEdit && (
-				<button
-					aria-label={`Edit ${row.name ?? kind}`}
-					className="grid size-7 shrink-0 place-items-center rounded-lg text-ink-faint"
-					data-testid={`edit-constraint-${row.id}`}
-					onClick={onEdit}
-					type="button"
-				>
-					<Icon name="pencil-line" size="sm" />
-				</button>
+			</div>
+			{open && (
+				<div className="flex flex-col gap-2 pb-2.5 px-2.5">
+					<label className="flex min-h-tap items-center gap-2 rounded-control border-2 border-hairline-strong bg-surface-raised px-3">
+						<span className="sr-only">Constraint name</span>
+						<input
+							className="w-full min-w-0 bg-transparent font-semibold text-[0.8rem] text-ink outline-none placeholder:text-ink-faint"
+							data-testid={`constraint-name-${row.id}`}
+							defaultValue={row.name ?? ""}
+							key={`${row.id}:${row.name ?? ""}`}
+							maxLength={80}
+							onBlur={(event) => {
+								const next = event.target.value.trim();
+								if (next !== (row.name ?? "")) onRename(next);
+							}}
+							placeholder={kind}
+						/>
+					</label>
+					<div className="flex gap-1.5">
+						{/*
+						 * Reopening the tool is the row's redraw. Absent when nothing can
+						 * be reopened — an answer's cut, or a polygon from before origins
+						 * were recorded.
+						 */}
+						{onEdit && (
+							<RowTool onClick={onEdit} testId={`edit-constraint-${row.id}`}>
+								Edit
+							</RowTool>
+						)}
+						{onRemove && (
+							<RowTool
+								danger
+								onClick={onRemove}
+								testId={`remove-constraint-${row.id}`}
+							>
+								Remove
+							</RowTool>
+						)}
+					</div>
+				</div>
 			)}
-			<Switch
-				label={row.enabled ? "Turn this cut off" : "Turn this cut on"}
-				on={row.enabled}
-				onChange={() => onToggle()}
-				testId={`toggle-constraint-${row.id}`}
-			/>
-			{onRemove && (
-				<button
-					aria-label={`Remove ${row.name ?? kind}`}
-					className="grid size-7 shrink-0 place-items-center rounded-lg text-ink-faint"
-					data-testid={`remove-constraint-${row.id}`}
-					onClick={onRemove}
-					type="button"
-				>
-					<Icon name="x" size="sm" />
-				</button>
+		</li>
+	);
+}
+
+function RowTool({
+	children,
+	onClick,
+	testId,
+	danger = false,
+}: {
+	readonly children: ReactNode;
+	readonly onClick: () => void;
+	readonly testId: string;
+	readonly danger?: boolean;
+}) {
+	return (
+		<button
+			className={cn(
+				"flex min-h-9 flex-1 items-center justify-center rounded-control border border-hairline bg-surface-raised font-mono text-[0.6rem] uppercase tracking-[0.09em]",
+				danger ? "border-danger/35 text-danger" : "text-ink-dim",
 			)}
-		</div>
+			data-testid={testId}
+			onClick={onClick}
+			type="button"
+		>
+			{children}
+		</button>
 	);
 }

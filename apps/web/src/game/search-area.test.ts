@@ -1,7 +1,7 @@
-import { multiPolygonToRegion, regionHash } from "@zero-lag/geo";
+import { multiPolygonToRegion, regionArea, regionHash } from "@zero-lag/geo";
 import { type Constraint, foldConstraints } from "@zero-lag/rules";
 import { describe, expect, it } from "vitest";
-import { survivingSearchArea } from "./search-area";
+import { ruledOutFraction, survivingSearchArea } from "./search-area";
 
 const SEED = [
 	[
@@ -86,5 +86,37 @@ describe("survivingSearchArea", () => {
 		const forOne = survivingSearchArea(SEED, rows, "hider-1");
 		const empty = survivingSearchArea(SEED, [], "hider-1");
 		expect(forOne.hash).toBe(empty.hash);
+	});
+});
+
+describe("ruledOutFraction", () => {
+	const on = (constraint: Constraint) => ({ ...constraint, enabled: true });
+	const off = (constraint: Constraint) => ({ ...constraint, enabled: false });
+
+	it("is exactly zero on a board nothing has cut", () => {
+		expect(ruledOutFraction(SEED, [])).toBe(0);
+		expect(ruledOutFraction(SEED, [off(EXCLUDE_POLYGON)])).toBe(0);
+	});
+
+	it("matches the fold it describes", () => {
+		const seedArea = regionArea(
+			foldConstraints(multiPolygonToRegion(SEED), []),
+		);
+		const cutArea = regionArea(
+			foldConstraints(multiPolygonToRegion(SEED), [EXCLUDE_POLYGON]),
+		);
+		expect(ruledOutFraction(SEED, [on(EXCLUDE_POLYGON)])).toBe(
+			1 - cutArea / seedArea,
+		);
+	});
+
+	it("counts an include, which shrinks the board too", () => {
+		expect(ruledOutFraction(SEED, [on(INCLUDE_RADIUS)]) ?? 0).toBeGreaterThan(
+			0,
+		);
+	});
+
+	it("has nothing to say before there is a map", () => {
+		expect(ruledOutFraction(null, [on(EXCLUDE_POLYGON)])).toBeNull();
 	});
 });

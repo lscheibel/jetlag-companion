@@ -192,6 +192,8 @@ export type ConstraintListItem = {
 	readonly origin: ConstraintOrigin | null;
 	readonly enabled: boolean;
 	readonly name: string | null;
+	/** When it was made. The list is in this order, and shows it. */
+	readonly createdAt: number;
 };
 
 /** What the list calls a shape. Four geometry kinds, three words for them. */

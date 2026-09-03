@@ -414,6 +414,7 @@ describe("constraintEditTool", () => {
 		origin: null,
 		enabled: true,
 		name: null,
+		createdAt: 0,
 		...over,
 	});
 

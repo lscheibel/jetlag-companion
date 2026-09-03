@@ -4,6 +4,7 @@ import {
 	multiPolygonBBox,
 	multiPolygonToRegion,
 	type Region,
+	regionArea,
 	regionHash,
 	regionToMultiPolygon,
 	subtractRegions,
@@ -21,6 +22,15 @@ export type FoldableConstraint = {
 	readonly geometry: Constraint["geometry"];
 	readonly mode: Constraint["mode"];
 };
+
+/**
+ * The slice the right-hand column needs: no team, because the caller has
+ * already scoped the list to one hider.
+ */
+export type ScopedConstraint = Pick<
+	FoldableConstraint,
+	"id" | "enabled" | "geometry" | "mode"
+>;
 
 export type SearchArea = {
 	readonly surviving: Region | null;
@@ -88,4 +98,34 @@ function paddedFrame(seed: MultiPolygon): Region {
 			],
 		],
 	};
+}
+
+/**
+ * How much of the board is gone, as a fraction. Null before there is a map.
+ *
+ * The empty fold rather than the raw seed for the denominator: normalising
+ * rounds the ring slightly, and a board with no cuts on it has to read as
+ * exactly 0% ruled out.
+ */
+export function ruledOutFraction(
+	seed: MultiPolygon | null,
+	constraints: readonly ScopedConstraint[],
+): number | null {
+	if (!seed || seed.length === 0) return null;
+	const seedRegion = multiPolygonToRegion(seed);
+	const areaOf = (rows: readonly ScopedConstraint[]): number =>
+		regionArea(
+			foldConstraints(
+				seedRegion,
+				rows.map((row) => ({
+					id: row.id,
+					geometry: row.geometry,
+					mode: row.mode,
+				})),
+			),
+		);
+	const total = areaOf([]);
+	if (total <= 0) return null;
+	const surviving = areaOf(constraints.filter((row) => row.enabled));
+	return Math.min(Math.max(1 - surviving / total, 0), 1);
 }

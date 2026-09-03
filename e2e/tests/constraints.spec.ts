@@ -118,6 +118,8 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
 	await pickConstraint(ana, "constraint-list");
+	// The name is a field inside the opened row, not on the line itself.
+	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("north park");
@@ -254,6 +256,7 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
 	await pickConstraint(ana, "constraint-list");
+	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("Mitte");
@@ -330,6 +333,8 @@ test("a cut reopens in the tool that drew it, and rewrites that row", async ({
 	// A Bezirk is stored as a plain polygon: only the recorded origin can tell
 	// the picker from the pencil.
 	await pickConstraint(ana, "constraint-list");
+	// Redraw lives in the opened row, alongside Show and Remove.
+	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await ana.page.locator('[data-testid^="edit-constraint-"]').click();
 	await expect(ana.page.getByTestId("constraint-editing")).toBeVisible();
 	await expect(ana.page.getByTestId("constraint-name")).toHaveValue("Mitte");
@@ -343,6 +348,7 @@ test("a cut reopens in the tool that drew it, and rewrites that row", async ({
 	});
 	expect(await areaHash(ana)).not.toBe(included);
 	await pickConstraint(ana, "constraint-list");
+	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
 	).toHaveValue("Mitte");

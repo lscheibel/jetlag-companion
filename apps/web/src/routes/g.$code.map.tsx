@@ -449,19 +449,28 @@ function MapScreen() {
 		searchableStops,
 		searchArea.surviving ?? null,
 	);
-	const scopedConstraints = constraints.filter(
-		(row) => row.hiderTeamId === hiderTeamId,
+	/**
+	 * Both memoised because the cuts list folds off the back of the list: a fresh
+	 * array every render would re-fold every render. `queries.constraints()`
+	 * already orders by `ordinal`, which is the order the list shows.
+	 */
+	const scopedConstraints = useMemo(
+		() => constraints.filter((row) => row.hiderTeamId === hiderTeamId),
+		[constraints, hiderTeamId],
 	);
-	const constraintItems: readonly ConstraintListItem[] = scopedConstraints.map(
-		(row) => ({
-			id: row.id,
-			source: row.source,
-			mode: row.mode,
-			geometry: row.geometry,
-			origin: row.origin ?? null,
-			enabled: row.enabled,
-			name: row.name ?? null,
-		}),
+	const constraintItems: readonly ConstraintListItem[] = useMemo(
+		() =>
+			scopedConstraints.map((row) => ({
+				id: row.id,
+				source: row.source,
+				mode: row.mode,
+				geometry: row.geometry,
+				origin: row.origin ?? null,
+				enabled: row.enabled,
+				name: row.name ?? null,
+				createdAt: row.createdAt,
+			})),
+		[scopedConstraints],
 	);
 	const canEditConstraints =
 		role.role === "seeker" && role.teamId !== null && role.roundId !== null;
@@ -1597,10 +1606,13 @@ function MapScreen() {
 								<motion.div key="cuts" {...cardMotion}>
 									<CutsCard
 										constraints={constraintItems}
+										onClose={cancelTool}
 										onEdit={editConstraint}
 										onRemove={removeConstraint}
 										onRename={renameConstraint}
 										onToggle={toggleConstraint}
+										seed={games[0]?.mapConfig?.validHidingArea ?? null}
+										stopsRemaining={stopsRemaining}
 									/>
 								</motion.div>
 							)}
