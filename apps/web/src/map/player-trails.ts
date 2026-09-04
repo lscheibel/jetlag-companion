@@ -57,9 +57,27 @@ export interface TrailVertex {
 	readonly ageMs: number;
 }
 
+/**
+ * A vertex on the *drawn* curve rather than a measured one.
+ *
+ * `inferred` describes the segment that **ends** here: true where the two fixes
+ * either side of it are further apart in time than the sampling cadence
+ * explains, and the line between them is therefore a chord across a silence
+ * rather than a track anybody observed.
+ */
+export interface DrawnVertex extends TrailVertex {
+	readonly inferred: boolean;
+}
+
 export interface PlayerTrail {
 	readonly playerId: string;
 	readonly color: string;
+	/**
+	 * Oldest first. At most one of these may be older than the window: the
+	 * anchor the window edge is interpolated from. It is a control point and a
+	 * date, not a place that gets drawn — `trailsFeature` cuts the curve at the
+	 * edge and throws the rest away.
+	 */
 	readonly points: readonly TrailVertex[];
 }
 
@@ -68,7 +86,10 @@ export interface BuildPlayerTrailsInput {
 	readonly players: readonly TrailPlayer[];
 	/** The running round. No round, no trails: a trail is a round's track. */
 	readonly roundId: string | null;
-	/** How far back a trail reaches. Older points are dropped. */
+	/**
+	 * How far back a trail reaches. Older points are dropped, bar the one
+	 * `keepWindowAnchor` retains to interpolate the edge from.
+	 */
 	readonly windowMs: number;
 }
 
@@ -124,15 +145,14 @@ export function buildPlayerTrails({
 			(a, b) => a.capturedAt - b.capturedAt,
 		);
 
-		const points: TrailVertex[] = [];
+		const dated: TrailVertex[] = [];
 		for (const row of logged) {
 			const point = pointOf(row.fix);
 			if (!point) continue;
 			const ageMs = headAgeMs + (head.capturedAt - row.capturedAt);
-			// Fades to nothing at the edge, so the cut itself is never a visible
-			// end. A row newer than the head is a rounding artefact, not history.
-			if (ageMs > windowMs || ageMs < 0) continue;
-			points.push({ point, ageMs });
+			// A row newer than the head is a rounding artefact, not history.
+			if (ageMs < 0) continue;
+			dated.push({ point, ageMs });
 		}
 
 		/**
@@ -143,16 +163,38 @@ export function buildPlayerTrails({
 		const last = logged.at(-1);
 		if (!last || head.capturedAt > last.capturedAt) {
 			const point = pointOf(head);
-			if (point && headAgeMs <= windowMs) {
-				points.push({ point, ageMs: headAgeMs });
-			}
+			if (point) dated.push({ point, ageMs: headAgeMs });
 		}
 
+		const points = keepWindowAnchor(dated, windowMs);
 		// A single point is a marker, and there is already one there.
 		if (points.length < 2) continue;
 		trails.push({ playerId: player.playerId, color: player.color, points });
 	}
 	return trails;
+}
+
+/**
+ * The window, applied to a dated track — keeping the first fix beyond it.
+ *
+ * Dropping every out-of-window fix outright throws away the leg the player is
+ * *on*: a phone that surfaced after half an hour underground has one fix behind
+ * the window and one in front of it, and deleting the older one deletes the
+ * only thing that says where the newer one was walked from. The retained
+ * anchor is what the window edge, and the fade along the way to it, are
+ * interpolated from.
+ *
+ * Ages descend along the track, so the first fix inside the window is the
+ * boundary and everything after it is inside too.
+ */
+function keepWindowAnchor(
+	points: readonly TrailVertex[],
+	windowMs: number,
+): TrailVertex[] {
+	const firstInside = points.findIndex((vertex) => vertex.ageMs <= windowMs);
+	// Nothing inside at all is a player whose own head has aged out.
+	if (firstInside < 0) return [];
+	return points.slice(Math.max(0, firstInside - 1));
 }
 
 /**
@@ -187,14 +229,78 @@ function knot(a: readonly [number, number], b: readonly [number, number]) {
  * seconds is a series of shallow turns, and drawing it as mitre joints reads as
  * a series of decisions the player did not make.
  *
+ * It is a claim that scales with the interval, though, and `gapMs` is where it
+ * stops being worth making. Two fixes five seconds apart are forty metres of
+ * pavement and one shallow turn; two fixes half an hour apart are a train
+ * journey, and a curve drawn through it asserts a route nobody has any evidence
+ * for. Past `gapMs` the run ends, and the next one is joined to it by a
+ * straight chord marked `inferred`.
+ */
+export function smoothPath(
+	points: readonly TrailVertex[],
+	gapMs: number,
+): DrawnVertex[] {
+	const out: DrawnVertex[] = [];
+	for (const run of splitAtGaps(points, gapMs)) {
+		const curve = smoothRun(run);
+		if (out.length === 0) {
+			out.push(...curve);
+			continue;
+		}
+		/**
+		 * The chord across the silence, and the one vertex that marks it.
+		 *
+		 * Nothing is drawn between the two fixes either side of a gap, because a
+		 * spline through half an hour of unobserved travel would be inventing
+		 * turns at exactly the moment there is least to go on. The straight line
+		 * is the weakest claim available that still joins the marker to its
+		 * history, and `inferred` is what lets the paint say it is one.
+		 */
+		const [resumes, ...rest] = curve;
+		if (resumes) out.push({ ...resumes, inferred: true });
+		out.push(...rest);
+	}
+	return out;
+}
+
+/**
+ * A track cut into runs at every silence longer than `gapMs`.
+ *
+ * Ages descend along the track, so the interval between two vertices is the
+ * older age less the newer — a difference between two ages that were both
+ * derived from one phone's clock, which is the only kind this file forms.
+ */
+function splitAtGaps(
+	points: readonly TrailVertex[],
+	gapMs: number,
+): TrailVertex[][] {
+	const runs: TrailVertex[][] = [];
+	let run: TrailVertex[] = [];
+	for (const vertex of points) {
+		const previous = run.at(-1);
+		if (previous && previous.ageMs - vertex.ageMs > gapMs) {
+			runs.push(run);
+			run = [];
+		}
+		run.push(vertex);
+	}
+	if (run.length > 0) runs.push(run);
+	return runs;
+}
+
+/**
+ * One unbroken run of fixes, splined. Nothing it returns is `inferred`.
+ *
  * Computed in a locally metric frame rather than in raw degrees. A degree of
  * longitude is about 61% of a degree of latitude in Berlin, and a spline fitted
  * in degrees is stretched by that ratio — the curve leans east–west in a way
  * that has nothing to do with where anybody walked. m0-spec §9 keeps one door
  * for metres and degrees, and this goes through it.
  */
-export function smoothPath(points: readonly TrailVertex[]): TrailVertex[] {
-	if (points.length < 3) return points.map((vertex) => ({ ...vertex }));
+function smoothRun(points: readonly TrailVertex[]): DrawnVertex[] {
+	if (points.length < 3) {
+		return points.map((vertex) => ({ ...vertex, inferred: false }));
+	}
 
 	const meanLat =
 		points.reduce((total, { point }) => total + point[1], 0) / points.length;
@@ -223,9 +329,9 @@ export function smoothPath(points: readonly TrailVertex[]): TrailVertex[] {
 		[2 * last[0] - penultimate[0], 2 * last[1] - penultimate[1]],
 	];
 
-	const out: TrailVertex[] = [];
+	const out: DrawnVertex[] = [];
 	const push = (x: number, y: number, ageMs: number) => {
-		out.push({ point: [x / scale.lng, y / scale.lat], ageMs });
+		out.push({ point: [x / scale.lng, y / scale.lat], ageMs, inferred: false });
 	};
 	push(first[0], first[1], ages[0] as number);
 
@@ -283,11 +389,72 @@ function lerp(
  */
 const FADE_BANDS = 16;
 
-/** 1 at the head, 0 at the window's edge, quantized to a band. */
+/**
+ * 1 at the head, 1/16 at the window's edge, quantized to a band.
+ *
+ * Dated by *age*, so a segment takes the band of its **older** end. Both ends
+ * of a drawn segment sit in the same band by the time this is asked —
+ * `insertBandEdges` has already put a vertex on every boundary the segment
+ * crossed — and where an end lands exactly on a boundary it belongs to the
+ * newer band, which is the one the segment on its newer side is in.
+ */
 function fadeOf(ageMs: number, windowMs: number): number {
 	const remaining = Math.min(1, Math.max(0, 1 - ageMs / windowMs));
 	const band = Math.min(FADE_BANDS - 1, Math.floor(remaining * FADE_BANDS));
 	return (band + 1) / FADE_BANDS;
+}
+
+/**
+ * A vertex on every fade boundary the curve crosses, and on the window's edge.
+ *
+ * This is the whole of the linear-traversal assumption, in one place. Between
+ * two fixes the age of a drawn point is already interpolated — `smoothRun`
+ * carries it along the spline parameter, and a gap chord is straight — so
+ * asking "where was this player fourteen minutes ago" has an answer anywhere on
+ * the line, and the boundary is inserted at exactly that place. Without it the
+ * fade can only step where a *vertex* happens to fall, which for a two-point
+ * trail is nowhere: the whole leg, however many minutes of it there are, gets
+ * painted at the head's strength.
+ *
+ * Cheap, because age descends along a trail and so the fade only ever climbs:
+ * there are at most `FADE_BANDS` crossings in a whole trail, not per segment.
+ * And free geometrically — a point placed on the straight chord between two
+ * vertices that were already consecutive moves the line nowhere.
+ *
+ * The window edge (`ageMs === windowMs`) is the last of these boundaries, and
+ * it is where the anchor `keepWindowAnchor` retained gets cut off.
+ */
+function insertBandEdges(
+	curve: readonly DrawnVertex[],
+	windowMs: number,
+): DrawnVertex[] {
+	if (windowMs <= 0) return [...curve];
+
+	const edges: number[] = [];
+	for (let band = FADE_BANDS; band >= 1; band--) {
+		edges.push((windowMs * band) / FADE_BANDS);
+	}
+
+	const out: DrawnVertex[] = [];
+	let previous: DrawnVertex | null = null;
+	for (const vertex of curve) {
+		if (previous) {
+			const span = previous.ageMs - vertex.ageMs;
+			for (const edge of edges) {
+				if (edge >= previous.ageMs || edge <= vertex.ageMs) continue;
+				const t = (previous.ageMs - edge) / span;
+				out.push({
+					point: lerp(previous.point, vertex.point, t),
+					ageMs: edge,
+					// A boundary belongs to the segment it was cut out of.
+					inferred: vertex.inferred,
+				});
+			}
+		}
+		out.push(vertex);
+		previous = vertex;
+	}
+	return out;
 }
 
 interface TrailFeature {
@@ -296,6 +463,8 @@ interface TrailFeature {
 		readonly playerId: string;
 		readonly color: string;
 		readonly fade: number;
+		/** Drawn dashed: a chord across a silence, not an observed track. */
+		readonly inferred: boolean;
 	};
 	readonly geometry: {
 		readonly type: "LineString";
@@ -303,29 +472,47 @@ interface TrailFeature {
 	};
 }
 
+/** What one drawn segment is painted with. Both are constant along it. */
+interface SegmentPaint {
+	readonly fade: number;
+	readonly inferred: boolean;
+}
+
 /**
- * The paint reads `color` and `fade` off each feature, so one source and one
- * layer draw every team at every age — rather than a layer per team appearing
- * and disappearing with the roster.
+ * The paint reads `color`, `fade` and `inferred` off each feature, so one
+ * source and one set of layers draw every team at every age — rather than a
+ * layer per team appearing and disappearing with the roster.
  *
- * One trail becomes a run of features, split wherever the fade steps down.
- * Consecutive runs share the vertex between them, so the trail is continuous
- * even though it is drawn in pieces.
+ * One trail becomes a run of features, split wherever the fade steps down or
+ * the line crosses into or out of a silence. Consecutive runs share the vertex
+ * between them, so the trail is continuous even though it is drawn in pieces.
  */
 export function trailsFeature(
 	trails: readonly PlayerTrail[],
 	windowMs: number,
+	gapMs: number,
 ): FeatureData {
 	const features: TrailFeature[] = [];
 
 	for (const trail of trails) {
-		const curve = smoothPath(trail.points);
+		// The anchor is a date and a direction, not a place that gets drawn: past
+		// the edge the fade has run out, and the trail should end there rather
+		// than at whichever fix happened to be the last one before it.
+		const curve = insertBandEdges(
+			smoothPath(trail.points, gapMs),
+			windowMs,
+		).filter((vertex) => vertex.ageMs <= windowMs);
 		if (curve.length < 2) continue;
 
-		const cut = (from: number, to: number, fade: number) => {
+		const cut = (from: number, to: number, paint: SegmentPaint) => {
 			features.push({
 				type: "Feature",
-				properties: { playerId: trail.playerId, color: trail.color, fade },
+				properties: {
+					playerId: trail.playerId,
+					color: trail.color,
+					fade: paint.fade,
+					inferred: paint.inferred,
+				},
 				geometry: {
 					type: "LineString",
 					coordinates: curve
@@ -335,18 +522,23 @@ export function trailsFeature(
 			});
 		};
 
+		/** The segment ending at `index`, which is the pair `index - 1` → `index`. */
+		const paintAt = (index: number): SegmentPaint => ({
+			fade: fadeOf((curve[index - 1] as DrawnVertex).ageMs, windowMs),
+			inferred: (curve[index] as DrawnVertex).inferred,
+		});
+
 		let start = 0;
-		// A segment is as faded as its newer end: the trail should reach full
-		// strength where it meets the marker, not one band short of it.
-		let fade = fadeOf((curve[1] as TrailVertex).ageMs, windowMs);
+		let paint = paintAt(1);
 		for (let i = 2; i < curve.length; i++) {
-			const next = fadeOf((curve[i] as TrailVertex).ageMs, windowMs);
-			if (next === fade) continue;
-			cut(start, i - 1, fade);
+			const next = paintAt(i);
+			if (next.fade === paint.fade && next.inferred === paint.inferred)
+				continue;
+			cut(start, i - 1, paint);
 			start = i - 1;
-			fade = next;
+			paint = next;
 		}
-		cut(start, curve.length - 1, fade);
+		cut(start, curve.length - 1, paint);
 	}
 
 	if (features.length === 0) return EMPTY_FEATURES;

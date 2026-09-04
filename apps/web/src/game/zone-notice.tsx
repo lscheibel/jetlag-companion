@@ -1,28 +1,26 @@
 import { useQuery } from "@rocicorp/zero/react";
 import { multiPolygonToRegion, regionContains } from "@zero-lag/geo";
-import { queries } from "@zero-lag/schema";
-import { Surface } from "@zero-lag/ui/components/surface";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { mapCardMotionProps } from "../map/map-card";
+import { type ClientFix, queries } from "@zero-lag/schema";
+import { InlineNotice } from "@zero-lag/ui/components/notice";
 import type { MyRole } from "./use-role";
 
 interface ZoneNoticeProps {
 	role: MyRole;
-	fix: {
-		readonly lng: number;
-		readonly lat: number;
-		readonly source: string;
-	} | null;
+	fix: ClientFix | null;
+	className?: string;
 }
 
 /**
  * This is deliberately only a read. Leaving a zone is a private nudge computed
  * from two values already on the hider's phone; it never becomes game state or
  * an ephemeral message. m5-spec §7.
+ *
+ * It renders as a line inside the hider's own card rather than as a card of
+ * its own. The card is already about the zone this remarks on, and a notice
+ * that floats over the map by itself reads as something the game announced.
  */
-export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
+export function ZoneNotice({ role, fix, className }: ZoneNoticeProps) {
 	const [commitments] = useQuery(queries.commitments());
-	const reducedMotion = useReducedMotion();
 	const eligible =
 		role.role === "hider" &&
 		(role.roundStatus === "hiding" || role.roundStatus === "seeking") &&
@@ -35,7 +33,7 @@ export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
 					value.roundId === role.roundId && value.hiderTeamId === role.teamId,
 			)
 		: undefined;
-	const open = Boolean(
+	const outside = Boolean(
 		eligible &&
 			commitment &&
 			fix &&
@@ -45,19 +43,14 @@ export function ZoneNotice({ role, fix }: ZoneNoticeProps) {
 			]),
 	);
 
+	if (!outside) return null;
+
 	return (
-		<AnimatePresence>
-			{open && (
-				<motion.div key="zone-notice" {...mapCardMotionProps(reducedMotion)}>
-					<Surface
-						className="px-3 py-2 font-medium text-sm"
-						data-testid="zone-leave-notice"
-						raised
-					>
-						Looks like you left your hiding zone.
-					</Surface>
-				</motion.div>
-			)}
-		</AnimatePresence>
+		<InlineNotice
+			className={className}
+			testId="zone-leave-notice"
+			title="Looks like you left your hiding zone."
+			tone="warn"
+		/>
 	);
 }

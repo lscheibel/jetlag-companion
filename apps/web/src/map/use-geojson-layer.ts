@@ -1,4 +1,5 @@
 import type {
+	FilterSpecification,
 	GeoJSONSource,
 	GeoJSONSourceSpecification,
 	LayerSpecification,
@@ -6,6 +7,31 @@ import type {
 import { useEffect, useRef } from "react";
 import type { FeatureData } from "./geojson";
 import { useMapInstance } from "./map-canvas";
+
+/**
+ * A layer as a caller declares it: everything but the source, which this hook
+ * owns.
+ *
+ * Distributed over the union rather than `Omit<LayerSpecification, "source">`,
+ * because a plain `Omit` of a union keeps only the keys every member shares —
+ * which quietly drops `filter`, and with it the ability to draw one source two
+ * ways.
+ */
+export type MapLayerSpec = LayerSpecification extends infer Layer
+	? Layer extends unknown
+		? Omit<Layer, "source">
+		: never
+	: never;
+
+/**
+ * The half of a source that is currently selected, for the layer that draws it
+ * differently. Typed here because `MapLayerSpec` is what asks for it.
+ */
+export const SELECTED_FEATURE: FilterSpecification = [
+	"==",
+	["get", "selected"],
+	true,
+];
 
 /**
  * One declared order for setup and play. The two screens never mount each
@@ -45,7 +71,9 @@ const LAYER_ORDER = [
 	 * follow, and below everything anybody is doing.
 	 */
 	"player-trails-case",
+	"player-trails-gap-case",
 	"player-trails",
+	"player-trails-gap",
 	"builder-stops-zone-fill",
 	"builder-stops-zone-outline",
 	"play-stops-zone-fill",
@@ -107,7 +135,7 @@ function beforeLayer(
 export function useGeoJsonLayer(
 	sourceId: string,
 	data: FeatureData,
-	layers: readonly Omit<LayerSpecification, "source">[],
+	layers: readonly MapLayerSpec[],
 ): void {
 	const map = useMapInstance();
 	const openingData = useRef(data);

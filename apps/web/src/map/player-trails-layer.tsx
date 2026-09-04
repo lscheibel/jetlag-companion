@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useGameShell } from "../game/shell";
 import { usePlayerTrailLine } from "./draft-paint";
 import {
 	buildPlayerTrails,
@@ -16,6 +17,17 @@ import { useGeoJsonLayer } from "./use-geojson-layer";
  * not end with eight players' whole afternoons drawn over each other.
  */
 const TRAIL_WINDOW_MS = 15 * 60_000;
+
+/**
+ * How many missed samples make a silence rather than a stutter.
+ *
+ * A gap is only meaningful against the cadence the phones were asked for, so
+ * this is a multiple of `positionIntervalMs` rather than a duration: a game
+ * configured to sample every thirty seconds should not have its every segment
+ * declared unobserved. Twelve is a minute at the default five, which is well
+ * past a dropped fix or two in a stairwell and squarely at "went underground".
+ */
+const SILENT_SAMPLES = 12;
 
 interface PlayerTrailsLayerProps {
 	readonly rows: readonly TrailSnapshot[];
@@ -37,6 +49,13 @@ export function PlayerTrailsLayer({
 	players,
 	roundId,
 }: PlayerTrailsLayerProps) {
+	/**
+	 * Read here rather than passed down: what counts as a silence is a property
+	 * of the game's sampling cadence, and this is the only thing that asks.
+	 */
+	const { positionIntervalMs } = useGameShell();
+	const gapMs = positionIntervalMs * SILENT_SAMPLES;
+
 	const trails = useMemo(
 		() =>
 			buildPlayerTrails({
@@ -47,7 +66,10 @@ export function PlayerTrailsLayer({
 			}),
 		[rows, players, roundId],
 	);
-	const data = useMemo(() => trailsFeature(trails, TRAIL_WINDOW_MS), [trails]);
+	const data = useMemo(
+		() => trailsFeature(trails, TRAIL_WINDOW_MS, gapMs),
+		[trails, gapMs],
+	);
 	/**
 	 * Quiet on purpose. A trail is context for a marker, not a thing to read:
 	 * everything else on this map that matters — the marker, the game area, a

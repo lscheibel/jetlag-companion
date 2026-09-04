@@ -9,7 +9,7 @@ import { useTheme } from "@zero-lag/ui/hooks/use-theme";
 import { useMemo } from "react";
 import { EMPTY_FEATURES, type FeatureData } from "./geojson";
 import { type MapPoi, POI_KIND_COLORS } from "./poi";
-import { useGeoJsonLayer } from "./use-geojson-layer";
+import { SELECTED_FEATURE, useGeoJsonLayer } from "./use-geojson-layer";
 
 const KIND_COLOR_MATCH = Object.entries(POI_KIND_COLORS).flat();
 
@@ -68,7 +68,7 @@ export function PoiLayer({
 			{
 				id: "play-pois-selected",
 				type: "circle" as const,
-				filter: ["==", ["get", "selected"], true],
+				filter: SELECTED_FEATURE,
 				paint: selectedPoiPaint(),
 			},
 		],

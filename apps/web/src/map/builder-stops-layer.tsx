@@ -16,7 +16,7 @@ import {
 } from "./geojson";
 import { stopInNarrowedArea } from "./remaining-stops";
 import type { SearchableStop } from "./toolkit";
-import { useGeoJsonLayer } from "./use-geojson-layer";
+import { SELECTED_FEATURE, useGeoJsonLayer } from "./use-geojson-layer";
 
 function stopPaint(dark: boolean) {
 	return {
@@ -90,7 +90,7 @@ export function BuilderStopsLayer({
 			{
 				id: `${id}-selected`,
 				type: "circle" as const,
-				filter: ["==", ["get", "selected"], true],
+				filter: SELECTED_FEATURE,
 				paint: selectedStopPaint(),
 			},
 		],

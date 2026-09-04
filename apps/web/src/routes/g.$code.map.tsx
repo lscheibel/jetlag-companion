@@ -32,7 +32,6 @@ import { RoundBar } from "../game/round-bar";
 import { useGameShell } from "../game/shell";
 import { useMyRole } from "../game/use-role";
 import { useSearchArea } from "../game/use-search-area";
-import { ZoneNotice } from "../game/zone-notice";
 import { LobbyProvider } from "../lobby/actions";
 import { LobbyChrome } from "../lobby/lobby-chrome";
 import { StartSeekingHold, useStartSeeking } from "../lobby/start-seeking";
@@ -506,6 +505,16 @@ function MapScreen() {
 			: (searchableStops.find(
 					(stop) => stop.stopId === hidingCommitment.stopId,
 				) ?? null);
+	/**
+	 * The hider's card outlives the hiding phase. Once the round is seeking it
+	 * is where the committed zone is named and where leaving it is said — so it
+	 * needs a zone to be about, and a hider who never committed gets no card.
+	 */
+	const showHiderCard =
+		isHidingHider ||
+		(role.role === "hider" &&
+			role.roundStatus === "seeking" &&
+			hidingCommitment !== undefined);
 	const previewingOtherZone =
 		hidingStop !== null &&
 		committedStop !== null &&
@@ -1539,9 +1548,6 @@ function MapScreen() {
 							/>
 						</Surface>
 					)}
-				<div className="absolute inset-x-3 top-28 z-20 mx-auto max-w-xl">
-					<ZoneNotice fix={ownFix} role={role} />
-				</div>
 				<MapControls blindness={blindnessControl} />
 				<div className="pointer-events-none absolute inset-x-3 top-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-end justify-between gap-3">
 					<div className="relative h-full min-h-0 min-w-0 flex-1">
@@ -1619,9 +1625,10 @@ function MapScreen() {
 									/>
 								</motion.div>
 							)}
-							{tool.kind === "none" && isHidingHider && (
+							{tool.kind === "none" && showHiderCard && (
 								<motion.div key="hiding" {...cardMotion}>
 									<HidingSheet
+										fix={ownFix}
 										radiusMeters={defaultRadiusMeters}
 										role={role}
 										selectedStop={hidingStop}

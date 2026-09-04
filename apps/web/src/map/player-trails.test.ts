@@ -12,6 +12,8 @@ import {
 
 const ROUND = "round-1";
 const WINDOW = 15 * 60_000;
+/** A minute of silence, which is twelve missed samples at the default cadence. */
+const GAP = 60_000;
 
 function fix(lng: number, lat: number, capturedAt: number): ClientFix {
 	return {
@@ -295,7 +297,12 @@ describe("buildPlayerTrails", () => {
 		]);
 	});
 
-	it("drops the points that fall out of the window", () => {
+	/**
+	 * The leg the player is on runs across the window's edge, and the edge is a
+	 * moment rather than a fix: half of a two-minute leg is inside a 90 s window
+	 * and the drawing has to start halfway along it.
+	 */
+	it("keeps the fix beyond the window to interpolate the edge from", () => {
 		const walk = [
 			fix(13.4, 52.5, 0),
 			fix(13.41, 52.51, 60_000),
@@ -310,8 +317,55 @@ describe("buildPlayerTrails", () => {
 		});
 
 		expect(places(trails[0])).toEqual([
+			[13.4, 52.5],
 			[13.41, 52.51],
 			[13.42, 52.52],
+		]);
+		expect(trails[0]?.points.map((vertex) => vertex.ageMs)).toEqual([
+			120_000, 60_000, 0,
+		]);
+	});
+
+	/** One anchor, not the whole afternoon behind it. */
+	it("keeps only the one fix beyond the window", () => {
+		const walk = [
+			fix(13.37, 52.47, 0),
+			fix(13.38, 52.48, 30_000),
+			fix(13.4, 52.5, 60_000),
+			fix(13.41, 52.51, 120_000),
+			fix(13.42, 52.52, 180_000),
+		];
+		const trails = buildPlayerTrails({
+			rows: walk.map((captured) => row("ana", captured)),
+			players: [resting("ana", walk)],
+			roundId: ROUND,
+			windowMs: 90_000,
+		});
+
+		expect(places(trails[0])).toEqual([
+			[13.4, 52.5],
+			[13.41, 52.51],
+			[13.42, 52.52],
+		]);
+	});
+
+	/**
+	 * The reason the anchor is kept: a phone that surfaced after half an hour
+	 * underground has one fix behind the window and one in front of it, and
+	 * dropping the older one leaves a marker with no history to interpolate.
+	 */
+	it("draws a trail across a silence longer than the window", () => {
+		const walk = [fix(13.4, 52.5, 0), fix(13.5, 52.6, 30 * 60_000)];
+		const trails = buildPlayerTrails({
+			rows: walk.map((captured) => row("ana", captured)),
+			players: [resting("ana", walk)],
+			roundId: ROUND,
+			windowMs: WINDOW,
+		});
+
+		expect(places(trails[0])).toEqual([
+			[13.4, 52.5],
+			[13.5, 52.6],
 		]);
 	});
 
@@ -357,7 +411,7 @@ describe("smoothPath", () => {
 			vertex(13.42, 52.5),
 			vertex(13.43, 52.5),
 		];
-		for (const { point } of smoothPath(straight)) {
+		for (const { point } of smoothPath(straight, GAP)) {
 			expect(point[1]).toBeCloseTo(52.5, 9);
 			expect(point[0]).toBeGreaterThanOrEqual(13.4 - 1e-9);
 			expect(point[0]).toBeLessThanOrEqual(13.43 + 1e-9);
@@ -371,7 +425,7 @@ describe("smoothPath", () => {
 			vertex(13.425, 52.5),
 			vertex(13.43, 52.512),
 		];
-		const curve = smoothPath(measured);
+		const curve = smoothPath(measured, GAP);
 
 		for (const { point } of measured) {
 			expect(
@@ -390,7 +444,7 @@ describe("smoothPath", () => {
 			vertex(13.41, 52.505),
 			vertex(13.43, 52.512),
 		];
-		const curve = smoothPath(measured);
+		const curve = smoothPath(measured, GAP);
 
 		expect(curve[0]?.point).toEqual([13.4, 52.5]);
 		expect(curve.at(-1)?.point[0]).toBeCloseTo(13.43, 9);
@@ -403,16 +457,19 @@ describe("smoothPath", () => {
 			vertex(13.41, 52.505),
 			vertex(13.43, 52.512),
 		];
-		expect(smoothPath(measured).length).toBeGreaterThan(measured.length);
+		expect(smoothPath(measured, GAP).length).toBeGreaterThan(measured.length);
 	});
 
 	/** The fade needs an age for every drawn vertex, not only the measured ones. */
 	it("carries age along the curve, oldest first and never out of order", () => {
-		const curve = smoothPath([
-			vertex(13.4, 52.5, 20_000),
-			vertex(13.41, 52.505, 10_000),
-			vertex(13.43, 52.512, 0),
-		]);
+		const curve = smoothPath(
+			[
+				vertex(13.4, 52.5, 20_000),
+				vertex(13.41, 52.505, 10_000),
+				vertex(13.43, 52.512, 0),
+			],
+			GAP,
+		);
 
 		expect(curve[0]?.ageMs).toBe(20_000);
 		expect(curve.at(-1)?.ageMs).toBe(0);
@@ -424,7 +481,47 @@ describe("smoothPath", () => {
 	/** Two points are a segment; there is no tangent to take from anywhere. */
 	it("leaves a two-point trail alone", () => {
 		const measured = [vertex(13.4, 52.5, 5_000), vertex(13.41, 52.505, 0)];
-		expect(smoothPath(measured)).toEqual(measured);
+		expect(smoothPath(measured, GAP)).toEqual(
+			measured.map((point) => ({ ...point, inferred: false })),
+		);
+	});
+
+	/**
+	 * A spline through half an hour of unobserved travel would be inventing
+	 * turns at exactly the moment there is least to go on. m2-spec §4, _Trails_.
+	 */
+	it("crosses a silence with one straight chord and marks it", () => {
+		const curve = smoothPath(
+			[
+				vertex(13.4, 52.5, 40 * 60_000),
+				vertex(13.41, 52.505, 39 * 60_000),
+				vertex(13.42, 52.51, 38 * 60_000),
+				// Ten minutes underground.
+				vertex(13.5, 52.56, 28 * 60_000),
+				vertex(13.51, 52.565, 27 * 60_000),
+				vertex(13.52, 52.57, 26 * 60_000),
+			],
+			GAP,
+		);
+
+		const crossings = curve.filter((point) => point.inferred);
+		expect(crossings).toHaveLength(1);
+		expect(crossings[0]?.point).toEqual([13.5, 52.56]);
+
+		// Straight, so the fix on the far side follows the one on the near side
+		// with nothing drawn in between.
+		const resumes = curve.findIndex((point) => point.inferred);
+		expect(curve[resumes - 1]?.point).toEqual([13.42, 52.51]);
+	});
+
+	it("splines the runs either side of a silence as usual", () => {
+		const run = [
+			vertex(13.4, 52.5, 40 * 60_000),
+			vertex(13.41, 52.505, 39 * 60_000),
+			vertex(13.42, 52.51, 38 * 60_000),
+		];
+		const across = smoothPath([...run, vertex(13.5, 52.56, 28 * 60_000)], GAP);
+		expect(across.length).toBeGreaterThan(run.length + 1);
 	});
 
 	/**
@@ -432,12 +529,15 @@ describe("smoothPath", () => {
 	 * knot interval and a division by zero in the naive spline.
 	 */
 	it("survives a player who did not move between two fixes", () => {
-		const curve = smoothPath([
-			vertex(13.4, 52.5),
-			vertex(13.41, 52.505),
-			vertex(13.41, 52.505),
-			vertex(13.43, 52.512),
-		]);
+		const curve = smoothPath(
+			[
+				vertex(13.4, 52.5),
+				vertex(13.41, 52.505),
+				vertex(13.41, 52.505),
+				vertex(13.43, 52.512),
+			],
+			GAP,
+		);
 
 		for (const { point, ageMs } of curve) {
 			expect(Number.isFinite(point[0])).toBe(true);
@@ -474,6 +574,7 @@ describe("trailsFeature", () => {
 					},
 				],
 				WINDOW,
+				GAP,
 			),
 		);
 
@@ -482,6 +583,7 @@ describe("trailsFeature", () => {
 			playerId: "ana",
 			color: "#E69F00",
 			fade: 1,
+			inferred: false,
 		});
 		expect(
 			features[0]?.geometry.type === "LineString"
@@ -495,7 +597,7 @@ describe("trailsFeature", () => {
 
 	/** One trail, several features, because a feature carries one opacity. */
 	it("cuts a long trail into bands that fade towards the old end", () => {
-		const features = featuresOf(trailsFeature([ageingTrail()], WINDOW));
+		const features = featuresOf(trailsFeature([ageingTrail()], WINDOW, GAP));
 
 		expect(features.length).toBeGreaterThan(1);
 
@@ -511,7 +613,7 @@ describe("trailsFeature", () => {
 
 	/** Drawn in pieces, read as one line: each piece starts where the last ended. */
 	it("shares a vertex between neighbouring bands so the trail has no gaps", () => {
-		const features = featuresOf(trailsFeature([ageingTrail()], WINDOW));
+		const features = featuresOf(trailsFeature([ageingTrail()], WINDOW, GAP));
 
 		for (let i = 1; i < features.length; i++) {
 			const previous = features[i - 1]?.geometry;
@@ -523,8 +625,145 @@ describe("trailsFeature", () => {
 		}
 	});
 
+	/**
+	 * The bug this fade was rebuilt for: a leg drawn at the head's strength
+	 * along its whole length, because the only two vertices on it were the two
+	 * fixes and neither of them was old enough to step the band down.
+	 */
+	it("ramps the fade along a leg between two distant fixes", () => {
+		const features = featuresOf(
+			trailsFeature(
+				[
+					{
+						playerId: "ana",
+						color: "#E69F00",
+						// Ten minutes of travel, and only its two ends were measured.
+						points: [vertex(13.4, 52.5, 10 * 60_000), vertex(13.6, 52.5, 0)],
+					},
+				],
+				WINDOW,
+				GAP,
+			),
+		);
+
+		expect(features.length).toBeGreaterThan(1);
+		const fades = features.map((feature) => Number(feature.properties?.fade));
+		expect([...fades].sort((a, b) => a - b)).toEqual(fades);
+		expect(fades[0]).toBeLessThan(1);
+		expect(fades.at(-1)).toBe(1);
+	});
+
+	/**
+	 * The linear-traversal assumption, asserted as a position. Sixteen minutes
+	 * of window is one minute a band, so a ten-minute leg steps every tenth of
+	 * its length — which is where the player was at that minute if they covered
+	 * it at a steady pace.
+	 */
+	it("puts a fade boundary where the player would have been at that moment", () => {
+		const features = featuresOf(
+			trailsFeature(
+				[
+					{
+						playerId: "ana",
+						color: "#E69F00",
+						points: [vertex(13.4, 52.5, 10 * 60_000), vertex(13.5, 52.5, 0)],
+					},
+				],
+				16 * 60_000,
+				GAP,
+			),
+		);
+
+		const starts = features.map((feature) =>
+			feature.geometry.type === "LineString"
+				? Number(feature.geometry.coordinates[0]?.[0])
+				: Number.NaN,
+		);
+		for (const [index, start] of starts.entries()) {
+			expect(start).toBeCloseTo(13.4 + index * 0.01, 9);
+		}
+		expect(features.map((feature) => Number(feature.properties?.fade))).toEqual(
+			Array.from({ length: 10 }, (_, index) => (index + 7) / 16),
+		);
+	});
+
+	/**
+	 * The anchor is a date and a direction, not a place that gets drawn: the
+	 * line begins at the moment the window does, halfway along a leg that took
+	 * twice as long as the window holds.
+	 */
+	it("begins at the window's edge rather than at the fix beyond it", () => {
+		const features = featuresOf(
+			trailsFeature(
+				[
+					{
+						playerId: "ana",
+						color: "#E69F00",
+						points: [vertex(13.4, 52.5, 30 * 60_000), vertex(13.6, 52.5, 0)],
+					},
+				],
+				WINDOW,
+				GAP,
+			),
+		);
+
+		const first = features[0]?.geometry;
+		if (first?.type !== "LineString") throw new Error("not a LineString");
+		expect(first.coordinates[0]?.[0]).toBeCloseTo(13.5, 9);
+		expect(Number(features[0]?.properties?.fade)).toBe(1 / 16);
+		for (const feature of features) {
+			expect(feature.properties?.inferred).toBe(true);
+		}
+	});
+
+	/** A dash for the leg nobody saw, and a solid line either side of it. */
+	it("marks only the pieces that cross a silence", () => {
+		const features = featuresOf(
+			trailsFeature(
+				[
+					{
+						playerId: "ana",
+						color: "#E69F00",
+						points: [
+							vertex(13.4, 52.5, 8 * 60_000),
+							vertex(13.41, 52.505, 8 * 60_000 - 5_000),
+							vertex(13.42, 52.51, 8 * 60_000 - 10_000),
+							// Five minutes underground.
+							vertex(13.5, 52.56, 3 * 60_000 - 10_000),
+							vertex(13.51, 52.565, 3 * 60_000 - 15_000),
+							vertex(13.52, 52.57, 3 * 60_000 - 20_000),
+						],
+					},
+				],
+				WINDOW,
+				GAP,
+			),
+		);
+
+		const marks = features.map((feature) => feature.properties?.inferred);
+		// One crossing, so the dashed pieces are one stretch with solid either
+		// side of it: false…false, true…true, false…false.
+		const first = marks.indexOf(true);
+		const last = marks.lastIndexOf(true);
+		expect(first).toBeGreaterThan(0);
+		expect(last).toBeLessThan(marks.length - 1);
+		expect(marks.slice(first, last + 1).every(Boolean)).toBe(true);
+		expect(marks.slice(0, first).some(Boolean)).toBe(false);
+		expect(marks.slice(last + 1).some(Boolean)).toBe(false);
+
+		// And the line is still one line: the dash starts where the solid ends.
+		for (let i = 1; i < features.length; i++) {
+			const previous = features[i - 1]?.geometry;
+			const current = features[i]?.geometry;
+			if (previous?.type !== "LineString" || current?.type !== "LineString") {
+				throw new Error("a trail band is not a LineString");
+			}
+			expect(current.coordinates[0]).toEqual(previous.coordinates.at(-1));
+		}
+	});
+
 	it("is an empty collection when nobody has moved", () => {
-		expect(trailsFeature([], WINDOW)).toEqual({
+		expect(trailsFeature([], WINDOW, GAP)).toEqual({
 			type: "FeatureCollection",
 			features: [],
 		});
