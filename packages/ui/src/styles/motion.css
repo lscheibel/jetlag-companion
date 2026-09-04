@@ -44,9 +44,10 @@
 	--ease-out-soft: cubic-bezier(0.2, 0.9, 0.25, 1);
 	--ease-in-soft: cubic-bezier(0.6, 0, 0.9, 0.3);
 	/**
-	 * Things that travel rather than land: a segmented thumb, a tab highlight, a
-	 * sheet. No overshoot at all — a thumb that bounces past its segment reads
-	 * as a mis-tap.
+	 * Things that travel rather than land: a segmented thumb, a tab highlight.
+	 * No overshoot at all — a thumb that bounces past its segment reads as a
+	 * mis-tap. Sheets are the same idea and no longer read it from here: Vaul
+	 * ships this curve, near enough to the digit, baked into its own stylesheet.
 	 */
 	--ease-travel: cubic-bezier(0.32, 0.72, 0.28, 1);
 	/* Continuous loops. */

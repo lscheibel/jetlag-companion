@@ -215,6 +215,7 @@ export function TeamDrawer({
 					)}
 				</div>
 			}
+			label="Team"
 			onClose={close}
 			open={open}
 			testId="team-editor"

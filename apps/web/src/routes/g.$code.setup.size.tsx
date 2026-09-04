@@ -210,6 +210,7 @@ function SizeSheet({ size, fits, onClose, onUse }: SizeSheetProps) {
 					</ActionButton>
 				)
 			}
+			label="Board size"
 			onClose={onClose}
 			open={band !== null}
 			testId="size-sheet"

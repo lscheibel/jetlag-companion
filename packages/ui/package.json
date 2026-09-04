@@ -23,7 +23,8 @@
 		"motion": "^13.1.1",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"tailwind-merge": "^3.6.0"
+		"tailwind-merge": "^3.6.0",
+		"vaul": "^1.1.2"
 	},
 	"devDependencies": {
 		"@tailwindcss/postcss": "^4.3.3",

@@ -25,14 +25,6 @@ export const glide: Transition = {
 	mass: 0.9,
 };
 
-/** A sheet arriving from the bottom edge; slower, because it covers content. */
-export const sheetSpring: Transition = {
-	type: "spring",
-	stiffness: 260,
-	damping: 30,
-	mass: 1,
-};
-
 /** Immediate feedback under a thumb. Never a spring — a press is not playful. */
 export const press: Transition = { duration: 0.12, ease: [0.2, 0.9, 0.25, 1] };
 
@@ -49,23 +41,6 @@ export const listContainer: Variants = {
 export const listItem: Variants = {
 	hidden: { opacity: 0, y: 14 },
 	shown: { opacity: 1, y: 0, transition: glide },
-};
-
-/** A panel or sheet that slides up from the bottom of the screen. */
-export const riseFromBottom: Variants = {
-	hidden: { y: "100%" },
-	shown: { y: 0, transition: sheetSpring },
-	leaving: {
-		y: "100%",
-		transition: { duration: 0.2, ease: [0.6, 0, 0.9, 0.3] },
-	},
-};
-
-/** A scrim behind a sheet. Fades only — a blurring scrim costs frames. */
-export const scrimFade: Variants = {
-	hidden: { opacity: 0 },
-	shown: { opacity: 1, transition: { duration: 0.2 } },
-	leaving: { opacity: 0, transition: { duration: 0.15 } },
 };
 
 /** Something arriving that the player did not ask for: a notice, a toast. */

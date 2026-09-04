@@ -1,7 +1,6 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
-import { fadeOnly, riseFromBottom, scrimFade } from "../lib/motion";
+import { createContext, useContext, useRef } from "react";
+import { Drawer } from "vaul";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
@@ -16,12 +15,30 @@ export function useHeldValue<T>(active: boolean, value: T): T {
 }
 
 /**
+ * True inside an open sheet, so a sheet opened from a sheet knows to stack
+ * rather than to start a second, independent drawer.
+ *
+ * The nesting is not visible from any one call site — `PointField` renders a
+ * sheet and appears both on a plain screen and inside the question card — so
+ * the component has to work it out from where it finds itself rather than from
+ * a prop somebody has to remember to pass.
+ */
+const InSheet = createContext(false);
+
+/**
  * A panel that rises from the bottom edge over whatever it interrupts.
  *
  * It covers part of the screen and never all of it: what is behind stays
- * visible so an edit reads as an edit rather than as a new place. This is the
- * one component where Motion is doing something CSS cannot — animating the
- * exit, so a dismissed sheet leaves rather than vanishing.
+ * visible so an edit reads as an edit rather than as a new place.
+ *
+ * Vaul drives it, which buys the thing a sheet on a phone is expected to do:
+ * a drag down dismisses it, and a drag that starts on scrolled content scrolls
+ * that content instead. Neither is an animation the kit could declare, because
+ * the transform is the gesture — it has to be written by whoever is reading the
+ * pointer. So this is the one panel whose entrance and exit are not ours: Vaul
+ * ships them, on a curve near enough to `--ease-travel` not to read as a
+ * different app. Reduced motion is still honoured, by the blanket guard at the
+ * bottom of `styles/motion.css`.
  *
  * The grabber and the scrim are the dismiss: tapping outside leaves. An X
  * in the header is opt-in, because beside two action buttons it reads as a
@@ -32,6 +49,11 @@ interface SheetProps {
 	open: boolean;
 	onClose: () => void;
 	title?: ReactNode;
+	/**
+	 * The sheet's name for a screen reader when there is no visible title. A
+	 * dialog without a name is announced as "dialog" and nothing else.
+	 */
+	label?: string;
 	eyebrow?: ReactNode;
 	/** Shown at the bottom of the sheet, pinned: the sheet's primary action. */
 	actions?: ReactNode;
@@ -55,6 +77,7 @@ export function Sheet({
 	open,
 	onClose,
 	title,
+	label,
 	eyebrow,
 	actions,
 	pinned,
@@ -63,63 +86,54 @@ export function Sheet({
 	testId = "sheet",
 	closable = false,
 }: SheetProps) {
-	const reduced = useReducedMotion();
-
-	useEffect(() => {
-		if (!open) return;
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") onClose();
-		};
-		document.addEventListener("keydown", onKey);
-		return () => document.removeEventListener("keydown", onKey);
-	}, [open, onClose]);
-
-	const panelVariants = reduced ? fadeOnly : riseFromBottom;
+	const nested = useContext(InSheet);
+	const Root = nested ? Drawer.NestedRoot : Drawer.Root;
 
 	return (
-		<AnimatePresence>
-			{open && (
-				<motion.div
-					animate="shown"
-					className="pointer-events-auto fixed inset-0 z-50 flex flex-col justify-end"
-					exit="leaving"
-					initial="hidden"
-					key="sheet"
-					variants={{
-						hidden: {},
-						shown: {},
-						leaving: { transition: { when: "afterChildren" } },
-					}}
-				>
-					<motion.button
-						aria-label="Close"
-						className="absolute inset-0 bg-scrim"
+		<Root
+			onOpenChange={(next) => {
+				if (!next) onClose();
+			}}
+			open={open}
+		>
+			{/*
+			 * Everything the caller passed sits under the provider, `pinned` and
+			 * `actions` included: a sheet reached from a pinned filter field is
+			 * still a sheet opened from inside a sheet.
+			 */}
+			<InSheet.Provider value={true}>
+				<Drawer.Portal>
+					<Drawer.Overlay
+						className="fixed inset-0 z-50 bg-scrim"
 						data-testid={`${testId}-scrim`}
-						onPointerDown={(event) => {
-							event.preventDefault();
-							onClose();
-						}}
-						type="button"
-						variants={scrimFade}
 					/>
-					<motion.div
+					{/*
+					 * `aria-describedby={undefined}`: the dialog has a name and no one
+					 * description — the body is a list, a form or a card, not a
+					 * paragraph about the sheet — and without this Radix warns about
+					 * the missing description on every open.
+					 */}
+					<Drawer.Content
+						aria-describedby={undefined}
 						className={cn(
-							"relative flex max-h-[86dvh] flex-col gap-3 rounded-t-sheet border-hairline border-t bg-surface",
+							"fixed inset-x-0 bottom-0 z-50 flex max-h-[86dvh] flex-col gap-3 outline-none",
+							"rounded-t-sheet border-hairline border-t bg-surface",
 							"px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]",
 							className,
 						)}
 						data-testid={testId}
-						variants={panelVariants}
 					>
 						<div
 							aria-hidden
 							className="mx-auto h-[5px] w-11 shrink-0 rounded-full bg-hairline-strong"
 						/>
-						{title && (
+						{title ? (
 							<div className="flex items-start gap-3">
 								<div className="min-w-0 flex-1">
 									{eyebrow && <div className="eyebrow truncate">{eyebrow}</div>}
-									<h2 className="truncate text-lg">{title}</h2>
+									<Drawer.Title className="truncate text-lg">
+										{title}
+									</Drawer.Title>
 								</div>
 								{closable && (
 									<button
@@ -133,17 +147,28 @@ export function Sheet({
 									</button>
 								)}
 							</div>
+						) : (
+							<Drawer.Title className="sr-only">
+								{label ?? "Sheet"}
+							</Drawer.Title>
 						)}
 						{pinned && <div className="shrink-0">{pinned}</div>}
-						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [&>*]:shrink-0">
+						{/*
+						 * `touch-action: pan-y`: the drawer sets `touch-action: none` on
+						 * itself so a drag anywhere on it is the dismiss gesture, and that
+						 * would otherwise take the body's own scrolling with it. Vaul reads
+						 * the scroll position on pointer-down and stands down when the body
+						 * is scrolled, so the two do not fight over the same finger.
+						 */}
+						<div className="flex min-h-0 flex-1 touch-pan-y flex-col gap-3 overflow-y-auto [&>*]:shrink-0">
 							{children}
 						</div>
 						{actions && (
 							<div className="flex shrink-0 flex-col gap-2">{actions}</div>
 						)}
-					</motion.div>
-				</motion.div>
-			)}
-		</AnimatePresence>
+					</Drawer.Content>
+				</Drawer.Portal>
+			</InSheet.Provider>
+		</Root>
 	);
 }

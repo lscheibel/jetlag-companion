@@ -122,6 +122,7 @@ export function QuestionCardSheet({
 					</ActionButton>
 				</>
 			}
+			label="Question"
 			onClose={onClose}
 			open={pick !== null}
 			testId="question-card"
