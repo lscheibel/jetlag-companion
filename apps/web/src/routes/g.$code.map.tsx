@@ -1606,6 +1606,7 @@ function MapScreen() {
 								<motion.div key="cuts" {...cardMotion}>
 									<CutsCard
 										constraints={constraintItems}
+										onAdd={() => setConstraintPickerOpen(true)}
 										onClose={cancelTool}
 										onEdit={editConstraint}
 										onRemove={removeConstraint}
@@ -1700,9 +1701,14 @@ function MapScreen() {
 						setSeekerOverlay("none");
 						void navigate(`/g/${session.code}/ask`);
 					}}
+					/*
+					 * Narrowing down starts at what you have already cut, not at a
+					 * menu of shapes: the list is the screen, and adding another is
+					 * one button inside it.
+					 */
 					onNarrowDown={() => {
 						setSeekerOverlay("none");
-						setConstraintPickerOpen(true);
+						changeTool({ kind: "listingConstraints" });
 					}}
 					onUndoFound={() => {
 						if (!role.roundId || !hiderTeamId) return;

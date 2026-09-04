@@ -42,20 +42,29 @@ async function startSeeking(host: Phone, code: string): Promise<void> {
 	).toContainText("seeking", { timeout: 20_000 });
 }
 
+/**
+ * Narrowing down opens the cuts list; the picker is one button inside it. Both
+ * steps are one flow for a test, so this walks the whole way to a shape.
+ */
 async function pickConstraint(
 	phone: Phone,
 	testId:
 		| "add-radius-constraint"
 		| "add-polygon-constraint"
 		| "add-bezirk-constraint"
-		| "add-split-constraint"
-		| "constraint-list",
+		| "add-split-constraint",
 ): Promise<void> {
+	await openCutsList(phone);
+	await phone.page.getByTestId("add-constraint").click();
+	await expect(phone.page.getByTestId("constraints-picker")).toBeVisible();
+	await phone.page.getByTestId(testId).click();
+}
+
+async function openCutsList(phone: Phone): Promise<void> {
 	await phone.page.getByTestId("map-ask").click();
 	await expect(phone.page.getByTestId("seeker-actions")).toBeVisible();
 	await phone.page.getByTestId("narrow-it-down").click();
-	await expect(phone.page.getByTestId("constraints-picker")).toBeVisible();
-	await phone.page.getByTestId(testId).click();
+	await expect(phone.page.getByTestId("constraint-list-sheet")).toBeVisible();
 }
 
 async function tapMap(phone: Phone, fx: number, fy: number): Promise<void> {
@@ -117,7 +126,7 @@ test("a seeker radius cuts the overlay for seekers and not for hiders", async ({
 	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
-	await pickConstraint(ana, "constraint-list");
+	await openCutsList(ana);
 	// The name is a field inside the opened row, not on the line itself.
 	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
@@ -255,7 +264,7 @@ test("a seeker Bezirk include cuts the overlay for seekers and not for hiders", 
 	await expect(ben.page.getByTestId("surviving-area-hash")).toHaveText(seed);
 	await expect(ben.page.getByTestId("constraint-count")).toHaveText("0");
 
-	await pickConstraint(ana, "constraint-list");
+	await openCutsList(ana);
 	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),
@@ -332,7 +341,7 @@ test("a cut reopens in the tool that drew it, and rewrites that row", async ({
 
 	// A Bezirk is stored as a plain polygon: only the recorded origin can tell
 	// the picker from the pencil.
-	await pickConstraint(ana, "constraint-list");
+	await openCutsList(ana);
 	// Redraw lives in the opened row, alongside Show and Remove.
 	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await ana.page.locator('[data-testid^="edit-constraint-"]').click();
@@ -347,7 +356,7 @@ test("a cut reopens in the tool that drew it, and rewrites that row", async ({
 		timeout: 20_000,
 	});
 	expect(await areaHash(ana)).not.toBe(included);
-	await pickConstraint(ana, "constraint-list");
+	await openCutsList(ana);
 	await ana.page.locator('[data-testid^="constraint-open-"]').click();
 	await expect(
 		ana.page.locator('[data-testid^="constraint-name-"]'),

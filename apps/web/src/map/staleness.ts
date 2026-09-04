@@ -105,6 +105,7 @@ export function absoluteTime(atMs: number): string {
 	return new Date(atMs).toLocaleTimeString(undefined, {
 		hour: "2-digit",
 		minute: "2-digit",
+		hour12: false,
 	});
 }
 

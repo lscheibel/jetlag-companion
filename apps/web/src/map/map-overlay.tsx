@@ -449,13 +449,6 @@ const CONSTRAINT_TYPES: readonly {
 		testId: "add-closest-poi-constraint",
 		kind: "pickingClosestPoiConstraint",
 	},
-	{
-		icon: "list-bullets",
-		label: "Cuts",
-		hint: "The ones already placed",
-		testId: "constraint-list",
-		kind: "listingConstraints",
-	},
 ];
 
 export function ConstraintsPickerSheet({
@@ -552,6 +545,8 @@ interface CutsCardProps {
 	readonly onRename: (id: string, name: string) => void;
 	readonly onRemove: (id: string) => void;
 	readonly onEdit: (id: string) => void;
+	/** Opens the picker: the one place a new cut is started from. */
+	readonly onAdd: () => void;
 	readonly onClose: () => void;
 }
 
@@ -576,6 +571,7 @@ export function CutsCard({
 	onRename,
 	onRemove,
 	onEdit,
+	onAdd,
 	onClose,
 }: CutsCardProps) {
 	const [openId, setOpenId] = useState<string | null>(null);
@@ -587,7 +583,7 @@ export function CutsCard({
 	// The newest cut is the one you just made, so that is where the list opens.
 	// Set on the scroller rather than by `scrollIntoView`, which would also
 	// scroll whatever the map screen happens to be sitting inside.
-	const scroller = useRef<HTMLDivElement | null>(null);
+	const scroller = useRef<HTMLUListElement | null>(null);
 	useEffect(() => {
 		const list = scroller.current;
 		if (list) list.scrollTop = list.scrollHeight;
@@ -621,11 +617,11 @@ export function CutsCard({
 			{constraints.length === 0 ? (
 				<p className="px-3 pb-3 text-ink-dim text-sm">None yet.</p>
 			) : (
-				<div
-					className="flex flex-col flex-1 px-3 pb-3 min-h-0"
-
-				>
-					<ul className="rounded-xl border border-hairline bg-surface overflow-y-auto min-h-0 flex-1" ref={scroller}>
+				<div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+					<ul
+						className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-hairline bg-surface"
+						ref={scroller}
+					>
 						{constraints.map((row) => (
 							<ConstraintRow
 								frame={frame}
@@ -648,19 +644,29 @@ export function CutsCard({
 					</ul>
 				</div>
 			)}
-			<div className="px-3 pb-4 w-full">
-
-			<ActionButton
-				className="w-full"
-				data-testid="pin-cancel"
-				inline
-				onClick={onClose}
-				size="comfortable"
-				tone="secondary"
-				type="button"
-			>
-				Done
-			</ActionButton>
+			{/* The way out and the way to another one, in the app's own order:
+			    the retreat compact on the left, the action taking the rest. */}
+			<div className="flex w-full items-stretch gap-2 px-3 pb-4">
+				<ActionButton
+					className={COMPACT_SECONDARY}
+					data-testid="cuts-done"
+					inline
+					onClick={onClose}
+					size="comfortable"
+					tone="secondary"
+					type="button"
+				>
+					Done
+				</ActionButton>
+				<ActionButton
+					className="w-auto min-w-0 flex-1"
+					data-testid="add-constraint"
+					onClick={onAdd}
+					size="comfortable"
+					type="button"
+				>
+					Add a cut
+				</ActionButton>
 			</div>
 		</Surface>
 	);
@@ -700,7 +706,7 @@ function ConstraintRow({
 				 */}
 				<button
 					aria-expanded={open}
-					className="flex min-w-0 flex-1 items-center gap-2.5 text-left pl-2.5 pr-1"
+					className="flex min-w-0 flex-1 items-center gap-2.5 pr-1 pl-2.5 text-left"
 					data-testid={`constraint-open-${row.id}`}
 					onClick={onOpen}
 					type="button"
@@ -735,7 +741,7 @@ function ConstraintRow({
 				/>
 			</div>
 			{open && (
-				<div className="flex flex-col gap-2 pb-2.5 px-2.5">
+				<div className="flex flex-col gap-2 px-2.5 pb-2.5">
 					<label className="flex min-h-tap items-center gap-2 rounded-control border-2 border-hairline-strong bg-surface-raised px-3">
 						<span className="sr-only">Constraint name</span>
 						<input
