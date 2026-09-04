@@ -35,6 +35,7 @@ import { useSearchArea } from "../game/use-search-area";
 import { ZoneNotice } from "../game/zone-notice";
 import { LobbyProvider } from "../lobby/actions";
 import { LobbyChrome } from "../lobby/lobby-chrome";
+import { StartSeekingHold, useStartSeeking } from "../lobby/start-seeking";
 import { BuilderStopsLayer } from "../map/builder-stops-layer";
 import { BuildingsLayer } from "../map/buildings-layer";
 import { type Camera, FREE, nextCamera } from "../map/camera";
@@ -228,6 +229,7 @@ function MapScreen() {
 	const reducedMotion = useReducedMotion();
 	const cardMotion = mapCardMotionProps(reducedMotion);
 	const role = useMyRole(session.playerId);
+	const whistle = useStartSeeking();
 	const zero = useZero();
 
 	const [players] = useQuery(queries.players());
@@ -1692,9 +1694,19 @@ function MapScreen() {
 
 			{canEditConstraints && (
 				<SeekerActionsSheet
-					canAsk={role.roundStatus === "seeking"}
+					canAsk={
+						role.roundStatus === "seeking" || role.roundStatus === "hiding"
+					}
 					canMarkFound={role.roundStatus === "seeking"}
 					found={selectedHiderFound}
+					startSeeking={
+						whistle && (
+							<StartSeekingHold
+								onDone={() => setSeekerOverlay("none")}
+								whistle={whistle}
+							/>
+						)
+					}
 					onClose={() => setSeekerOverlay("none")}
 					onFoundThem={() => setSeekerOverlay("found")}
 					onAsk={() => {

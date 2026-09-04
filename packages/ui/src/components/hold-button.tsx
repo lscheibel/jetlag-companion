@@ -19,6 +19,8 @@ import { cn } from "../lib/utils";
 interface HoldButtonProps {
 	onConfirm: () => void;
 	children: ReactNode;
+	/** Second line, smaller: what completing the hold will start. */
+	hint?: ReactNode;
 	/** How long the hold takes. Long enough to be deliberate, short enough to
 	 *  not feel like a punishment. */
 	durationMs?: number;
@@ -31,6 +33,7 @@ interface HoldButtonProps {
 export function HoldButton({
 	onConfirm,
 	children,
+	hint,
 	durationMs = 700,
 	tone = "primary",
 	disabled = false,
@@ -88,6 +91,7 @@ export function HoldButton({
 				className={cn(
 					"zl-press-face min-h-tap-primary px-5",
 					"font-display font-extrabold text-lg tracking-tight",
+					hint && "flex-col gap-0.5 py-3",
 					"group-active:translate-y-[3px]",
 					tone === "live" ? "bg-live text-white" : "bg-action text-action-ink",
 					// Findable in peripheral vision, and only while it is waiting to be
@@ -117,6 +121,11 @@ export function HoldButton({
 					}
 				/>
 				<span className="relative flex items-center gap-2">{children}</span>
+				{hint && (
+					<span className="relative font-medium font-mono text-[0.6rem] uppercase leading-none tracking-[0.1em] opacity-70">
+						{hint}
+					</span>
+				)}
 			</span>
 		</button>
 	);

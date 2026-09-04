@@ -3,7 +3,7 @@ import { mutators, queries } from "@zero-lag/schema";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Sheet } from "@zero-lag/ui/components/sheet";
 import { Surface } from "@zero-lag/ui/components/surface";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { uploadPhoto } from "../api";
 import { COMPACT_SECONDARY } from "../map/map-bar";
 import type { MyRole } from "./use-role";
@@ -13,6 +13,12 @@ interface SeekerActionsSheetProps {
 	readonly found: boolean;
 	readonly canAsk?: boolean;
 	readonly canMarkFound?: boolean;
+	/**
+	 * The host's whistle, when this seeker is also the host and hiding has not
+	 * been called off yet. It takes the pinned slot, and asking steps back to
+	 * secondary behind it.
+	 */
+	readonly startSeeking?: ReactNode;
 	readonly onClose: () => void;
 	readonly onFoundThem: () => void;
 	readonly onUndoFound: () => void;
@@ -26,6 +32,7 @@ export function SeekerActionsSheet({
 	found,
 	canAsk = true,
 	canMarkFound = true,
+	startSeeking,
 	onClose,
 	onFoundThem,
 	onUndoFound,
@@ -34,6 +41,7 @@ export function SeekerActionsSheet({
 }: SeekerActionsSheetProps) {
 	return (
 		<Sheet
+			actions={startSeeking}
 			onClose={onClose}
 			open={open}
 			testId="seeker-actions"
@@ -68,6 +76,7 @@ export function SeekerActionsSheet({
 				data-testid="ask-question"
 				disabled={!canAsk}
 				onClick={onAsk}
+				tone={startSeeking ? "secondary" : "primary"}
 			>
 				Ask a question
 			</ActionButton>
