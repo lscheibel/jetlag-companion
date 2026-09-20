@@ -5,7 +5,7 @@ import {
 	isFresherFix,
 	openPresenceRoom,
 	readPresence,
-} from "./ephemeral";
+} from "./presence";
 
 /**
  * Presence writes from the tracking webhook. m15-spec §5.

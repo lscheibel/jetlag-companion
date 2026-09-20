@@ -172,17 +172,28 @@ test("3. a team edits itself; a stranger and a non-host are refused", async ({
 
 	await joinTeam(ben, "Foxes");
 
+	/**
+	 * A colour no other team is already wearing.
+	 *
+	 * The picker disables a swatch another team holds, and a disabled button is
+	 * one Playwright waits on until the test times out rather than one it
+	 * reports. `suggestIdentity` hands out `TEAM_COLORS` in order, so the two
+	 * teams created above are already holding the first two — vermillion and
+	 * cobalt — and jade is the first this game has not spoken for.
+	 */
+	const RECOLOUR = "#009E73";
+
 	// A non-host member renames their own team and recolours it.
 	await ben.page.getByTestId("team-Foxes").click();
 	await ben.page.getByTestId("team-name-input").fill("Vixens");
 	await ben.page.getByTestId("team-name-input").press("Enter");
-	await ben.page.getByTestId("color-#0072B2").click();
+	await ben.page.getByTestId(`color-${RECOLOUR}`).click();
 	await ben.page.getByTestId("team-editor-done").click();
 
 	await expect(ana.page.getByTestId("team-Vixens")).toBeVisible();
 	await expect(
 		ana.page.getByTestId("team-Vixens").locator("[data-team-color]"),
-	).toHaveAttribute("data-team-color", "#0072B2");
+	).toHaveAttribute("data-team-color", RECOLOUR);
 
 	// Ana is host, but she is not on that team — and how a team presents itself
 	// is the team's business. m1-spec §4.

@@ -13,6 +13,11 @@ export type Phone = {
 	readonly sentFrames: string[];
 	readonly tunnel: Tunnel;
 	/**
+	 * Where this phone was opened. Re-applied after a navigation that precedes a
+	 * one-shot position read — see `openDebug`.
+	 */
+	readonly geolocation: { longitude: number; latitude: number };
+	/**
 	 * The ephemeral socket, cut separately from Zero's.
 	 *
 	 * They are different servers on different ports and they fail independently
@@ -273,16 +278,18 @@ export async function openPhone(
 	name: string,
 	options: PhoneOptions = {},
 ): Promise<Phone> {
+	const geolocation = options.geolocation ?? {
+		longitude: 13.4132,
+		latitude: 52.5219,
+	};
 	const context = await browser.newContext({
 		ignoreHTTPSErrors: true,
 		permissions: ["geolocation"],
-		geolocation: options.geolocation ?? {
-			longitude: 13.4132,
-			latitude: 52.5219,
-		},
+		geolocation,
 		...(options.colorScheme ? { colorScheme: options.colorScheme } : {}),
 		...(options.userAgent ? { userAgent: options.userAgent } : {}),
 	});
+
 	const page = await context.newPage();
 
 	if (options.noBattery) {
@@ -320,6 +327,7 @@ export async function openPhone(
 		frames,
 		sentFrames,
 		tunnel,
+		geolocation,
 		channelTunnel,
 		tileRequests,
 		externalRequests,
@@ -445,6 +453,21 @@ async function enterJoinCode(phone: Phone, code: string): Promise<void> {
 export async function openDebug(phone: Phone, code: string): Promise<void> {
 	await phone.page.goto(`/g/${code}/debug`);
 	await expect(phone.page.getByTestId("game-code")).toHaveText(code);
+
+	/**
+	 * The same position again, now that this document is loaded.
+	 *
+	 * Chromium's mock provider serves `watchPosition` from the position in the
+	 * context options, but leaves `getCurrentPosition` waiting until a position
+	 * is set on a context whose page has loaded — and a navigation puts it back
+	 * to that state, so a one-shot read simply times out. The harness is where
+	 * one-shot reads happen: asking a question takes one, and the app records
+	 * the timeout honestly as `source: "unavailable"`. The answer then has no
+	 * origin to build a radius around, so no constraint is made and the fold has
+	 * nothing to fold. Setting the same coordinates again costs nothing and
+	 * makes the one-shot reads answer.
+	 */
+	await phone.context.setGeolocation(phone.geolocation);
 }
 
 export async function openLobby(phone: Phone, code: string): Promise<void> {

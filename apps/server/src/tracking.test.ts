@@ -4,7 +4,7 @@ import {
 	parseOsmAndParams,
 	parseOverland,
 	parseOwnTracks,
-} from "./tracking";
+} from "./tracking-protocol";
 
 /**
  * The protocol surface, which is where this feature's bugs would live. m15-spec §4.

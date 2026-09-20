@@ -4,13 +4,15 @@ import {
 	activeTrackingToken,
 	ingestPing,
 	issueTrackingToken,
+	revokeTrackingToken,
+	type TrackingIdentity,
+} from "../tracking";
+import {
 	mergeJsonParams,
 	parseOsmAndParams,
 	parseOverland,
 	parseOwnTracks,
-	revokeTrackingToken,
-	type TrackingIdentity,
-} from "../tracking";
+} from "../tracking-protocol";
 
 /**
  * Two routes with deliberately different front doors. m15-spec §3.

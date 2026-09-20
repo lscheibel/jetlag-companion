@@ -3,6 +3,15 @@
 	"compilerOptions": {
 		"composite": true,
 		"outDir": "dist",
+		/**
+		 * `check-types` is `tsc -b`, and `composite` obliges it to emit. Without
+		 * this it writes a `.js` for every file in `src/` — including every
+		 * `*.test.ts` — into `dist/`, where vitest 4 will find and run them
+		 * against whenever that check was last taken. Nothing consumes this
+		 * project's `tsc` output: the build is `tsdown`, and `start` runs the
+		 * `dist/index.mjs` it produces.
+		 */
+		"emitDeclarationOnly": true,
 		"paths": {
 			"@/*": ["./src/*"]
 		},
