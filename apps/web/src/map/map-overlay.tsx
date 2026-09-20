@@ -660,7 +660,7 @@ function ConstraintRow({
 				 */}
 				<button
 					aria-expanded={open}
-					className="flex min-w-0 flex-1 items-center gap-2.5 pr-1 pl-2.5 text-left"
+					className="flex min-w-0 flex-1 items-center gap-2.5 pr-1 pl-2 text-left"
 					data-testid={`constraint-open-${row.id}`}
 					onClick={onOpen}
 					type="button"

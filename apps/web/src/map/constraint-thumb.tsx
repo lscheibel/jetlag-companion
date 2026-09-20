@@ -132,7 +132,7 @@ export function ConstraintThumb({
 		<svg
 			aria-label={`${constraintKindLabel(geometry)}, ${cut ? "cut" : "kept"}`}
 			className={cn(
-				"size-[26px] shrink-0 rounded-[7px] border border-hairline",
+				"size-8 shrink-0 rounded-md border border-hairline",
 				className,
 			)}
 			role="img"
