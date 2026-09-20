@@ -103,9 +103,35 @@ export function Sheet({
 			 */}
 			<InSheet.Provider value={true}>
 				<Drawer.Portal>
+					{/*
+					 * The scrim does not take gestures, and stops taking them at all
+					 * the moment the sheet starts leaving.
+					 *
+					 * It covers the whole viewport, and Radix keeps it mounted for the
+					 * full half-second of the exit animation. Under it is the map,
+					 * which only suppresses the browser's own pinch-zoom because
+					 * MapLibre's canvas carries `touch-action: none` and cancels
+					 * ctrl+wheel — neither of which applies to a gesture that lands on
+					 * the scrim instead. Radix mounts its scroll lock with
+					 * `allowPinchZoom`, so nothing else stops it: the first pinch after
+					 * closing a sheet zoomed the page rather than the map.
+					 *
+					 * `touch-none` settles the open sheet, where a pinch over the scrim
+					 * should do nothing rather than resize the app. The closed state
+					 * hands the map its gestures back on the frame the sheet starts
+					 * leaving, which a class cannot do — Radix writes `pointer-events`
+					 * on this element inline, and only `style` outranks that.
+					 *
+					 * The whole object, rather than one key set to `undefined`: Radix
+					 * builds its own style as `{ pointerEvents: "auto", ...ours }`, and
+					 * a spread key that is present and undefined overwrites all the
+					 * same. An open sheet then inherited the `pointer-events: none`
+					 * Radix puts on the body and could not be touched at all.
+					 */}
 					<Drawer.Overlay
-						className="fixed inset-0 z-50 bg-scrim"
+						className="fixed inset-0 z-50 touch-none bg-scrim"
 						data-testid={`${testId}-scrim`}
+						style={open ? undefined : { pointerEvents: "none" }}
 					/>
 					{/*
 					 * `aria-describedby={undefined}`: the dialog has a name and no one
@@ -122,6 +148,10 @@ export function Sheet({
 							className,
 						)}
 						data-testid={testId}
+						/* The panel needs the same, or it simply becomes the target the
+						   scrim stopped being: it is still descending across the map for
+						   the rest of the animation. */
+						style={open ? undefined : { pointerEvents: "none" }}
 					>
 						<div
 							aria-hidden
