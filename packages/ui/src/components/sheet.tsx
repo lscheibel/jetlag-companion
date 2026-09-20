@@ -89,6 +89,19 @@ export function Sheet({
 	const nested = useContext(InSheet);
 	const Root = nested ? Drawer.NestedRoot : Drawer.Root;
 
+	/**
+	 * When this sheet last opened, so a dismissal can be told apart from the
+	 * gesture that opened it. Written in render rather than an effect because
+	 * the answer has to be older than the first outside pointer Radix reports,
+	 * and an effect runs a commit too late.
+	 */
+	const openedAt = useRef(0);
+	const wasOpen = useRef(false);
+	if (open !== wasOpen.current) {
+		if (open) openedAt.current = performance.now();
+		wasOpen.current = open;
+	}
+
 	return (
 		<Root
 			onOpenChange={(next) => {
@@ -141,6 +154,30 @@ export function Sheet({
 					 */}
 					<Drawer.Content
 						aria-describedby={undefined}
+						/*
+						 * One tap cannot both open this sheet and dismiss it.
+						 *
+						 * A sheet dismissed on the map hands its gestures back while it
+						 * is still leaving, so the next tap reaches the map underneath
+						 * and can select something — which reopens this same drawer with
+						 * new content. The outgoing sheet is still mounted for that half
+						 * second, and Radix still has it listening on the document: it
+						 * reads that tap as a pointer landing outside itself and turns it
+						 * into a dismiss. The dismiss is not delivered inline, it is
+						 * deferred to a task off the click, by which time the tap has
+						 * already opened the sheet — so the card appeared and then shut
+						 * again about thirty milliseconds later, every time.
+						 *
+						 * The rule is about causation, not timing: a pointer that went
+						 * down before this sheet was open cannot be a decision to close
+						 * it. There is nothing to tune — a real dismissal is a later
+						 * pointer, and compares the other way.
+						 */
+						onPointerDownOutside={(event) => {
+							if (event.detail.originalEvent.timeStamp < openedAt.current) {
+								event.preventDefault();
+							}
+						}}
 						className={cn(
 							"fixed inset-x-0 bottom-0 z-50 flex max-h-[86dvh] flex-col gap-3 outline-none",
 							"rounded-t-sheet border-hairline border-t bg-surface",

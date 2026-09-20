@@ -332,6 +332,35 @@ button:disabled .zl-sheen::after {
 }
 
 /**
+ * A sheet on its way out stays out.
+ *
+ * Vaul's exit keyframes name only a `to` state and fill neither end, so the
+ * frame the animation completes is the frame the panel snaps back to
+ * `transform: none` — fully open — and the scrim back to full strength. Radix
+ * only unmounts the pair *on* that same `animationend`, so the revert is on
+ * screen for the one to three frames it takes React to commit the removal.
+ *
+ * Alone that is invisible: there is nothing behind a dismissed sheet to compare
+ * it against. It is a flash of the old sheet the moment you dismiss one and
+ * open another, which is half a second after the finger has moved on and reads
+ * as the new sheet flickering rather than as the old one coming back.
+ *
+ * `forwards`, and only while closed. A forwards-filling transform makes the
+ * element a containing block for `position: fixed` and a stacking context of
+ * its own — see `zl-enter` above, which is why an entrance fills `backwards`.
+ * Here that lasts only the frames before the panel is removed, and only on a
+ * panel already off the bottom of the screen. The open state is untouched.
+ *
+ * Reduced motion needs this more, not less: the guard below leaves the exit a
+ * duration of 0.001ms while the unmount still costs its frames, so without a
+ * fill every dismissal flashes.
+ */
+[data-vaul-drawer][data-state="closed"],
+[data-vaul-overlay][data-state="closed"] {
+	animation-fill-mode: forwards;
+}
+
+/**
  * One guard, at the bottom of the cascade, covering CSS animation everywhere.
  * Motion's own components read the same preference through useReducedMotion,
  * so the two paths agree.
