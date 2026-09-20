@@ -67,16 +67,17 @@ import { MapHud } from "../map/map-rail";
 import { MapToolSheet } from "../map/map-tool-sheet";
 import { MeasureLayer } from "../map/measure-layer";
 import { NorthReset } from "../map/north-reset";
-import {
-	OwnPosition,
-	OwnPositionReadout,
-	OwnPositionSheet,
-} from "../map/own-position";
+import { OwnPosition, OwnPositionReadout } from "../map/own-position";
 import { PinDraftMarker, PinLayer } from "../map/pin-layer";
+import { PlayerCard } from "../map/player-card";
 import { PlayerMarker } from "../map/player-marker";
-import { PlayerSheet } from "../map/player-sheet";
 import { PlayerTrailsLayer } from "../map/player-trails-layer";
-import { buildMapPlayers, NO_TEAM_COLOR, visibleMarkers } from "../map/players";
+import {
+	buildMapPlayers,
+	NO_TEAM_COLOR,
+	visibleMarkers,
+	withLocalFix,
+} from "../map/players";
 import {
 	boardStopModes,
 	closestPoiSites,
@@ -256,7 +257,6 @@ function MapScreen() {
 	const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
 	const [poiPickerOpen, setPoiPickerOpen] = useState(false);
 	const [poiLayers, setPoiLayers] = useState(DEFAULT_POI_LAYERS);
-	const [ownSheetOpen, setOwnSheetOpen] = useState(false);
 	const [tool, setTool] = useState<MapTool>({ kind: "none" });
 	const [draftPoint, setDraftPoint] = useState<LngLat | null>(null);
 	const [pinLook, setPinLook] = useState<{
@@ -373,7 +373,13 @@ function MapScreen() {
 				: null
 			: player.ageMs,
 	}));
-	const selected = others.find((player) => player.playerId === selectedId);
+	/**
+	 * One card for everybody, yourself included — so the lookup is over the
+	 * whole shown set rather than over the others, and your own row arrives
+	 * carrying the local fix rather than the round-tripped one.
+	 */
+	const picked = shown.find((player) => player.playerId === selectedId) ?? null;
+	const selected = picked?.isSelf ? withLocalFix(picked, ownFix, now) : picked;
 	const searchableStops = useMemo<readonly SearchableStop[]>(
 		() =>
 			mapStops.map((stop) => ({
@@ -682,9 +688,9 @@ function MapScreen() {
 		if (next.kind !== "none") {
 			setSelectedStopId(null);
 			setSelectedPoiId(null);
+			setSelectedId(null);
 			setPoiPickerOpen(false);
 			setSeekerOverlay("none");
-			setOwnSheetOpen(false);
 		}
 		if (next.kind === "drawingSplitConstraint") setCut(false);
 		if (next.kind === "pickingClosestPoiConstraint" && next.filterKind) {
@@ -745,12 +751,28 @@ function MapScreen() {
 		});
 	};
 
+	/**
+	 * A ruler starting where somebody is, from the card. Deck 13 A.
+	 *
+	 * "From here" is literal: the path's first vertex is that position, and the
+	 * player lays the rest of it — including the measure card's own "to me"
+	 * vertex, which is the common case on a seeker's card.
+	 *
+	 * The vertex is the position **as it stood when the button was pressed**,
+	 * and the path does not follow the marker afterwards. A measurement that
+	 * tracked a moving marker would be a live pursuit readout, which is a much
+	 * larger thing than a card's second button and is not what this one claims
+	 * to be.
+	 */
+	const measureFromPlayer = (point: LngLat) => {
+		changeTool({ kind: "measure", measure: { kind: "path", points: [point] } });
+	};
+
 	const selectPin = (pinId: string) => {
 		const pin = pins.find((row) => row.id === pinId);
 		setSelectedStopId(null);
 		setSelectedPoiId(null);
 		setSelectedId(null);
-		setOwnSheetOpen(false);
 		setDraftPoint(pin ? [pin.lng, pin.lat] : null);
 		setTool({ kind: "editingPin", pinId });
 	};
@@ -776,10 +798,9 @@ function MapScreen() {
 							)
 						: null;
 				if (ownHit) {
-					setOwnSheetOpen(true);
+					setSelectedId(session.playerId);
 					setSelectedStopId(null);
 					setSelectedPoiId(null);
-					setSelectedId(null);
 					return;
 				}
 				const pinHit = nearestAtPx(
@@ -837,7 +858,6 @@ function MapScreen() {
 			}
 			setSelectedStopId(hitStop?.stopId ?? null);
 			setSelectedPoiId(hitPoi?.id ?? null);
-			setOwnSheetOpen(false);
 			if (hitStop || hitPoi) setSelectedId(null);
 			return;
 		}
@@ -1001,7 +1021,6 @@ function MapScreen() {
 		setSelectedStopId(result.stop.stopId);
 		setSelectedPoiId(null);
 		setSelectedId(null);
-		setOwnSheetOpen(false);
 		setTool({ kind: "none" });
 	};
 
@@ -1495,10 +1514,9 @@ function MapScreen() {
 						headingDeg={headingDeg}
 						onSelect={() => {
 							if (tool.kind !== "none") return;
-							setOwnSheetOpen(true);
+							setSelectedId(session.playerId);
 							setSelectedStopId(null);
 							setSelectedPoiId(null);
-							setSelectedId(null);
 						}}
 					/>
 					{others.map((player) => (
@@ -1509,7 +1527,6 @@ function MapScreen() {
 									setSelectedId(playerId);
 									setSelectedStopId(null);
 									setSelectedPoiId(null);
-									setOwnSheetOpen(false);
 								}
 							}}
 							player={player}
@@ -1845,14 +1862,18 @@ function MapScreen() {
 				open={selectedPoi !== null}
 				poi={selectedPoi}
 			/>
-			<OwnPositionSheet
-				fix={ownFix}
-				onClose={() => setOwnSheetOpen(false)}
-				open={ownSheetOpen}
+			<PlayerCard
+				fromYou={fromYou}
+				headingDeg={headingDeg}
+				onClose={() => setSelectedId(null)}
+				onMeasure={measureFromPlayer}
+				onPositionSource={() => {
+					setSelectedId(null);
+					setPositionSheetOpen(true);
+				}}
+				open={selected !== null}
+				player={selected}
 			/>
-			{selected && (
-				<PlayerSheet onClose={() => setSelectedId(null)} player={selected} />
-			)}
 		</Screen>
 	);
 

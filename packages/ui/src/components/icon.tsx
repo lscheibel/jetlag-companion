@@ -1,5 +1,11 @@
 import type { IconWeight, Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
+	BatteryChargingIcon,
+	BatteryEmptyIcon,
+	BatteryFullIcon,
+	BatteryHighIcon,
+	BatteryLowIcon,
+	BatteryMediumIcon,
 	BroadcastIcon,
 	BusIcon,
 	CameraIcon,
@@ -81,6 +87,17 @@ import { cn } from "../lib/utils";
  */
 
 const ICONS = {
+	/*
+	 * A battery is drawn at the level it is reporting, never generically: the
+	 * glyph sits next to the percentage, and a half-full cell beside "85%" is a
+	 * picture arguing with its own caption.
+	 */
+	"battery-charging": BatteryChargingIcon,
+	"battery-empty": BatteryEmptyIcon,
+	"battery-full": BatteryFullIcon,
+	"battery-high": BatteryHighIcon,
+	"battery-low": BatteryLowIcon,
+	"battery-medium": BatteryMediumIcon,
 	broadcast: BroadcastIcon,
 	bus: BusIcon,
 	camera: CameraIcon,

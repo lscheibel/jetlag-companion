@@ -1,0 +1,1078 @@
+<title>Zero Lag Map Presence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Deck 12 · Players and teams on the map ═════════════════════════
+   Same page chrome as decks 07–11: neutral paper, the app's own role
+   tokens on every stage, three theme states.                           */
+
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+
+  /* app role tokens — verbatim from packages/ui/src/styles/tokens.css */
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c;
+  --sheet-fill:#f0f3f7;
+
+  /* motion, from styles/motion.css */
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-sheet:420ms; --dur-breathe:1900ms;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6;
+    --sheet-fill:#141b26;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6;
+  --sheet-fill:#141b26;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table,p,h1,h2,h3,h4,h5,h6{margin:0}
+ul,ol{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,h5{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.022em;line-height:1.05;text-wrap:balance}
+.mono,.eyebrow,.spec dt,.tag,.lbl{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.i{display:inline-block;flex:0 0 auto;width:20px;height:20px;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i.xs{width:13px;height:13px}.i.sm{width:16px;height:16px}.i.lg{width:24px;height:24px}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:1340px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 120px}
+.eyebrow{font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── masthead ────────────────────────────────────────────────────────── */
+.masthead{padding:56px 0 34px;border-bottom:3px solid var(--text)}
+.mast-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:24px}
+.mast-top .u{background:var(--blue);color:#fff;width:23px;height:23px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Azeret Mono",monospace}
+.mast-top b{color:var(--text);font-weight:700}
+.masthead h1{font-size:clamp(34px,6.2vw,74px);max-width:17ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:22px;max-width:66ch;font-size:18.5px;color:var(--text-2)}
+.mast-foot{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-top:32px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:500;letter-spacing:.07em;border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;color:var(--text-2);background:var(--paper-2);white-space:nowrap;font-family:"Azeret Mono",monospace}
+.tag.ship{border-color:var(--green);color:var(--green)}
+.tag.new{border-color:var(--yellow);color:var(--text);background:color-mix(in oklab,var(--yellow) 22%,var(--paper-2))}
+.tag.ask{border-color:var(--red);color:var(--red)}
+.tag.now{border-color:var(--rule);color:var(--text-3)}
+
+.stagectl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stagectl .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);font-family:"Azeret Mono",monospace}
+.segbar{display:flex;flex:0 0 auto;gap:2px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;position:relative}
+.segbar button{position:relative;white-space:nowrap;flex:0 0 auto;z-index:1;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;color:var(--text-2);transition:color var(--dur-tap)}
+.segbar button[aria-pressed="true"]{color:var(--yellow-ink)}
+.segbar .thumb{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--yellow);transition:transform var(--dur-move) var(--ease-pop),width var(--dur-move) var(--ease-pop);z-index:0}
+
+/* ── bands & plates ──────────────────────────────────────────────────── */
+.band{padding:64px 0 12px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{max-width:76ch;margin-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(25px,3.4vw,40px)}
+.band-head p{color:var(--text-2);font-size:16.5px}
+.band-head p+p{margin-top:2px}
+
+.plates{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr))}
+.plate{background:var(--paper-2);border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--lift)}
+.plate-head{padding:18px 20px 14px;border-bottom:1px solid var(--rule-2);display:flex;flex-direction:column;gap:9px}
+.plate-title{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.plate-title h3{font-size:21px}
+.plate-title .as{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:9px;background:var(--text);color:var(--paper);font-family:"Azeret Mono",monospace;font-size:12.5px;font-weight:700}
+.plate-head p{font-size:14px;color:var(--text-2);line-height:1.5;max-width:58ch}
+.plate-ctl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--rule-2)}
+.plate-ctl .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;flex-wrap:wrap}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 11px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+.stand{flex:1 1 auto;display:grid;place-items:center;padding:26px 20px 30px;background:
+  radial-gradient(120% 80% at 50% 0%,color-mix(in oklab,var(--paper-3) 70%,transparent),transparent 70%)}
+.notes{padding:16px 20px 20px;border-top:1px solid var(--rule-2);background:var(--paper-2)}
+.spec{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13.5px}
+.spec dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding-top:3px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.spec dd{color:var(--text-2);line-height:1.5}
+.spec code,code{font-family:"Azeret Mono",monospace;font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:5px;color:var(--text)}
+.why{margin-top:13px;padding-left:12px;border-left:3px solid var(--yellow);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.cost{margin-top:9px;padding-left:12px;border-left:3px solid var(--red);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.why b,.cost b{color:var(--text);font-weight:600}
+
+/* ── the fault list beside the current screen ────────────────────────── */
+.split{display:grid;gap:30px;grid-template-columns:minmax(0,360px) minmax(0,1fr);align-items:start}
+@media (max-width:880px){.split{grid-template-columns:1fr}}
+.faults{display:flex;flex-direction:column;gap:2px}
+.fault{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;padding:14px 0;border-top:1px solid var(--rule-2)}
+.fault:first-child{border-top:0}
+.fault .n{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--red);padding-top:4px}
+.fault h4{font-size:16.5px;letter-spacing:-.01em}
+.fault p{grid-column:2;color:var(--text-2);font-size:14.5px;line-height:1.5}
+
+/* ── shared-decision cards ───────────────────────────────────────────── */
+.cards-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:18px 19px;display:flex;flex-direction:column;gap:8px}
+.card h4{font-size:17px}
+.card p{font-size:14px;color:var(--text-2);line-height:1.5}
+.card .tag{align-self:flex-start;margin-bottom:2px}
+
+/* ── the comparison table ────────────────────────────────────────────── */
+.tblwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:16px;background:var(--paper-2)}
+table.cmp{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+table.cmp thead th{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);background:var(--paper-3)}
+table.cmp tbody th{font-weight:600;color:var(--text);white-space:nowrap}
+table.cmp td{color:var(--text-2)}
+table.cmp tr:last-child th,table.cmp tr:last-child td{border-bottom:0}
+</style>
+
+<style>
+/* ═══ the phone ══════════════════════════════════════════════════════════ */
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38,0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.screen{position:absolute;inset:0;overflow:hidden}
+.st{display:none}
+.st.on{display:block;position:absolute;inset:0}
+.statusbar{position:absolute;top:0;left:0;right:0;height:42px;z-index:6;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink);letter-spacing:.02em}
+.mn{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums}
+.dim{color:var(--ink-dim)}.faint{color:var(--ink-faint)}
+.grow{flex:1 1 auto;min-width:0}
+.lbl{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* ── the base map ─────────────────────────────────────────────────────── */
+.map{position:absolute;inset:0;background:var(--map-land);overflow:hidden}
+.map *{position:absolute;display:block}
+.map .water{left:-20%;top:4%;width:62%;height:16%;background:var(--map-water);border-radius:40% 60% 50% 45%;transform:rotate(-8deg)}
+.map .park{right:-10%;top:26%;width:46%;height:15%;background:var(--map-park);border-radius:46% 54% 40% 60%}
+.map .blk{background:var(--map-block);border-radius:4px}
+.map .road{background:var(--surface);opacity:.75}
+.map .rail{height:3px;background:var(--transit-u);opacity:.5}
+.map .stn{width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--map-station);opacity:.5;box-shadow:0 0 0 2px var(--map-land)}
+.map .zone{border:2px dashed color-mix(in oklab,var(--ink) 34%,transparent);border-radius:50%;background:color-mix(in oklab,var(--action) 7%,transparent)}
+
+/* ── the marker layer ─────────────────────────────────────────────────── */
+.plot{position:absolute;inset:0;z-index:3}
+.plot>*{position:absolute;transform:translate(-50%,-50%)}
+
+/* your own phone — unchanged in all five, the only accuracy ring */
+.me{width:16px;height:16px;border-radius:50%;background:var(--transit-u);border:2.5px solid var(--surface);
+  box-shadow:0 0 0 7px color-mix(in oklab,var(--transit-u) 15%,transparent),0 1px 4px rgba(0,0,0,.4);z-index:4}
+
+/* ── A/C/E · the pin ──────────────────────────────────────────────────── */
+.pin{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:14px;
+  background:var(--tc);border:2.5px solid var(--surface);box-shadow:0 2px 7px rgba(2,6,14,.4);line-height:1}
+.pin .ini{position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--hairline);color:var(--ink);
+  font-family:"Azeret Mono",monospace;font-size:8.5px;font-weight:700;display:grid;place-items:center}
+.pin.sm{width:24px;height:24px;font-size:11px}
+.pin.recent{opacity:.9}
+.pin.ageing{border-style:dashed;filter:saturate(.45);opacity:.85}
+.pin.cold{background:transparent;border:2.5px dashed var(--tc);box-shadow:none;filter:grayscale(.5);opacity:.8}
+.pin.cold>span:first-child{opacity:.45}
+.pin.off::after{content:"";position:absolute;left:50%;top:50%;width:34px;height:2px;margin:-1px 0 0 -17px;
+  background:var(--offline);border-radius:2px;transform:rotate(-38deg);box-shadow:0 0 0 1.5px var(--surface)}
+.pin .ping{position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--tc);opacity:0;
+  animation:ping 2600ms var(--ease-out-soft) infinite}
+@keyframes ping{0%{transform:scale(.8);opacity:.7}100%{transform:scale(1.7);opacity:0}}
+
+/* labels that sit under a pin */
+.cap{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;
+  padding:1.5px 7px;border-radius:7px;background:var(--surface);border:1px solid var(--hairline);
+  font-size:10.5px;font-weight:600;color:var(--ink);box-shadow:0 1px 4px rgba(2,6,14,.25)}
+.cap.mnage{font-family:"Azeret Mono",monospace;font-size:9.5px;font-weight:500;color:var(--stale);
+  border-color:color-mix(in oklab,var(--stale) 45%,var(--hairline))}
+.cap.gone{color:var(--offline);border-color:color-mix(in oklab,var(--offline) 45%,var(--hairline))}
+
+/* ── B · the team badge ───────────────────────────────────────────────── */
+.tbadge{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);border:3px solid var(--tc);box-shadow:0 2px 9px rgba(2,6,14,.4)}
+.tbadge .em{font-size:17px;line-height:1}
+.tbadge .ct{position:absolute;right:-6px;top:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;
+  background:var(--tc);color:#fff;font-family:"Azeret Mono",monospace;font-size:10px;font-weight:700;
+  display:grid;place-items:center;border:2px solid var(--surface)}
+.tbadge .rim{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--tc);
+  border:1.5px solid var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.tbadge .rim.ageing{background:var(--stale)}
+.tbadge .rim.off{background:transparent;border:1.5px dashed var(--offline)}
+.spread{border-radius:50%;background:color-mix(in oklab,var(--tc) 14%,transparent);
+  border:1.5px solid color-mix(in oklab,var(--tc) 40%,transparent)}
+
+/* ── D · dots on the map ──────────────────────────────────────────────── */
+.dotmk{width:19px;height:19px;border-radius:50%;background:var(--tc);border:2px solid var(--surface);
+  display:grid;place-items:center;font-size:9.5px;line-height:1;box-shadow:0 1px 5px rgba(2,6,14,.35)}
+.dotmk.ageing{filter:saturate(.4);opacity:.8}
+.dotmk.cold{background:transparent;border-style:dashed;border-color:var(--tc);filter:grayscale(.5)}
+.dotmk.lift{box-shadow:0 0 0 4px color-mix(in oklab,var(--action) 55%,transparent),0 1px 5px rgba(2,6,14,.35)}
+
+/* ── E · edge-clamped chevrons ────────────────────────────────────────── */
+.edge{display:flex;align-items:center;gap:5px;padding:3px 8px 3px 4px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--hairline);box-shadow:0 2px 8px rgba(2,6,14,.3);
+  font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-dim);white-space:nowrap}
+.edge .hd{width:19px;height:19px;flex:0 0 auto;border-radius:50%;background:var(--tc);display:grid;place-items:center;font-size:10px;line-height:1}
+.edge .arw{color:var(--tc)}
+.edge.ageing .hd{filter:saturate(.4)}
+.edge.ageing{color:var(--stale)}
+
+/* ── the bottom furniture every stage carries ─────────────────────────── */
+.railctl{position:absolute;right:12px;bottom:96px;z-index:5;display:flex;flex-direction:column;gap:8px}
+.railctl button{width:36px;height:36px;border-radius:50%;background:var(--surface);border:1.5px solid var(--hairline-strong);
+  color:var(--ink-dim);display:grid;place-items:center;box-shadow:0 2px 6px rgba(2,6,14,.24)}
+.railctl button.on{border-color:var(--action);color:var(--ink);background:color-mix(in oklab,var(--action) 24%,var(--surface))}
+.nearbar{position:absolute;left:10px;right:10px;bottom:12px;z-index:5;display:flex;align-items:center;gap:8px;
+  min-height:46px;padding:6px 10px;border-radius:16px;background:color-mix(in oklab,var(--surface) 88%,transparent);
+  border:1px solid var(--hairline);box-shadow:0 6px 18px -8px rgba(2,6,14,.5);backdrop-filter:blur(8px);font-size:12px}
+.tchip{width:24px;height:24px;flex:0 0 auto;border-radius:8px;background:var(--tc);display:grid;place-items:center;font-size:12px;line-height:1}
+.nearbar b{font-weight:700}
+.nearbar .mn{font-size:11px;color:var(--ink-dim)}
+.askpill{margin-left:auto;flex:0 0 auto;padding:6px 12px;border-radius:999px;background:var(--action);color:var(--action-ink);
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:12.5px}
+
+/* ── D · the strip that replaces every label ──────────────────────────── */
+.strip{position:absolute;left:0;right:0;bottom:12px;z-index:5;display:flex;gap:8px;padding:0 10px;overflow:hidden}
+.pcard{flex:0 0 auto;width:132px;padding:8px 10px;border-radius:15px;background:color-mix(in oklab,var(--surface) 92%,transparent);
+  border:1px solid var(--hairline);box-shadow:0 6px 18px -8px rgba(2,6,14,.5);backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;gap:4px}
+.pcard .t{display:flex;align-items:center;gap:6px}
+.pcard .nm{font-size:12.5px;font-weight:700;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .d{font-family:"Azeret Mono",monospace;font-size:13px;font-weight:500;color:var(--ink)}
+.pcard .f{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.pcard .bar{height:3px;border-radius:2px;background:var(--hairline);overflow:hidden}
+.pcard .bar i{display:block;height:100%;border-radius:2px;background:var(--live)}
+.pcard.ageing .bar i{background:var(--stale)}
+.pcard.gone{opacity:.72}
+.pcard.gone .bar i{background:var(--offline)}
+.pcard.sel{border-color:var(--action);box-shadow:0 0 0 2px color-mix(in oklab,var(--action) 55%,transparent),0 6px 18px -8px rgba(2,6,14,.5)}
+.pcard .tchip{width:18px;height:18px;border-radius:6px;font-size:9.5px}
+
+/* ── the sheet (today's, and the proposed one) ────────────────────────── */
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--sheet-fill);
+  border-radius:26px 26px 0 0;border-top:1px solid var(--hairline);
+  padding:8px 14px 16px;display:flex;flex-direction:column;gap:9px;max-height:72%}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--hairline-strong);margin:0 auto 3px;flex:0 0 auto}
+.sheet-head{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.sheet-head h5{font-size:17.5px;letter-spacing:-.02em;flex:1 1 auto}
+.iconbtn{display:grid;place-items:center;width:32px;height:32px;flex:0 0 auto;border-radius:11px;
+  background:var(--surface);border:1px solid var(--hairline);color:var(--ink-dim)}
+.dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;font-size:12px}
+.dl dt{color:var(--ink);font-weight:600}
+.dl dd{color:var(--ink-dim);font-family:"Azeret Mono",monospace;font-size:11px}
+.said{font-size:13px;line-height:1.5;color:var(--ink-dim)}
+.said b{color:var(--ink);font-weight:600}
+.btnrow{display:flex;gap:8px;flex:0 0 auto}
+.btn{display:grid;place-items:center;flex:1 1 0;min-height:44px;border-radius:14px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:14px;
+  background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press)}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
+
+/* ── today's marker, drawn as the code draws it ───────────────────────── */
+.oldmk{display:flex;flex-direction:column;align-items:center;gap:2px}
+.oldmk .d{width:12px;height:12px;border-radius:50%;background:var(--tc);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.oldmk .n{background:rgba(255,255,255,.9);color:#0b111a;padding:1px 6px;border-radius:4px;
+  font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.22)}
+.oldmk .a{background:rgba(255,255,255,.8);color:var(--ink-dim);padding:0 4px;border-radius:4px;
+  font-size:8.5px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.mark{position:absolute;z-index:8;width:19px;height:19px;border-radius:50%;background:var(--danger);color:#fff;
+  display:grid;place-items:center;font-family:"Azeret Mono",monospace;font-size:10px;font-weight:700;
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--danger) 26%,transparent);transform:none}
+
+/* ── the roster of this mockup, printed once ──────────────────────────── */
+.cast{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.castchip{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 6px;border-radius:999px;
+  background:var(--paper-2);border:1px solid var(--rule);font-size:13px}
+.castchip .tchip{width:22px;height:22px;border-radius:7px;font-size:11px}
+.castchip small{font-family:"Azeret Mono",monospace;font-size:10px;color:var(--text-3);letter-spacing:.04em}
+
+@media (prefers-reduced-motion:reduce){
+  .pin .ping{animation:none;opacity:0}
+}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="ic-caret-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="ic-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+  <symbol id="ic-ruler" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="2" transform="rotate(-20 12 12)"/><path d="M7.5 9.2v2M11 8v2.6M14.5 6.9v2"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3.5 13.5L12 18l8.5-4.5"/></symbol>
+  <symbol id="ic-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 9 4.5 9 6 0 .7-.9 2-2.3 3.2"/><path d="M6.4 8.3C4.4 9.8 3 11.4 3 12c0 1.5 4 6 9 6 1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 10.2a3 3 0 0 0 4 4"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
+  <symbol id="ic-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-arrow-ne" viewBox="0 0 24 24"><path d="M7 17L17 7"/><path d="M8.5 7H17v8.5"/></symbol>
+</svg>
+
+<div class="shell">
+
+<header class="masthead">
+  <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 12</span><span>·</span><span>Players and teams on the map</span><span>·</span><span>20 Sep 2026</span>
+  </div>
+  <h1>A marker should say <em>who</em>, not file a report</h1>
+  <p class="deck">Today every player on the map carries three stacked white boxes — a dot, a name chip, and a line of telemetry that reads <code>3 min ago · ±50 m</code>. It is the debug harness wearing a map. Five proposals, each drawing a different line between <b>what a marker is</b> and <b>what you tap to find out</b>: a <b>pin</b>, a <b>team badge</b>, a map that <b>only speaks when something is wrong</b>, <b>dots with the words in a rail</b>, and <b>edges that point at whoever left the screen</b>. Every one keeps m2-spec §7's visibility table untouched — this deck changes rendering, never who may see whom.</p>
+  <div class="mast-foot">
+    <div class="legend">
+      <span class="tag now">Today</span>
+      <span class="tag new">Proposed</span>
+      <span class="tag ask">Needs your call</span>
+      <span class="tag ship">Settled elsewhere</span>
+    </div>
+    <div class="stagectl">
+      <span class="lab">Theme</span>
+      <div class="segbar" id="themebar" role="group" aria-label="Theme">
+        <span class="thumb" aria-hidden="true"></span>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ the cast ════════════════════════════════════════════════════════ -->
+<section class="band" id="cast" style="padding-top:34px">
+  <div class="band-head" style="margin-bottom:10px">
+    <span class="kicker">The stage</span>
+    <h2>One round, six people, drawn from a hider's phone</h2>
+    <p>A hider sees everybody, so it is the crowded case and the honest one to design against. A seeker's map is the same treatment applied to two or three teammates and nothing else — m2-spec §7's table is untouched by every proposal here. Each plate has the same three situations behind its state switch: <b>all reporting</b>, <b>one gone quiet and one offline</b>, and <b>five phones in one station concourse</b> — the crowding §12 knowingly deferred.</p>
+    <div class="cast">
+      <span class="castchip"><span class="tchip" style="--tc:#0072B2">🫵</span>You<small>hider</small></span>
+      <span class="castchip"><span class="tchip" style="--tc:#D55E00">🦊</span>Mira<small>Fuchsbau · hider</small></span>
+      <span class="castchip"><span class="tchip" style="--tc:#009E73">🐻</span>Ben · Lea<small>Bärenteam · seekers</small></span>
+      <span class="castchip"><span class="tchip" style="--tc:#CC79A7">🦉</span>Jonas<small>Eulen · seeker</small></span>
+      <span class="castchip"><span class="tchip" style="--tc:#56B4E9">🐙</span>Ruth · Karl<small>Krake · seekers</small></span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ today ═══════════════════════════════════════════════════════════ -->
+<section class="band" id="today">
+  <div class="band-head">
+    <span class="kicker">Today</span>
+    <h2>Three boxes per person, and a field dump under each</h2>
+    <p>Drawn from <code>apps/web/src/map/player-marker.tsx</code> and <code>player-sheet.tsx</code> as they stand. Nothing here is untrue — every value is one m2-spec asked for. What is wrong is that all of it is on the map at once, at all times, for everybody.</p>
+  </div>
+  <div class="split">
+    <div class="device" style="max-width:340px">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="st on">
+          <div class="map" data-city></div>
+          <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+          <div class="plot">
+            <span class="me" style="left:50%;top:56%"></span>
+            <span class="oldmk" style="left:40%;top:38%">
+              <span class="d" style="--tc:#D55E00"></span>
+              <span class="n">Mira 🦊</span><span class="a">±12 m</span>
+            </span>
+            <span class="oldmk" style="left:69%;top:26%">
+              <span class="d" style="--tc:#009E73"></span>
+              <span class="n">Ben 🐻</span><span class="a">1 min ago · ±34 m</span>
+            </span>
+            <span class="oldmk" style="left:27%;top:66%">
+              <span class="d" style="--tc:#009E73"></span>
+              <span class="n">Lea 🐻</span><span class="a">8 min ago · ±60 m · offline</span>
+            </span>
+            <span class="oldmk" style="left:72%;top:72%">
+              <span class="d" style="--tc:#CC79A7"></span>
+              <span class="n">Jonas 🦉</span><span class="a">last seen 14 min ago</span>
+            </span>
+            <span class="oldmk" style="left:44%;top:84%">
+              <span class="d" style="--tc:#56B4E9"></span>
+              <span class="n">Ruth 🐙</span><span class="a">3 min ago · ±28 m</span>
+            </span>
+          </div>
+          <span class="mark" style="left:57%;top:41%">1</span>
+          <span class="mark" style="left:86%;top:23%">2</span>
+          <span class="mark" style="left:11%;top:66%">3</span>
+          <span class="mark" style="left:88%;top:70%">4</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="faults">
+      <div class="fault">
+        <span class="n">1</span><h4>Three stacked boxes for one person</h4>
+        <p>A dot, a name chip and an age chip, in a <code>flex-col</code> with <code>min-h-11</code>. One player is 44 px of white paper on a map somebody is trying to read the streets of; five players is a pile of receipts. The marker occupies more of the screen than the block it is standing on.</p>
+      </div>
+      <div class="fault">
+        <span class="n">2</span><h4><code>±50 m</code> under every marker, forever</h4>
+        <p>Accuracy is printed at every age below <i>cold</i>, whatever it says. A fix good to twelve metres does not need six characters to say so — it is the default. The number only changes a decision when it is bad, and that is the one case the label does not distinguish.</p>
+      </div>
+      <div class="fault">
+        <span class="n">3</span><h4>Two truths joined by an interpunct, plus <code>· offline</code></h4>
+        <p><code>3 min ago · ±50 m</code> is a record printed with a separator, not a sentence — and connection state is appended to it as a third field with <code>{!player.online &amp;&amp; " · offline"}</code>. Being offline is not a footnote on a timestamp; it is a different thing from being stale, and here they are one string.</p>
+      </div>
+      <div class="fault">
+        <span class="n">4</span><h4>The chips are hardcoded white paper</h4>
+        <p><code>bg-white/90</code>, <code>border-white</code>, <code>bg-white/80</code> — the one part of the app that never got role tokens. In the dark theme the map goes to <code>#000</code> and the markers stay as five white labels, with <code>text-ink-dim</code> (a pale grey) printed on them. That line is close to unreadable at night, which is when half a round is played.</p>
+      </div>
+      <div class="fault">
+        <span class="n">5</span><h4>The team arrives as two half-signals</h4>
+        <p>A colour in the dot, an emoji trailing the name inside the chip, and the team's <i>name</i> nowhere at all. The house rule is that colour, emoji and name travel together as one object — <code>TeamBadge</code> exists and the map is the screen that promise was written for. On the marker it is currently taken apart.</p>
+      </div>
+      <div class="fault">
+        <span class="n">6</span><h4>And the sheet behind it is literally a definition list</h4>
+        <p>Tap a marker: <b>Role</b> / <b>Connection</b> / <b>Last seen</b> / <b>Position</b> / <b>Accuracy</b> / <b>Battery</b> — six column names in a <code>&lt;dl&gt;</code>. It reads as an inspector because it is one. "Connection: online" is a schema field with a label on it, not something a person standing on a platform wants to be told.</p>
+      </div>
+      <div class="fault">
+        <span class="n">·</span><h4>Underneath all six: the map answers a question nobody asked</h4>
+        <p>It reports accuracy, connection and staleness in full, and it never once says <b>how far away anybody is</b> — the single thing a player looks at this screen to find out. The detail is maximal and the answer is missing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ five proposals ══════════════════════════════════════════════════ -->
+<section class="band" id="proposals">
+  <div class="band-head">
+    <span class="kicker">Five ways out</span>
+    <h2>What is a marker allowed to say?</h2>
+    <p>The five differ in where the line falls between the map and a tap. <b>A</b> puts identity on the map and everything else behind one. <b>B</b> makes the team the marker, not the person. <b>C</b> keeps names but earns every other glyph, so a healthy map is silent. <b>D</b> strips the map to dots and moves every word into one rail. <b>E</b> leaves the middle of the map alone and fixes its edges.</p>
+    <p>All five keep the settled hider bar at the foot of the screen — nearest seeker team, its distance and its own freshness — and all five drop battery and accuracy off the marker entirely. Details in the <a href="#shared" style="color:var(--blue)">All five</a> band.</p>
+  </div>
+  <div class="plates">
+
+  <!-- ── A · the pin ───────────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">A</span><h3>The pin</h3><span class="tag new">Proposed</span></div>
+      <p>One object per player and nothing beside it: a team-coloured disc with the team's emoji in it and the player's initial on the corner. No text on the map at all. Age becomes the pin's own rim — solid, then dashed, then hollow — and every number moves into the sheet.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">Situation</span>
+      <div class="statebar" data-states="a">
+        <button type="button" data-state="fresh" aria-pressed="true">All reporting</button>
+        <button type="button" data-state="stale" aria-pressed="false">Quiet · offline</button>
+        <button type="button" data-state="crowd" aria-pressed="false">One concourse</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="a">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="fresh">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="pin" style="left:70%;top:25%;--tc:#009E73"><span>🐻</span><span class="ini">B</span></span>
+              <span class="pin" style="left:26%;top:64%;--tc:#009E73"><span>🐻</span><span class="ini">L</span></span>
+              <span class="pin" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="pin" style="left:46%;top:82%;--tc:#56B4E9"><span>🐙</span><span class="ini">R</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 1 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="stale">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:18</span><span class="mn">GPS · 66%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="pin recent" style="left:70%;top:25%;--tc:#009E73"><span>🐻</span><span class="ini">B</span></span>
+              <span class="pin cold off" style="left:26%;top:64%;--tc:#009E73"><span>🐻</span><span class="ini">L</span></span>
+              <span class="pin ageing" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="pin" style="left:46%;top:82%;--tc:#56B4E9"><span>🐙</span><span class="ini">R</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 4 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="crowd">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:31</span><span class="mn">GPS · 61%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:62%"></span>
+              <span class="pin" style="left:46%;top:36%;--tc:#009E73"><span>🐻</span><span class="ini">B</span></span>
+              <span class="pin" style="left:53%;top:34%;--tc:#009E73"><span>🐻</span><span class="ini">L</span></span>
+              <span class="pin" style="left:50%;top:40%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="pin" style="left:56%;top:39%;--tc:#56B4E9"><span>🐙</span><span class="ini">R</span></span>
+              <span class="pin" style="left:44%;top:41%;--tc:#56B4E9"><span>🐙</span><span class="ini">K</span></span>
+              <span class="pin" style="left:24%;top:70%;--tc:#D55E00"><span>🦊</span><span class="ini">M</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">180 m · now</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Marker</dt><dd>30 px disc, team colour, team emoji inside, player initial on a small corner disc. Own phone unchanged: blue, with the one accuracy ring.</dd>
+        <dt>Age</dt><dd>The rim, not a label. Solid → thin → <b>dashed and desaturated</b> at 2 min → <b>hollow</b> past 10 min, which reads as "was here" rather than "is here". Offline adds a struck line in the alert colour.</dd>
+        <dt>Detail</dt><dd>Tap. Name, team, distance and bearing, when it was seen — the rewritten sheet from the last band.</dd>
+        <dt>Crowding</dt><dd>Unsolved, as m2-spec §12 leaves it — but five pins pile better than five three-box stacks, because a pin is round and 30 px.</dd>
+      </dl>
+      <p class="why"><b>Why:</b> a marker's whole job is <i>who</i> and <i>where</i>, and both of those fit inside one shape. Everything the current label prints is a follow-up question, and follow-up questions belong behind a tap — which is already built.</p>
+      <p class="cost"><b>Cost:</b> two people on the same team are two identical pins distinguished by one letter, and identical initials collide. It also hides age behind a tap, and age is the fact a search is actually run on — C and D both refuse to do that.</p>
+    </div>
+  </article>
+
+  <!-- ── B · the team badge ────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">B</span><h3>The team is the marker</h3><span class="tag new">Proposed</span></div>
+      <p>People standing together are one fact. Members within about 200 m collapse into a single team badge — emoji, count, and one rim dot per member carrying that member's own freshness — over a faint disc showing how spread out they are. They split back into pins when they separate.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">Situation</span>
+      <div class="statebar" data-states="b">
+        <button type="button" data-state="fresh" aria-pressed="true">All reporting</button>
+        <button type="button" data-state="stale" aria-pressed="false">Quiet · offline</button>
+        <button type="button" data-state="crowd" aria-pressed="false">One concourse</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="b">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="fresh">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="spread" style="left:70%;top:26%;width:86px;height:86px;--tc:#009E73"></span>
+              <span class="tbadge" style="left:70%;top:26%;--tc:#009E73">
+                <span class="em">🐻</span><span class="ct">2</span>
+                <span class="rim" style="left:-3px;top:12px"></span><span class="rim" style="right:-3px;top:12px"></span>
+              </span>
+              <span class="pin" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="spread" style="left:44%;top:83%;width:56px;height:56px;--tc:#56B4E9"></span>
+              <span class="tbadge" style="left:44%;top:83%;--tc:#56B4E9">
+                <span class="em">🐙</span><span class="ct">2</span>
+                <span class="rim" style="left:-3px;top:12px"></span><span class="rim" style="right:-3px;top:12px"></span>
+              </span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">2 together</span></span><span class="mn">420 m</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="stale">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:18</span><span class="mn">GPS · 66%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="spread" style="left:70%;top:26%;width:86px;height:86px;--tc:#009E73"></span>
+              <span class="tbadge" style="left:70%;top:26%;--tc:#009E73">
+                <span class="em">🐻</span><span class="ct">2</span>
+                <span class="rim" style="left:-3px;top:12px"></span><span class="rim off" style="right:-3px;top:12px"></span>
+              </span>
+              <span class="pin ageing" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="spread" style="left:44%;top:83%;width:56px;height:56px;--tc:#56B4E9"></span>
+              <span class="tbadge" style="left:44%;top:83%;--tc:#56B4E9">
+                <span class="em">🐙</span><span class="ct">2</span>
+                <span class="rim" style="left:-3px;top:12px"></span><span class="rim ageing" style="right:-3px;top:12px"></span>
+              </span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">1 of 2 quiet</span></span><span class="mn">420 m</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="crowd">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:31</span><span class="mn">GPS · 61%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:62%"></span>
+              <span class="spread" style="left:50%;top:37%;width:74px;height:74px;--tc:#009E73"></span>
+              <span class="tbadge" style="left:42%;top:35%;--tc:#009E73"><span class="em">🐻</span><span class="ct">2</span><span class="rim" style="left:-3px;top:12px"></span><span class="rim" style="right:-3px;top:12px"></span></span>
+              <span class="tbadge" style="left:60%;top:36%;--tc:#56B4E9"><span class="em">🐙</span><span class="ct">2</span><span class="rim" style="left:-3px;top:12px"></span><span class="rim" style="right:-3px;top:12px"></span></span>
+              <span class="pin" style="left:51%;top:45%;--tc:#CC79A7"><span>🦉</span><span class="ini">J</span></span>
+              <span class="pin" style="left:24%;top:70%;--tc:#D55E00"><span>🦊</span><span class="ini">M</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Three teams</b> <span class="dim">at Ostkreuz</span></span><span class="mn">180 m</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Marker</dt><dd>46 px ring in the team colour, emoji in the middle, member count on the corner. One rim dot per member, each in its own freshness colour — so a badge cannot hide a member who went quiet.</dd>
+        <dt>Spread</dt><dd>A faint disc showing how far apart the members actually are. The badge never appears above the threshold, because a centroid is a place nobody is standing.</dd>
+        <dt>Detail</dt><dd>Tap opens a team sheet: members listed, each with their own distance and freshness, each tappable to fly to.</dd>
+        <dt>Crowding</dt><dd>Five markers at Ostkreuz becomes three. The only proposal that answers §12 rather than living with it.</dd>
+      </dl>
+      <p class="why"><b>Why:</b> this game is played by teams. Three seekers walking out of the same station are one thing happening, and drawing them as three things makes the reader do the grouping. It also makes the busiest moment — the start of a round — the moment the map gets simpler instead of worse.</p>
+      <p class="cost"><b>Cost:</b> a centroid is a lie unless the spread is drawn with it, and it is new state to get right: thresholds, hysteresis so a badge does not flicker apart and back at 199 m, and a teammate who stayed behind while the others moved on. More machinery than any other proposal.</p>
+    </div>
+  </article>
+
+  <!-- ── C · silence by default ────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">C</span><h3>Quiet until something is wrong</h3><span class="tag new">Proposed</span></div>
+      <p>Keeps names, but makes every other glyph conditional. A fact that is always true is not information: a fresh fix says nothing, a two-minute-old one says <code>2 min</code>, an offline one breaks its rim. The map is silent while everything works and speaks exactly where it does not.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">Situation</span>
+      <div class="statebar" data-states="c">
+        <button type="button" data-state="fresh" aria-pressed="true">All reporting</button>
+        <button type="button" data-state="stale" aria-pressed="false">Quiet · offline</button>
+        <button type="button" data-state="crowd" aria-pressed="false">One concourse</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="c">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="fresh">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="cap">Mira</span></span>
+              <span class="pin" style="left:70%;top:25%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin" style="left:26%;top:64%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span></span>
+              <span class="pin" style="left:46%;top:82%;--tc:#56B4E9"><span>🐙</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 1 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="stale">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:18</span><span class="mn">GPS · 66%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:40%;top:36%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="cap">Mira</span></span>
+              <span class="pin" style="left:70%;top:25%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin cold off" style="left:26%;top:64%;--tc:#009E73"><span>🐻</span><span class="cap gone">Lea · offline</span></span>
+              <span class="pin ageing" style="left:74%;top:70%;--tc:#CC79A7"><span>🦉</span><span class="cap mnage">14 min</span></span>
+              <span class="pin" style="left:46%;top:82%;--tc:#56B4E9"><span>🐙</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 4 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="crowd">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:31</span><span class="mn">GPS · 61%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:62%"></span>
+              <span class="pin" style="left:46%;top:36%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin" style="left:53%;top:34%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin" style="left:50%;top:41%;--tc:#CC79A7"><span>🦉</span></span>
+              <span class="pin" style="left:57%;top:40%;--tc:#56B4E9"><span>🐙</span></span>
+              <span class="pin" style="left:43%;top:42%;--tc:#56B4E9"><span>🐙</span></span>
+              <span class="pin" style="left:24%;top:70%;--tc:#D55E00"><span>🦊</span><span class="cap">Mira</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">180 m · now</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Names</dt><dd>Your own team only — the people you coordinate with by name. Everybody else is colour plus emoji, which is who their team is, which is all a rival is to you.</dd>
+        <dt>Age</dt><dd>Nothing under 2 min. From 2 min the label <i>is</i> the age — <code>14 min</code> — in the stale colour. Past 10 min the pin goes hollow and the label says when it was last seen.</dd>
+        <dt>Accuracy</dt><dd>Never a number on the map. Above about 100 m the pin sits on a soft disc instead, because a bad fix is a shape, not a measurement.</dd>
+        <dt>Offline</dt><dd>Its own treatment — struck rim and the word, in the alert colour — rather than a third field appended to the age.</dd>
+      </dl>
+      <p class="why"><b>Why:</b> the current label prints five facts to tell you nothing is wrong. Deviation is what a glance is for, and it is exactly what m2-spec §5 wants staleness to buy: a player should find the quiet marker without reading anything.</p>
+      <p class="cost"><b>Cost:</b> silence is ambiguous until you know the convention — a player new to it cannot tell "fresh" from "the app broke". Wants the legend the bottom bar can carry, and the ping animation on a fresh own-team pin is doing quiet work that reduced-motion turns off.</p>
+    </div>
+  </article>
+
+  <!-- ── D · dots and a rail ───────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">D</span><h3>Dots on the map, words in a rail</h3><span class="tag new">Proposed</span><span class="tag ship">Extends the settled hider bar</span></div>
+      <p>Markers become 19 px team discs with no text whatsoever. Every word moves into one card strip at the foot of the screen, nearest first — name, team, distance, freshness. Tap a card and its marker lifts; tap a marker and its card scrolls into view.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">Situation</span>
+      <div class="statebar" data-states="d">
+        <button type="button" data-state="fresh" aria-pressed="true">All reporting</button>
+        <button type="button" data-state="stale" aria-pressed="false">Quiet · offline</button>
+        <button type="button" data-state="crowd" aria-pressed="false">One concourse</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="d">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="fresh">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="dotmk" style="left:40%;top:36%;--tc:#D55E00">🦊</span>
+              <span class="dotmk lift" style="left:70%;top:25%;--tc:#009E73">🐻</span>
+              <span class="dotmk" style="left:26%;top:64%;--tc:#009E73">🐻</span>
+              <span class="dotmk" style="left:74%;top:70%;--tc:#CC79A7">🦉</span>
+              <span class="dotmk" style="left:46%;top:82%;--tc:#56B4E9">🐙</span>
+            </div>
+            <div class="railctl" style="bottom:118px"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="strip">
+              <div class="pcard sel"><div class="t"><span class="tchip" style="--tc:#009E73">🐻</span><span class="nm">Ben</span></div><span class="d">420 m</span><span class="bar"><i style="width:88%"></i></span><span class="f">1 min ago</span></div>
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#D55E00">🦊</span><span class="nm">Mira</span></div><span class="d">120 m</span><span class="bar"><i style="width:100%"></i></span><span class="f">just now</span></div>
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#56B4E9">🐙</span><span class="nm">Ruth</span></div><span class="d">850 m</span><span class="bar"><i style="width:70%"></i></span><span class="f">3 min ago</span></div>
+            </div>
+          </div>
+
+          <div class="st" data-st="stale">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:18</span><span class="mn">GPS · 66%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="dotmk" style="left:40%;top:36%;--tc:#D55E00">🦊</span>
+              <span class="dotmk" style="left:70%;top:25%;--tc:#009E73">🐻</span>
+              <span class="dotmk cold" style="left:26%;top:64%;--tc:#009E73">🐻</span>
+              <span class="dotmk ageing" style="left:74%;top:70%;--tc:#CC79A7">🦉</span>
+              <span class="dotmk" style="left:46%;top:82%;--tc:#56B4E9">🐙</span>
+            </div>
+            <div class="railctl" style="bottom:118px"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="strip">
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#009E73">🐻</span><span class="nm">Ben</span></div><span class="d">420 m</span><span class="bar"><i style="width:80%"></i></span><span class="f">1 min ago</span></div>
+              <div class="pcard ageing"><div class="t"><span class="tchip" style="--tc:#CC79A7">🦉</span><span class="nm">Jonas</span></div><span class="d">1.2 km</span><span class="bar"><i style="width:22%"></i></span><span class="f">14 min ago</span></div>
+              <div class="pcard gone"><div class="t"><span class="tchip" style="--tc:#009E73">🐻</span><span class="nm">Lea</span></div><span class="d">610 m</span><span class="bar"><i style="width:8%"></i></span><span class="f">offline · 8 min</span></div>
+            </div>
+          </div>
+
+          <div class="st" data-st="crowd">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:31</span><span class="mn">GPS · 61%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:62%"></span>
+              <span class="dotmk" style="left:47%;top:36%;--tc:#009E73">🐻</span>
+              <span class="dotmk" style="left:53%;top:35%;--tc:#009E73">🐻</span>
+              <span class="dotmk" style="left:50%;top:41%;--tc:#CC79A7">🦉</span>
+              <span class="dotmk" style="left:56%;top:40%;--tc:#56B4E9">🐙</span>
+              <span class="dotmk" style="left:44%;top:40%;--tc:#56B4E9">🐙</span>
+              <span class="dotmk" style="left:24%;top:70%;--tc:#D55E00">🦊</span>
+            </div>
+            <div class="railctl" style="bottom:118px"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="strip">
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#009E73">🐻</span><span class="nm">Ben</span></div><span class="d">180 m</span><span class="bar"><i style="width:96%"></i></span><span class="f">just now</span></div>
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#009E73">🐻</span><span class="nm">Lea</span></div><span class="d">185 m</span><span class="bar"><i style="width:92%"></i></span><span class="f">just now</span></div>
+              <div class="pcard"><div class="t"><span class="tchip" style="--tc:#CC79A7">🦉</span><span class="nm">Jonas</span></div><span class="d">190 m</span><span class="bar"><i style="width:88%"></i></span><span class="f">1 min ago</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Marker</dt><dd>19 px team disc with the emoji. Nothing else, ever. The selected one gets a signal-yellow ring rather than a label.</dd>
+        <dt>The rail</dt><dd>One card per visible player, nearest first: team chip, name, distance in mono, a freshness bar and its age in words. Horizontally scrollable, three and a bit on screen.</dd>
+        <dt>Absence</dt><dd>A player with no position has no marker anywhere, and this is where they can finally be said out loud — a greyed card reading <i>not opened the game</i>, which no proposal above can express.</dd>
+        <dt>Relation</dt><dd>The settled hider bar generalised: instead of collapsing to the nearest team, it is the whole list, one card per person, already sorted by the thing players ask about.</dd>
+      </dl>
+      <p class="why"><b>Why:</b> comparing is a list job — who is closest, who has gone quiet — and geography is a map job. Split that way each does its own well, and the map itself finally goes quiet without hiding anything behind a tap.</p>
+      <p class="cost"><b>Cost:</b> the bottom of the screen is the most contested space in the app — the rail of tools, the Ask pill, the ruled-out figure — and this puts a scroller across all of it. It also draws everyone twice, so the two surfaces have to stay in step, and a 19 px disc with an emoji in it is small in sun.</p>
+    </div>
+  </article>
+
+  <!-- ── E · the edges ─────────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">E</span><h3>Nobody leaves the screen</h3><span class="tag new">Proposed</span><span class="tag ask">Additive — pairs with A or C</span></div>
+      <p>Leaves the middle of the map alone and fixes its edges. At street zoom most of the game is off screen and the map says nothing about it. Anybody outside the viewport becomes a chip clamped to the edge, pointing at them, carrying their team and their distance.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">Situation</span>
+      <div class="statebar" data-states="e">
+        <button type="button" data-state="fresh" aria-pressed="true">Zoomed in</button>
+        <button type="button" data-state="stale" aria-pressed="false">Quiet · offline</button>
+        <button type="button" data-state="crowd" aria-pressed="false">Zoomed out</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="e">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="fresh">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:04</span><span class="mn">GPS · 71%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:38%;top:40%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="edge" style="left:50%;top:9%"><span class="hd" style="--tc:#009E73">🐻</span><span>420 m</span><svg class="i xs arw" style="--tc:#009E73;transform:rotate(-45deg)"><use href="#ic-arrow-ne"/></svg></span>
+              <span class="edge" style="right:6px;top:34%;transform:none"><span class="hd" style="--tc:#56B4E9">🐙</span><span>850 m</span><svg class="i xs arw" style="--tc:#56B4E9;transform:rotate(45deg)"><use href="#ic-arrow-ne"/></svg></span>
+              <span class="edge" style="left:6px;top:76%;transform:none"><span class="hd" style="--tc:#CC79A7">🦉</span><span>1.2 km</span><svg class="i xs arw" style="--tc:#CC79A7;transform:rotate(180deg)"><use href="#ic-arrow-ne"/></svg></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 1 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="stale">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:18</span><span class="mn">GPS · 66%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin" style="left:38%;top:40%;--tc:#D55E00"><span>🦊</span><span class="ping"></span><span class="ini">M</span></span>
+              <span class="edge" style="left:50%;top:9%"><span class="hd" style="--tc:#009E73">🐻</span><span>420 m</span><svg class="i xs arw" style="--tc:#009E73;transform:rotate(-45deg)"><use href="#ic-arrow-ne"/></svg></span>
+              <span class="edge ageing" style="left:6px;top:76%;transform:none"><span class="hd" style="--tc:#CC79A7">🦉</span><span>14 min</span><svg class="i xs arw" style="--tc:#CC79A7;transform:rotate(180deg)"><use href="#ic-arrow-ne"/></svg></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Bärenteam</b> <span class="dim">nearest</span></span><span class="mn">420 m · 4 min</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+          <div class="st" data-st="crowd">
+            <div class="map" data-city></div>
+            <div class="statusbar"><span>16:31</span><span class="mn">GPS · 61%</span></div>
+            <div class="plot">
+              <span class="me" style="left:50%;top:56%"></span>
+              <span class="pin sm" style="left:44%;top:44%;--tc:#D55E00"><span>🦊</span></span>
+              <span class="pin sm" style="left:66%;top:29%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin sm" style="left:31%;top:63%;--tc:#009E73"><span>🐻</span></span>
+              <span class="pin sm ageing" style="left:73%;top:73%;--tc:#CC79A7"><span>🦉</span></span>
+              <span class="pin sm" style="left:52%;top:82%;--tc:#56B4E9"><span>🐙</span></span>
+              <span class="pin sm" style="left:58%;top:86%;--tc:#56B4E9"><span>🐙</span></span>
+            </div>
+            <div class="railctl"><button type="button"><svg class="i sm"><use href="#ic-target"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-ruler"/></svg></button><button type="button"><svg class="i sm"><use href="#ic-eye-off"/></svg></button></div>
+            <div class="nearbar"><span class="tchip" style="--tc:#009E73">🐻</span><span class="grow"><b>Everyone on screen</b> <span class="dim">no edge chips</span></span><span class="mn">1.4 km across</span><svg class="i sm faint"><use href="#ic-caret-up"/></svg></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Chip</dt><dd>Clamped to the nearest edge: team disc, distance in mono, an arrow pointing the true bearing. Tap flies to them. Gone the moment they are on screen — zoom out far enough and the edges are empty.</dd>
+        <dt>Cap</dt><dd>Your own team always, plus the nearest rival team, plus whoever you have selected. Never more than four chips, or the fringe becomes its own clutter.</dd>
+        <dt>Age</dt><dd>A quiet player's chip carries the age instead of the distance, because a 14-minute-old bearing is a direction to somewhere they no longer are.</dd>
+        <dt>Pairs with</dt><dd>A or C. On its own it does not touch the three-box marker at all — this is the only proposal that adds rather than removes.</dd>
+      </dl>
+      <p class="why"><b>Why:</b> at the zoom a player actually walks at, most of the game is off screen, and the current map goes completely silent about it. This is the proposal that answers "where is everybody relative to me" without the player pinching out and losing the street they are standing on.</p>
+      <p class="cost"><b>Cost:</b> it fixes the gap and not the clutter — the marker stays whatever the other proposals make it. A cap rule needs explaining, and a bearing to a stale fix is confidently wrong in a way a greyed marker in place is not.</p>
+    </div>
+  </article>
+
+  </div>
+</section>
+
+<!-- ═══ at a glance ═════════════════════════════════════════════════════ -->
+<section class="band" id="compare">
+  <div class="band-head">
+    <span class="kicker">Side by side</span>
+    <h2>What each one puts on the map</h2>
+  </div>
+  <div class="tblwrap">
+    <table class="cmp">
+      <thead>
+        <tr><th>On the marker</th><th>Today</th><th>A · Pin</th><th>B · Team</th><th>C · Quiet</th><th>D · Rail</th><th>E · Edges</th></tr>
+      </thead>
+      <tbody>
+        <tr><th>Name</th><td>always</td><td>never — tap</td><td>in the team sheet</td><td>own team only</td><td>in the rail</td><td>unchanged</td></tr>
+        <tr><th>Team</th><td>colour + emoji, split</td><td>colour + emoji, one object</td><td><b>the marker itself</b></td><td>colour + emoji</td><td>colour + emoji</td><td>on the chip</td></tr>
+        <tr><th>Age</th><td>always, in words</td><td>the rim</td><td>one rim dot per member</td><td><b>only past 2 min</b></td><td>bar + words in the rail</td><td>replaces distance when quiet</td></tr>
+        <tr><th>Accuracy</th><td><code>±50 m</code>, always</td><td>sheet only</td><td>sheet only</td><td>a soft disc when bad</td><td>sheet only</td><td>sheet only</td></tr>
+        <tr><th>Battery</th><td>sheet</td><td colspan="5">Off the map in all five — sheet only, and only while the fix is fresh (m2-spec §7)</td></tr>
+        <tr><th>Distance from you</th><td><b>nowhere</b></td><td>sheet</td><td>team sheet</td><td>sheet</td><td><b>the rail, sorted</b></td><td><b>the edge chip</b></td></tr>
+        <tr><th>Five in a concourse</th><td>a pile</td><td>a tidier pile</td><td><b>three badges</b></td><td>a tidier pile</td><td>dots + a sorted rail</td><td>unchanged</td></tr>
+        <tr><th>New machinery</th><td>—</td><td>little</td><td><b>clustering, hysteresis</b></td><td>thresholds</td><td>a second surface</td><td>bearing + clamping</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ what all five change ════════════════════════════════════════════ -->
+<section class="band" id="shared">
+  <div class="band-head">
+    <span class="kicker">All five</span>
+    <h2>Seven changes that are not about the layout</h2>
+    <p>These hold whichever shape wins, and three of them are small enough to land before one is picked.</p>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Accuracy stops being printed per marker</h4>
+      <p>One ring, around your own phone, as m2-spec §5 already argues. For everybody else it is a number in the sheet — and on the map only when it is bad enough to change what you would do, and then as a shape rather than six characters.</p>
+    </div>
+    <div class="card">
+      <span class="tag ship">Settled in §7</span>
+      <h4>Battery is not map furniture</h4>
+      <p>The spec already says it is dropped once a fix greys out. It follows that it never belonged on the marker in the first place: it is a fact about a phone, read when you have stopped to worry about somebody, which is the sheet.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The sheet becomes a person, not a <code>&lt;dl&gt;</code></h4>
+      <p>One sentence — <i>Mira, Fuchsbau. 340 m north-east, seen 2 minutes ago</i> — then the two things you might do: measure to her, or fly there. Role, connection, coordinates and accuracy fold under a <i>details</i> line for the one person in ten who wants them.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Offline and no-position stop sharing a string</h4>
+      <p>Two different absences. <b>Offline</b> is a marker still standing where it last was, saying so. <b>No position ever</b> has no marker at all and belongs in a list — which today means it is invisible, and in D is finally sayable.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Staleness gets a shape, not only an opacity</h4>
+      <p>Solid, then dashed, then hollow. The current fade is <code>opacity</code> plus <code>grayscale</code>, which is two forms of one channel — it fails in sun, it fails on a dark map, and it fails for anybody who does not see the desaturation.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The marker gets role tokens like everything else</h4>
+      <p><code>bg-white/90</code> and <code>border-white</code> are the last hardcoded colours on this screen. <code>--surface</code> and <code>--hairline</code> already do this job in both themes, and the night map is the case the current values were never checked against.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Distance from you appears somewhere, for everyone</h4>
+      <p>It is the question the screen exists to answer and no surface currently answers it. Where it lands is the main thing that separates these five — the sheet (A, B, C), the rail (D) or the edge (E).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ questions ═══════════════════════════════════════════════════════ -->
+<section class="band" id="questions">
+  <div class="band-head">
+    <span class="kicker">Needs your call</span>
+    <h2>Four things I could not settle from the specs</h2>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Do names belong on the map at all?</h4>
+      <p>A and D say no, C says own team only, today says always. It hangs on whether players think in names or in teams once a round is running. My read is teams for rivals and names for the people you are texting anyway — which is C — but you have played this and I have not.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Is crowding solved now, or still deferred?</h4>
+      <p>§12 accepted the pile on purpose, to be designed against a real concourse. B is the answer to it and also the most machinery in the deck. If the answer is "not yet", B becomes a later layer on top of A or C rather than a fifth option.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Does the hider's map get a different treatment from the seeker's?</h4>
+      <p>A seeker sees two or three teammates; a hider sees everybody in the game. The same marker has to work at both densities, and D's rail earns its bottom space on a hider's phone in a way it may not on a seeker's, where three cards list the people standing next to them.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Should E just be added to whichever wins?</h4>
+      <p>It is the only proposal that adds rather than removes, and it answers the one thing all four others leave to a pinch-out. If it is not a fifth option but a second layer, the real choice here is between four.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+
+  /* the map furniture, injected once per stage so the markup stays about markers */
+  const CITY = [
+    '<span class="water"></span>',
+    '<span class="park"></span>',
+    '<span class="road" style="left:-10%;top:52%;width:130%;height:7px;transform:rotate(-6deg)"></span>',
+    '<span class="road" style="left:30%;top:-10%;width:7px;height:130%;transform:rotate(9deg)"></span>',
+    '<span class="road" style="left:-10%;top:24%;width:130%;height:4px;transform:rotate(4deg)"></span>',
+    '<span class="rail" style="left:-10%;top:74%;width:130%;transform:rotate(-11deg)"></span>',
+    '<span class="blk" style="left:8%;top:30%;width:17%;height:14%"></span>',
+    '<span class="blk" style="left:38%;top:60%;width:22%;height:12%"></span>',
+    '<span class="blk" style="left:63%;top:44%;width:19%;height:10%"></span>',
+    '<span class="blk" style="left:12%;top:78%;width:14%;height:11%"></span>',
+    '<span class="blk" style="left:70%;top:82%;width:20%;height:9%"></span>',
+    '<span class="zone" style="left:34%;top:40%;width:44%;height:33%"></span>',
+    '<span class="stn" style="left:31%;top:29%"></span>',
+    '<span class="stn" style="left:62%;top:53%"></span>',
+    '<span class="stn" style="left:47%;top:73%"></span>',
+    '<span class="stn" style="left:79%;top:31%"></span>'
+  ].join("");
+  for (const map of document.querySelectorAll(".map[data-city]")) map.innerHTML = CITY;
+
+  /* theme */
+  const bar = document.getElementById("themebar");
+  const thumb = bar.querySelector(".thumb");
+  const moveThumb = (btn) => {
+    thumb.style.width = btn.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + (btn.offsetLeft - 3) + "px)";
+  };
+  bar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-theme-set]");
+    if (!btn) return;
+    for (const b of bar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+    const mode = btn.dataset.themeSet;
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    moveThumb(btn);
+  });
+  const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
+  settle();
+  window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+  /* stage states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+  }
+  for (const strip of document.querySelectorAll(".statebar[data-states]")) {
+    strip.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-state]");
+      if (btn) show(strip.dataset.states, btn.dataset.state);
+    });
+  }
+})();
+</script>

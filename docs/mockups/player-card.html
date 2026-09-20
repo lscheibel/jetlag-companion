@@ -1,0 +1,1195 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zero Lag Player Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Deck 13 · The player card ══════════════════════════════════════
+   Same page chrome as decks 07–10: neutral paper, the app's own role
+   tokens on every stage, three theme states.                           */
+
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+
+  /* app role tokens — verbatim from packages/ui/src/styles/tokens.css */
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c;
+  --edge-danger:#A62A15; --edge-live:#11784b;
+  --sheet-fill:#f0f3f7;
+
+  /* motion, from styles/motion.css */
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --ease-travel:cubic-bezier(.32,.72,.28,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-sheet:420ms; --dur-breathe:1900ms;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6;
+    --sheet-fill:#141b26;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6;
+  --sheet-fill:#141b26;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table,p,h1,h2,h3,h4,h5{margin:0}
+ul,ol{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,h5{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.022em;line-height:1.05;text-wrap:balance}
+.mono,.eyebrow,.spec dt,.tag,.lbl{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.i{display:inline-block;flex:0 0 auto;width:20px;height:20px;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i.xs{width:13px;height:13px}.i.sm{width:16px;height:16px}.i.lg{width:24px;height:24px}
+.i.fill{fill:currentColor;stroke:none}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:1340px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 120px}
+.eyebrow{font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── masthead ────────────────────────────────────────────────────────── */
+.masthead{padding:56px 0 34px;border-bottom:3px solid var(--text)}
+.mast-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:24px}
+.mast-top .u{background:var(--blue);color:#fff;width:23px;height:23px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Azeret Mono",monospace}
+.mast-top b{color:var(--text);font-weight:700}
+.masthead h1{font-size:clamp(38px,6.2vw,74px);max-width:17ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:22px;max-width:66ch;font-size:18.5px;color:var(--text-2)}
+.mast-foot{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-top:32px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:500;letter-spacing:.07em;border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;color:var(--text-2);background:var(--paper-2);white-space:nowrap;font-family:"Azeret Mono",monospace}
+.tag.ship{border-color:var(--green);color:var(--green)}
+.tag.new{border-color:var(--yellow);color:var(--text);background:color-mix(in oklab,var(--yellow) 22%,var(--paper-2))}
+.tag.ask{border-color:var(--red);color:var(--red)}
+.tag.now{border-color:var(--rule);color:var(--text-3)}
+
+.stagectl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stagectl .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);font-family:"Azeret Mono",monospace}
+.segbar{display:flex;flex:0 0 auto;gap:2px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;position:relative}
+.segbar button{position:relative;white-space:nowrap;flex:0 0 auto;z-index:1;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;color:var(--text-2);transition:color var(--dur-tap)}
+.segbar button[aria-pressed="true"]{color:var(--yellow-ink)}
+.segbar .thumb{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--yellow);transition:transform var(--dur-move) var(--ease-pop),width var(--dur-move) var(--ease-pop);z-index:0}
+
+/* ── bands & plates ──────────────────────────────────────────────────── */
+.band{padding:64px 0 12px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{max-width:76ch;margin-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(27px,3.4vw,40px)}
+.band-head p{color:var(--text-2);font-size:16.5px}
+.band-head p+p{margin-top:2px}
+
+.plates{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr))}
+.plate{background:var(--paper-2);border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--lift)}
+.plate-head{padding:18px 20px 14px;border-bottom:1px solid var(--rule-2);display:flex;flex-direction:column;gap:9px}
+.plate-title{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.plate-title h3{font-size:21px}
+.plate-title .as{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:9px;background:var(--text);color:var(--paper);font-family:"Azeret Mono",monospace;font-size:12.5px;font-weight:700}
+.plate-head p{font-size:14px;color:var(--text-2);line-height:1.5;max-width:58ch}
+.plate-ctl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--rule-2)}
+.plate-ctl .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;flex-wrap:wrap}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 11px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+.stand{flex:1 1 auto;display:grid;place-items:center;padding:26px 20px 30px;background:
+  radial-gradient(120% 80% at 50% 0%,color-mix(in oklab,var(--paper-3) 70%,transparent),transparent 70%)}
+.notes{padding:16px 20px 20px;border-top:1px solid var(--rule-2);background:var(--paper-2)}
+.spec{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13.5px}
+.spec dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding-top:3px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.spec dd{color:var(--text-2);line-height:1.5}
+.spec code,code{font-family:"Azeret Mono",monospace;font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:5px;color:var(--text)}
+.why{margin-top:13px;padding-left:12px;border-left:3px solid var(--yellow);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.cost{margin-top:9px;padding-left:12px;border-left:3px solid var(--red);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.why b,.cost b{color:var(--text);font-weight:600}
+
+/* ── the fault list beside the current screen ────────────────────────── */
+.split{display:grid;gap:30px;grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}
+@media (max-width:880px){.split{grid-template-columns:1fr}}
+.faults{display:flex;flex-direction:column;gap:2px}
+.fault{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;padding:14px 0;border-top:1px solid var(--rule-2)}
+.fault:first-child{border-top:0}
+.fault .n{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--red);padding-top:4px}
+.fault h4{font-size:16.5px;letter-spacing:-.01em}
+.fault p{grid-column:2;color:var(--text-2);font-size:14.5px;line-height:1.5}
+
+/* ── shared-decision cards ───────────────────────────────────────────── */
+.cards-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:18px 19px;display:flex;flex-direction:column;gap:8px}
+.card h4{font-size:17px}
+.card p{font-size:14px;color:var(--text-2);line-height:1.5}
+.card .tag{align-self:flex-start;margin-bottom:2px}
+</style>
+<style>
+/* ═══ the phone ══════════════════════════════════════════════════════════ */
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38,0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.statusbar{height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;z-index:6;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink);letter-spacing:.02em}
+.mn{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums}
+.dim{color:var(--ink-dim)}.faint{color:var(--ink-faint)}
+.row{display:flex;align-items:center;gap:9px}
+.grow{flex:1 1 auto;min-width:0}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbl{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* the map behind a sheet */
+.map{position:absolute;inset:0;background:var(--map-land);overflow:hidden}
+.map span{position:absolute;display:block}
+.map::before{content:"";position:absolute;left:-10%;top:54%;width:130%;height:7px;background:var(--surface);opacity:.6;transform:rotate(-6deg)}
+.map::after{content:"";position:absolute;left:30%;top:-10%;width:7px;height:130%;background:var(--surface);opacity:.45;transform:rotate(9deg)}
+.map .water{left:-18%;top:9%;width:56%;height:17%;background:var(--map-water);border-radius:40% 60% 50% 45%;transform:rotate(-8deg)}
+.map .park{right:-8%;top:30%;width:45%;height:18%;background:var(--map-park);border-radius:46% 54% 40% 60%}
+.map .blk{background:var(--map-block);border-radius:4px}
+.map .road{background:var(--surface);opacity:.85}
+.map .me{left:50%;top:44%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--transit-u);box-shadow:0 0 0 3px color-mix(in oklab,var(--transit-u) 26%,transparent),0 0 0 7px color-mix(in oklab,var(--transit-u) 12%,transparent)}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+
+/* the sheet itself */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet-fill);
+  border-radius:26px 26px 0 0;border-top:1px solid var(--hairline);
+  padding:8px 14px 14px;display:flex;flex-direction:column;gap:9px;max-height:84%;min-height:0}
+.sheet.tall{max-height:93%}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--hairline-strong);margin:0 auto 3px;flex:0 0 auto}
+.sheet-head{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.sheet-head h5{font-size:17.5px;letter-spacing:-.02em;flex:1 1 auto}
+.sheet-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden}
+.sheet-body.cut::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;pointer-events:none;
+  background:linear-gradient(to top,var(--sheet-fill),transparent)}
+.iconbtn{display:grid;place-items:center;width:32px;height:32px;flex:0 0 auto;border-radius:11px;
+  background:var(--surface);border:1px solid var(--hairline);color:var(--ink-dim)}
+
+/* full screen (proposal B) */
+.appbar{flex:0 0 auto;padding:2px 14px 8px;display:flex;align-items:center;gap:10px}
+.appbar .back{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border-radius:12px;background:var(--surface);color:var(--ink-dim);border:1px solid var(--hairline)}
+.appbar .tt{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.appbar h4{font-size:17px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+.track{display:flex;gap:4px;padding:0 14px 8px;flex:0 0 auto}
+.track i{display:block;height:4px;flex:1 1 0;border-radius:2px;background:var(--hairline)}
+.track i.on{background:var(--action)}
+.scr{flex:1 1 auto;min-height:0;padding:0 14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:21px;letter-spacing:-.02em;line-height:1.1}
+.lead{font-size:12px;line-height:1.45;color:var(--ink-dim)}
+
+/* buttons */
+.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;border-radius:16px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;min-height:52px;flex:0 0 auto;
+  background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press);position:relative;overflow:hidden}
+.btn.tall{min-height:60px;font-size:17px;border-radius:19px}
+.btn small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;line-height:1.3}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
+.btn.off{background:var(--surface-raised);color:var(--ink-faint);box-shadow:none;border:1px solid var(--hairline)}
+.btn.sm{min-height:44px;font-size:14.5px;border-radius:14px}
+.btn.beacon::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite}
+@keyframes sheen{0%,74%{transform:translateX(-120%)}94%,100%{transform:translateX(120%)}}
+
+/* status dot, shared by every proposal */
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:0 0 auto}
+.dot.live{background:var(--live);animation:breathe var(--dur-breathe) var(--ease-out-soft) infinite}
+.dot.wait{background:var(--stale);animation:breathe var(--dur-breathe) var(--ease-out-soft) infinite}
+@keyframes breathe{0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){
+  .btn.beacon::after{animation:none;opacity:0}
+  .dot.live,.dot.wait,.ring i{animation:none}
+}
+
+/* the address row — the token truncated, whole on the clipboard */
+.addr{display:flex;align-items:center;gap:9px;min-height:46px;padding:8px 8px 8px 12px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--hairline);flex:0 0 auto}
+.addr .u{flex:1 1 auto;min-width:0;font-family:"Azeret Mono",monospace;font-size:10px;line-height:1.35;color:var(--ink-dim);overflow-wrap:anywhere}
+.addr .u b{color:var(--ink);font-weight:500}
+.addr .cp{display:flex;align-items:center;gap:5px;flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:11px;
+  background:var(--surface-raised);border:1px solid var(--hairline);font-size:11.5px;font-weight:600}
+.addr .cp.done{background:color-mix(in oklab,var(--live) 16%,var(--surface-raised));border-color:color-mix(in oklab,var(--live) 42%,var(--hairline));color:var(--live)}
+.where{font-family:"Azeret Mono",monospace;font-size:10px;line-height:1.45;color:var(--ink-dim);
+  padding:8px 11px;border-radius:12px;background:var(--surface-sunken);flex:0 0 auto}
+.where b{color:var(--ink);font-weight:500}
+.warnbox{display:flex;gap:8px;padding:9px 11px;border-radius:12px;background:var(--surface-sunken);
+  border-left:3px solid var(--danger);font-size:11px;line-height:1.4;color:var(--ink-dim);flex:0 0 auto}
+.warnbox b{color:var(--ink);font-weight:600}
+.warnbox .i{color:var(--danger);margin-top:1px}
+</style>
+<style>
+/* ═══ shared by all three proposals ══════════════════════════════════════ */
+.cardhead{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.tile{display:grid;place-items:center;width:38px;height:38px;flex:0 0 auto;border-radius:13px;
+  font-size:19px;box-shadow:inset 0 0 0 2px rgb(255 255 255 / .18)}
+.tile.sm{width:28px;height:28px;border-radius:10px;font-size:14px}
+.cardhead .tt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:0}
+.cardhead .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18.5px;letter-spacing:-.02em;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cardhead .tm{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.cardhead .tm b{font-weight:500;color:var(--ink-dim)}
+.selfpill{font-family:"Azeret Mono",monospace;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;
+  padding:3px 7px;border-radius:999px;background:var(--surface-raised);border:1px solid var(--hairline);color:var(--ink-dim);flex:0 0 auto}
+
+/* the one fact, at the size of the one fact */
+.readout{border-radius:18px;padding:13px 14px 12px;background:var(--surface);border:1px solid var(--hairline);
+  display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.readout .big{display:flex;align-items:baseline;gap:7px}
+.readout .big b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:34px;letter-spacing:-.035em;line-height:1}
+.readout .big .unit{font-family:"Azeret Mono",monospace;font-size:12px;color:var(--ink-dim);letter-spacing:.04em}
+.readout .stat{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-dim)}
+.readout .stat .mn{color:var(--ink)}
+.readout.warm{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--live) 26%,transparent)}
+.readout.cool{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--offline) 22%,transparent)}
+.readout .demoted{font-size:11.5px;color:var(--ink-faint);line-height:1.4}
+.readout .demoted b{color:var(--ink-dim);font-weight:500;font-family:"Azeret Mono",monospace}
+
+/* the quiet facts, as chips rather than as a table of labels */
+.chips{display:flex;flex-wrap:wrap;gap:6px;flex:0 0 auto}
+.chip2{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;
+  background:var(--surface-raised);border:1px solid var(--hairline);font-size:11px;color:var(--ink-dim);white-space:nowrap}
+.chip2 b{color:var(--ink);font-weight:600;font-family:"Azeret Mono",monospace;font-size:11px}
+.chip2 .i{color:var(--ink-faint)}
+.coordrow{display:flex;align-items:center;gap:8px;min-height:42px;padding:0 8px 0 12px;border-radius:13px;
+  background:var(--surface);border:1px solid var(--hairline);flex:0 0 auto}
+.coordrow .v{flex:1 1 auto;min-width:0;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink-dim)}
+.coordrow .cp{display:flex;align-items:center;gap:5px;flex:0 0 auto;min-height:32px;padding:0 10px;border-radius:10px;
+  background:var(--surface-raised);border:1px solid var(--hairline);font-size:11px;font-weight:600}
+.actions{margin-top:auto;display:flex;gap:8px;flex:0 0 auto;padding-top:4px}
+.actions .btn{flex:1 1 0}
+.withheld{display:flex;gap:8px;padding:10px 11px;border-radius:13px;background:var(--surface-sunken);
+  border-left:3px solid var(--stale);font-size:11px;line-height:1.4;color:var(--ink-dim);flex:0 0 auto}
+.withheld b{color:var(--ink);font-weight:600}
+.withheld .i{color:var(--stale);margin-top:1px}
+
+/* ═══ B · the track ══════════════════════════════════════════════════════ */
+.track-list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden;padding-left:3px}
+.track-list::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;pointer-events:none;
+  background:linear-gradient(to top,var(--sheet-fill),transparent)}
+.tr{display:grid;grid-template-columns:38px 15px minmax(0,1fr);gap:0 9px;align-items:start;padding-bottom:13px;position:relative}
+.tr .t{font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink-faint);padding-top:1px;text-align:right}
+.tr .rail{position:relative;display:flex;justify-content:center}
+.tr .rail::before{content:"";position:absolute;top:11px;bottom:-13px;width:2px;background:var(--hairline-strong)}
+.tr:last-child .rail::before{display:none}
+.tr .pt{width:9px;height:9px;border-radius:50%;margin-top:3px;background:var(--ink-faint);z-index:1;
+  box-shadow:0 0 0 3px var(--sheet-fill)}
+.tr .bd{min-width:0;display:flex;flex-direction:column;gap:1px}
+.tr .pl{font-size:13px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr .dt{font-family:"Azeret Mono",monospace;font-size:10px;color:var(--ink-faint);line-height:1.3}
+.tr.head .pt{background:var(--live);box-shadow:0 0 0 3px color-mix(in oklab,var(--live) 22%,transparent)}
+.tr.head .pl{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px;letter-spacing:-.015em}
+.tr.stale .pt{background:var(--offline)}
+.tr.gap .rail::before{background:repeating-linear-gradient(to bottom,var(--hairline-strong) 0 3px,transparent 3px 7px)}
+.tr.gap .dt{color:var(--stale)}
+.tr.dim{opacity:.6}
+.trackfoot{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:12px;background:var(--surface-sunken);
+  font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.04em;color:var(--ink-dim);flex:0 0 auto}
+.trackfoot b{color:var(--ink);font-weight:500}
+.trackfoot span{line-height:1.45}
+.trackfoot .i{flex:0 0 auto;margin-top:2px}
+.trackfoot{align-items:flex-start}
+.toggle{display:flex;align-items:center;gap:9px;min-height:42px;padding:0 11px;border-radius:13px;
+  background:var(--surface);border:1px solid var(--hairline);font-size:12.5px;flex:0 0 auto}
+.toggle .i{color:var(--ink-faint)}
+.toggle .sw{margin-left:auto;width:36px;height:21px;border-radius:999px;background:var(--hairline-strong);position:relative;flex:0 0 auto}
+.toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--surface);
+  transition:transform var(--dur-tap) var(--ease-pop)}
+.toggle .sw.on{background:var(--action)}
+.toggle .sw.on::after{transform:translateX(15px)}
+
+/* ═══ C · the team ═══════════════════════════════════════════════════════ */
+.teamhead{border-radius:18px;padding:12px 13px;background:var(--surface);border:1px solid var(--hairline);
+  display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+.teamhead .r1{display:flex;align-items:center;gap:10px}
+.teamhead .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;letter-spacing:-.02em;flex:1 1 auto;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teamhead .side{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.spread{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-dim)}
+.spread b{font-family:"Azeret Mono",monospace;color:var(--ink);font-weight:500}
+.mates{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.mate{display:flex;align-items:center;gap:9px;min-height:50px;padding:7px 11px 7px 9px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--hairline)}
+.mate .who{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.mate .n{font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mate .s{font-family:"Azeret Mono",monospace;font-size:9.5px;color:var(--ink-faint);line-height:1.3}
+.mate .d{text-align:right;flex:0 0 auto;display:flex;flex-direction:column;gap:0;align-items:flex-end}
+.mate .d b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;letter-spacing:-.02em;line-height:1.1}
+.mate .d span{font-family:"Azeret Mono",monospace;font-size:9px;color:var(--ink-faint);letter-spacing:.05em}
+.mate.tapped{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in oklab,var(--action) 24%,transparent)}
+.mate.gone{opacity:.68}
+.mate.gone .d b{font-size:13px;color:var(--ink-dim)}
+.mate .av{position:relative}
+.mate .av .pip{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;
+  box-shadow:0 0 0 2px var(--surface)}
+.mate .exp{flex:0 0 auto;color:var(--ink-faint)}
+.mate-open{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in oklab,var(--action) 24%,transparent);
+  border-radius:16px;background:var(--surface);border:1px solid var(--hairline);padding:2px;display:flex;flex-direction:column;flex:0 0 auto}
+.mate-open .mate{border:0;box-shadow:none;background:transparent}
+.mate-open .inner{padding:0 11px 11px;display:flex;flex-direction:column;gap:8px}
+.sectrule{display:flex;align-items:center;gap:8px;flex:0 0 auto;padding-top:2px}
+.sectrule .t{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint)}
+.sectrule .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.noteam{display:flex;gap:8px;padding:9px 11px;border-radius:12px;background:var(--surface-sunken);
+  font-size:11px;line-height:1.4;color:var(--ink-dim);flex:0 0 auto}
+.noteam b{color:var(--ink);font-weight:600}
+
+/* ═══ today ══════════════════════════════════════════════════════════════ */
+.oldsheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:26px 26px 0 0;
+  border-top:1px solid var(--hairline);padding:16px;display:flex;flex-direction:column;gap:8px}
+.oldhead{display:flex;align-items:center;gap:12px}
+.oldhead h5{font-size:18px;font-weight:400;font-family:"Archivo",sans-serif;letter-spacing:0;flex:1 1 auto;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oldbtn{flex:0 0 auto;min-height:36px;padding:0 13px;border-radius:12px;border:1px solid var(--hairline-strong);
+  display:grid;place-items:center;font-size:13px;font-weight:600}
+.oldbadge{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;border:2px solid #D55E00;border-radius:999px;
+  padding:4px 12px;font-weight:600;font-size:14px}
+.oldbadge .sw{width:12px;height:12px;border-radius:50%;background:#D55E00}
+.olddl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px;margin-top:2px}
+.olddl dt{color:var(--ink)}
+.olddl dd{color:var(--ink)}
+.oldcoord{display:flex;align-items:center;gap:8px}
+.oldcoord .cbtn{min-height:30px;padding:0 8px;border-radius:10px;border:1px solid var(--hairline);font-size:12px}
+.pair{display:flex;flex-direction:column;gap:14px}
+.pair figcaption{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);
+  margin-bottom:8px}
+.mark{position:absolute;z-index:7;width:19px;height:19px;border-radius:50%;background:var(--danger);color:#fff;
+  display:grid;place-items:center;font-family:"Azeret Mono",monospace;font-size:10px;font-weight:700;
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--danger) 26%,transparent)}
+.st{display:none}
+.st.on{display:flex;flex-direction:column;position:absolute;inset:0}
+.statusbar{position:relative}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="ic-caret-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="3"/><path d="M5 15h-.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
+  <symbol id="ic-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
+  <symbol id="ic-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+  <symbol id="ic-ruler" viewBox="0 0 24 24"><rect x="1.8" y="8" width="20.4" height="8" rx="2" transform="rotate(-45 12 12)"/><path d="M9.2 7.4l1.7 1.7M12 4.6l1.7 1.7M6.4 10.2l1.7 1.7"/></symbol>
+  <symbol id="ic-route" viewBox="0 0 24 24"><circle cx="6" cy="18.5" r="2.5"/><circle cx="18" cy="5.5" r="2.5"/><path d="M15.5 5.5H10a3.5 3.5 0 0 0 0 7h4a3.5 3.5 0 0 1 0 7H8.5"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16.5 5.2a3.4 3.4 0 0 1 0 6.6"/><path d="M18 20a6 6 0 0 0-3-5.2"/></symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/></symbol>
+  <symbol id="ic-battery" viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="16" height="9" rx="2.5"/><path d="M21.5 10.5v3"/><path d="M5.5 10.5h5v3h-5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-warning" viewBox="0 0 24 24"><path d="M12 4.5l8.5 15h-17z"/><path d="M12 10.5v3.6"/><path d="M12 17.2h.01"/></symbol>
+  <symbol id="ic-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.3 6.4A9.7 9.7 0 0 1 12 6.2c5 0 9 4.3 9 5.8 0 .7-.9 2.1-2.4 3.4"/><path d="M6.2 8.1C4.1 9.5 3 11.3 3 12c0 1.5 4 5.8 9 5.8 1.3 0 2.5-.3 3.5-.7"/><path d="M9.9 10a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="ic-nav" viewBox="0 0 24 24"><path d="M12 2.5l7 18-7-4.6-7 4.6z"/></symbol>
+  <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21.5s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10.2" r="2.6"/></symbol>
+  <symbol id="ic-broadcast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4"/><path d="M16.2 16.2a6 6 0 0 0 0-8.4"/><path d="M4.9 4.9a10 10 0 0 0 0 14.2"/><path d="M19.1 19.1a10 10 0 0 0 0-14.2"/></symbol>
+</svg>
+<div class="shell">
+
+<header class="masthead">
+  <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 13</span><span>·</span><span>The player card</span><span>·</span><span>20 Sep 2026</span>
+  </div>
+  <h1>Six labelled rows, and <em>not one of them</em> is the answer</h1>
+  <p class="deck">Tapping a marker is a question with a short answer — <b>how far, how long ago</b> — and today it opens a definition list of six rows that are all the same size, in the screen's own vocabulary, with nothing to do at the end of it. Tapping <i>your own</i> marker opens something else entirely: a different component, with a title and two lines of coordinates. Three proposals, each with a different idea of what the card is about. <b>A</b> says it is a position. <b>B</b> says it is a person, over time. <b>C</b> says it is a team. All three fold the two cards into one, because you are a player who happens to be yourself.</p>
+  <div class="mast-foot">
+    <div class="legend">
+      <span class="tag now">Today</span>
+      <span class="tag new">Proposed</span>
+      <span class="tag ask">Needs your call</span>
+      <span class="tag ship">Settled elsewhere</span>
+    </div>
+    <div class="stagectl">
+      <span class="lab">Theme</span>
+      <div class="segbar" id="themebar" role="group" aria-label="Theme">
+        <span class="thumb" aria-hidden="true"></span>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ today ═══════════════════════════════════════════════════════════ -->
+<section class="band" id="today">
+  <div class="band-head">
+    <span class="kicker">Today</span>
+    <h2>A table where a headline should be</h2>
+    <p>Drawn from <code>apps/web/src/map/player-sheet.tsx</code> and <code>own-position.tsx</code> as they stand. Nothing on either is wrong — every row is a fact m2-spec asked for. What is wrong is that they are the same size as each other, that they are labelled in the language of the code, and that there are two of them.</p>
+  </div>
+  <div class="split">
+    <div class="pair">
+      <figure>
+        <figcaption>Tapping somebody else · PlayerSheet</figcaption>
+        <div class="device" style="max-width:300px">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="statusbar"><span>17:22</span><span>GPS · 64%</span></div>
+            <span class="mark" style="top:403px;right:10px">1</span>
+            <span class="mark" style="top:445px;right:10px">2</span>
+            <span class="mark" style="top:519px;right:10px">3</span>
+            <span class="mark" style="top:543px;right:10px">4</span>
+            <span class="mark" style="top:579px;right:10px">5</span>
+            <span class="mark" style="top:612px;right:10px">6</span>
+            <div class="oldsheet">
+              <div class="oldhead">
+                <h5>Mara</h5>
+                <span class="oldbtn">Close</span>
+              </div>
+              <span class="oldbadge"><span aria-hidden="true">🦊</span><span class="sw"></span>Vulpes</span>
+              <dl class="olddl">
+                <dt>Role</dt><dd>hider</dd>
+                <dt>Connection</dt><dd>online</dd>
+                <dt>Last seen</dt><dd>4 min ago · 17:18</dd>
+                <dt>Position</dt><dd><span class="oldcoord"><span class="mn" style="font-size:11.5px">52.5031, 13.4699</span><span class="cbtn">Copy</span></span></dd>
+                <dt>Accuracy</dt><dd>±35 m · fused</dd>
+                <dt>Battery</dt><dd>62%</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>Tapping yourself · OwnPositionSheet</figcaption>
+        <div class="device" style="max-width:300px;aspect-ratio:390/420">
+          <div class="screen">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <span class="mark" style="top:196px;right:10px">7</span>
+            <div class="sheet" style="max-height:none">
+              <div class="grab"></div>
+              <div class="sheet-head"><h5>Your position</h5></div>
+              <div class="sheet-body" style="gap:6px">
+                <p class="mn" style="font-size:12px">52.5219, 13.4132 · ±12 m</p>
+                <div class="oldcoord"><span class="mn" style="font-size:11.5px">52.5219, 13.4132</span><span class="cbtn">Copy</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <div class="faults">
+      <div class="fault">
+        <span class="n">1</span><h4>It is the one map card that is not a sheet</h4>
+        <p>A hand-rolled <code>&lt;section&gt;</code> pinned to the bottom edge, with a <b>Close</b> button where every sibling has a grabber, a scrim and a drag. It is also rendered as <code>{selected &amp;&amp; …}</code>, so it unmounts on close and never animates out — the exact thing <code>useHeldValue</code> exists in the kit to prevent.</p>
+      </div>
+      <div class="fault">
+        <span class="n">2</span><h4>The team is a badge with nothing around it</h4>
+        <p><code>PlayerTeamBadge</code> sits between the name and the table carrying a name, an emoji and a colour, and says nothing about what that team <i>is</i> — which side, how many, where the rest of them are. On a map about chasing a team, that is the fact with the most left to give.</p>
+      </div>
+      <div class="fault">
+        <span class="n">3</span><h4>Six rows, one size, and the answer is third</h4>
+        <p>How far away they are and how long ago is the whole reason a thumb went to that marker. It is row three of six, in the same 14 px as <b>Role</b>, under a heading that reads like a column name.</p>
+      </div>
+      <div class="fault">
+        <span class="n">4</span><h4>A position, and no distance from you</h4>
+        <p>The stop sheet has <code>DistanceToYou</code>. The amenity sheet has <code>DistanceToYou</code>. The card about a person you are chasing gets coordinates and a Copy button — and <code>fromYou</code> is already in scope, passed to the two sheets rendered directly above it.</p>
+      </div>
+      <div class="fault">
+        <span class="n">5</span><h4>It speaks the screen's vocabulary, not a player's</h4>
+        <p><b>Connection</b>, <b>Accuracy</b>, <b>Role: not assigned</b> — and <code>fix.source</code> printed raw beside the metres, so a card in a player's hand says <span class="mn">fused</span>. The house rule is no technical vocabulary in user-facing text.</p>
+      </div>
+      <div class="fault">
+        <span class="n">6</span><h4>Nothing to do at the end of it</h4>
+        <p>Every other sheet on this map ends in an action. This one ends. You cannot measure to them, centre on them, isolate their trail or open their team from here.</p>
+      </div>
+      <div class="fault">
+        <span class="n">7</span><h4>And yourself is a different object entirely</h4>
+        <p>Your own marker opens <code>OwnPositionSheet</code>: a title and two lines of coordinates. No team, no age, no battery, no word about whether your background tracker is the thing reporting you. The one player who can see everything about themselves gets the poorest card in the app.</p>
+      </div>
+      <div class="fault">
+        <span class="n">·</span><h4>Underneath all seven: it repeats the marker</h4>
+        <p>The marker already carries the name, the emoji, the staleness and <code>positionLabel</code> — age and accuracy, in one line, on the map. The card restates all of it at greater length and adds two facts: a clock time and a battery percentage. A card that costs a tap has to be worth more than the label it covers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.readout.slim{padding:11px 13px}
+.readout.slim .big b{font-size:24px}
+.readout.slim .big .unit{font-size:11px}
+</style>
+
+<!-- ═══ three proposals ═════════════════════════════════════════════════ -->
+<section class="band" id="proposals">
+  <div class="band-head">
+    <span class="kicker">Three ways out</span>
+    <h2>A position, a person, or a team</h2>
+    <p>Each proposal answers one question differently: <b>what is this card about?</b> <b>A</b> says it is about a position, and gives the one number the size it deserves. <b>B</b> says it is about a person over time, and puts the trail that is already on the map into words. <b>C</b> says it is about a team, because that is what you chase — and folds A inside it.</p>
+    <p>All three: one component for everybody including you, the kit's <code>Sheet</code>, distance from you, the labels gone, and a card that ends in something to do. Details in the last band but one.</p>
+  </div>
+  <div class="plates">
+
+  <!-- ── A · the readout ───────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">A</span><h3>The readout</h3><span class="tag new">Proposed</span></div>
+      <p>Keeps the sheet and throws away the table. One fact gets the headline and everything else becomes a chip. The trick is which fact: while the position is fresh, the headline is <b>the distance</b>; once it is cold, the headline is <b>the age</b> — because a distance to a forty-minute-old position is a distance to where somebody used to be.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="a">
+        <button type="button" data-state="fresh" aria-pressed="true">Fresh</button>
+        <button type="button" data-state="cold" aria-pressed="false">Gone quiet</button>
+        <button type="button" data-state="held" aria-pressed="false">Not shared</button>
+        <button type="button" data-state="you" aria-pressed="false">You</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="a">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <!-- fresh -->
+          <div class="st on" data-st="fresh">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Mara</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="readout warm">
+                  <span class="big"><b class="mn">340</b><span class="unit">m from you</span></span>
+                  <span class="stat"><span class="dot live"></span>Reporting now<span class="mn">· ±22 m</span></span>
+                </div>
+                <div class="chips">
+                  <span class="chip2"><svg class="i xs"><use href="#ic-clock"/></svg>seen <b>17:26</b></span>
+                  <span class="chip2"><svg class="i xs"><use href="#ic-battery"/></svg><b>62%</b></span>
+                </div>
+                <div class="coordrow">
+                  <span class="v">52.5031, 13.4699</span>
+                  <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+                </div>
+                <div class="actions">
+                  <button class="btn ghost sm" type="button">Centre on them</button>
+                  <button class="btn sm" type="button">Measure to here</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- cold -->
+          <div class="st" data-st="cold">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:44</span><span>GPS · 61%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00;filter:grayscale(.75)" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Ines</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="readout cool">
+                  <span class="big"><b class="mn">43</b><span class="unit">min ago</span></span>
+                  <span class="stat"><span class="dot"></span>Offline since <span class="mn">17:01</span></span>
+                  <span class="demoted">They were <b>1.4 km</b> away then — north of Treptower Park.</span>
+                </div>
+                <div class="chips">
+                  <span class="chip2"><svg class="i xs"><use href="#ic-pin"/></svg>last known position</span>
+                </div>
+                <div class="coordrow">
+                  <span class="v">52.4948, 13.4712</span>
+                  <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+                </div>
+                <div class="actions">
+                  <button class="btn ghost sm" type="button">Centre on them</button>
+                  <button class="btn sm" type="button">Measure to here</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- withheld -->
+          <div class="st" data-st="held">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#0072B2" aria-hidden="true">🦅</span>
+                <span class="tt"><span class="nm">Tomas</span><span class="tm"><b>Lynx</b> · Seekers</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="readout">
+                  <span class="big"><b style="font-size:21px">Not shared with you</b></span>
+                  <span class="stat"><span class="dot live"></span>In the game, online</span>
+                </div>
+                <div class="withheld">
+                  <svg class="i sm"><use href="#ic-eye-off"/></svg>
+                  <span>Seeker teams do not see each other's whereabouts. <b>This is a rule, not a phone that has stopped reporting.</b></span>
+                </div>
+                <div class="chips">
+                  <span class="chip2"><svg class="i xs"><use href="#ic-users"/></svg>Lynx · <b>2</b> players</span>
+                </div>
+                <div class="actions">
+                  <button class="btn ghost sm" type="button">Open their team</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- you -->
+          <div class="st" data-st="you">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Lennard</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <span class="selfpill">You</span>
+              </div>
+              <div class="sheet-body">
+                <div class="readout warm">
+                  <span class="big"><b class="mn">±12</b><span class="unit">m · facing north-east</span></span>
+                  <span class="stat"><span class="dot live"></span>Your phone, right now</span>
+                </div>
+                <div class="chips">
+                  <span class="chip2"><svg class="i xs"><use href="#ic-battery"/></svg><b>64%</b></span>
+                  <span class="chip2"><svg class="i xs"><use href="#ic-target"/></svg>GPS</span>
+                </div>
+                <div class="coordrow">
+                  <span class="v">52.5219, 13.4132</span>
+                  <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+                </div>
+                <div class="quietrow"><svg class="i sm"><use href="#ic-broadcast"/></svg>OsmAnd is reporting · 6 s ago<svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Headline</dt><dd>Whichever of the two facts is still true — distance while fresh, age once cold. The other one demotes to a sentence underneath</dd>
+        <dt>Table</dt><dd>Gone. Battery, clock time and source become chips, and only appear when <code>batteryIsWorthShowing</code> and friends already say they should</dd>
+        <dt>You</dt><dd>Same card. Your headline is your accuracy and your facing — the two things only your own marker has — plus one row for the tracker</dd>
+        <dt>Ends in</dt><dd><b>Measure to here</b>, which seeds the existing measure tool with their position as one end</dd>
+      </dl>
+      <p class="why"><b>Why.</b> It is the smallest honest change: same sheet, same data, same rules, re-ranked. It also fixes the thing the current card cannot — it is finally worth more than the marker label it covers, because 340 m at 34 px is a fact you can act on with a thumb over half the screen, and "±35 m · fused" is not.</p>
+      <p class="cost"><b>What it costs.</b> A distance with no direction can still send a seeker the wrong way down a platform — see the last band. And it is the least ambitious of the three: nothing about where somebody has been, nothing about the team they are part of, and a card you open twice in a row tells you the same thing twice.</p>
+    </div>
+  </article>
+
+  <!-- ── B · the track ─────────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">B</span><h3>The track</h3><span class="tag new">Proposed</span></div>
+      <p>The card is a person over time. Under a one-line readout, the trail already drawn on the map is written out as a list — a report per row, nearest station, distance, and the gaps left visible. A seeker wants a heading, and the only honest form of one is where somebody has been.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="b">
+        <button type="button" data-state="moving" aria-pressed="true">Moving</button>
+        <button type="button" data-state="quiet" aria-pressed="false">Gone quiet</button>
+        <button type="button" data-state="you" aria-pressed="false">You</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="b">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <!-- moving -->
+          <div class="st on" data-st="moving">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet tall">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Mara</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="readout slim warm">
+                  <span class="big"><b class="mn">340</b><span class="unit">m from you · reporting now</span></span>
+                </div>
+                <div class="sectrule"><span class="t">Where they have been</span><span class="hr"></span></div>
+                <div class="track-list">
+                  <div class="tr head">
+                    <span class="t">17:26</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Ostkreuz</span><span class="dt">340 m from you · ±22 m</span></span>
+                  </div>
+                  <div class="tr">
+                    <span class="t">17:19</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Warschauer Straße</span><span class="dt">1.1 km · moving east</span></span>
+                  </div>
+                  <div class="tr">
+                    <span class="t">17:04</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Treptower Park</span><span class="dt">2.4 km</span></span>
+                  </div>
+                  <div class="tr gap">
+                    <span class="t">16:52</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Sonnenallee</span><span class="dt">nothing for 12 minutes after this</span></span>
+                  </div>
+                  <div class="tr dim">
+                    <span class="t">16:41</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Hermannplatz</span><span class="dt">4.0 km</span></span>
+                  </div>
+                </div>
+                <div class="trackfoot"><svg class="i xs"><use href="#ic-route"/></svg><span><b>9</b> reports since the round began</span></div>
+                <div class="toggle"><svg class="i sm"><use href="#ic-eye-off"/></svg>Show only this trail<span class="sw on"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- quiet -->
+          <div class="st" data-st="quiet">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:44</span><span>GPS · 61%</span></div>
+            <div class="sheet tall">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00;filter:grayscale(.75)" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Ines</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="readout slim cool">
+                  <span class="big"><b class="mn">43</b><span class="unit">min ago · last at Treptower Park</span></span>
+                </div>
+                <div class="sectrule"><span class="t">Where they have been</span><span class="hr"></span></div>
+                <div class="track-list">
+                  <div class="tr stale">
+                    <span class="t">17:01</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Treptower Park</span><span class="dt">1.4 km from you then · ±60 m</span></span>
+                  </div>
+                  <div class="tr gap">
+                    <span class="t">16:48</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Plänterwald</span><span class="dt">13 minutes to the next report</span></span>
+                  </div>
+                  <div class="tr dim">
+                    <span class="t">16:30</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Baumschulenweg</span><span class="dt">3.1 km</span></span>
+                  </div>
+                </div>
+                <div class="trackfoot"><svg class="i xs"><use href="#ic-warning"/></svg><span>Nothing since <b>17:01</b>. That phone may be in a pocket, or underground.</span></div>
+                <div class="toggle"><svg class="i sm"><use href="#ic-eye-off"/></svg>Show only this trail<span class="sw"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- you -->
+          <div class="st" data-st="you">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet tall">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Lennard</span><span class="tm"><b>Vulpes</b> · Hiders</span></span>
+                <span class="selfpill">You</span>
+              </div>
+              <div class="sheet-body">
+                <div class="readout slim warm">
+                  <span class="big"><b class="mn">±12</b><span class="unit">m · your phone, right now</span></span>
+                </div>
+                <div class="sectrule"><span class="t">What your team has seen of you</span><span class="hr"></span></div>
+                <div class="track-list">
+                  <div class="tr head">
+                    <span class="t">17:26</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Alexanderplatz</span><span class="dt">±12 m · sent by OsmAnd</span></span>
+                  </div>
+                  <div class="tr">
+                    <span class="t">17:24</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Alexanderplatz</span><span class="dt">±14 m · sent by OsmAnd</span></span>
+                  </div>
+                  <div class="tr gap">
+                    <span class="t">17:06</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Jannowitzbrücke</span><span class="dt">18 minutes with nothing sent</span></span>
+                  </div>
+                  <div class="tr dim">
+                    <span class="t">17:04</span>
+                    <span class="rail"><span class="pt"></span></span>
+                    <span class="bd"><span class="pl">Jannowitzbrücke</span><span class="dt">±9 m · this app, open</span></span>
+                  </div>
+                </div>
+                <div class="trackfoot"><svg class="i xs"><use href="#ic-broadcast"/></svg><span>The gap is when your screen was locked and no tracker was running.</span></div>
+                <div class="quietrow"><svg class="i sm"><use href="#ic-broadcast"/></svg>Background tracking · OsmAnd<svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Source</dt><dd><code>queries.positionLog()</code> — already queried on this screen for <code>PlayerTrailsLayer</code>, already filtered server-side to the rows you may see</dd>
+        <dt>Rows</dt><dd>A report each: clock time, nearest stop from the catalog the map already holds, distance, and the gap to the next one when it is large enough to mean something</dd>
+        <dt>You</dt><dd>The same list is the honest answer to "is my tracker working" — a gap in your own track is a gap your team saw</dd>
+        <dt>Ends in</dt><dd>Isolating this one trail on the map, which is the only way to read a trail in a crowded concourse</dd>
+      </dl>
+      <p class="why"><b>Why.</b> The trail is already drawn and nearly unreadable — three of them crossing at Ostkreuz is a scribble. As a list it becomes a deduction: <i>Treptower Park at 17:04, Warschauer at 17:19, so they are on the Ringbahn going north.</i> That is the sentence a seeker is trying to form, and no other screen helps them form it.</p>
+      <p class="cost"><b>What it costs.</b> Naming each vertex needs a nearest-stop lookup per row — real work, and wrong-looking the moment somebody is in a park. It is a long card for a teammate standing next to you. And it makes a hider's movement much easier to read, which is a game-balance change dressed as a layout.</p>
+    </div>
+  </article>
+
+  <!-- ── C · the team ──────────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">C</span><h3>The team</h3><span class="tag new">Proposed</span></div>
+      <p>You do not chase a person; you chase a team. Tapping any marker opens that team — members nearest first, each with its own distance and its own freshness — with the one you tapped opened in place. It is the shape the hider map's bottom card already settled on, and it contains A rather than replacing it.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="c">
+        <button type="button" data-state="theirs" aria-pressed="true">Their team</button>
+        <button type="button" data-state="yours" aria-pressed="false">Your team</button>
+        <button type="button" data-state="none" aria-pressed="false">No team</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="c">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <!-- theirs -->
+          <div class="st on" data-st="theirs">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet tall">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Vulpes</span><span class="tm">Hiders · <b>3 players</b></span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="spread" style="padding:0 2px"><svg class="i sm" style="color:var(--ink-faint)"><use href="#ic-users"/></svg><span>Two together, one <b>1.4 km</b> behind</span></div>
+                <div class="sectrule"><span class="t">Nearest you first</span><span class="hr"></span></div>
+                <div class="mate-open">
+                  <div class="mate">
+                    <span class="av"><span class="tile sm" style="background:#D55E00" aria-hidden="true">🦊</span><span class="pip" style="background:var(--live)"></span></span>
+                    <span class="who"><span class="n">Mara</span><span class="s">reporting now · ±22 m</span></span>
+                    <span class="d"><b class="mn">340 m</b><span>from you</span></span>
+                    <svg class="i sm exp"><use href="#ic-caret-down"/></svg>
+                  </div>
+                  <div class="inner">
+                    <div class="chips">
+                      <span class="chip2"><svg class="i xs"><use href="#ic-clock"/></svg>seen <b>17:26</b></span>
+                      <span class="chip2"><svg class="i xs"><use href="#ic-battery"/></svg><b>62%</b></span>
+                      <span class="chip2"><svg class="i xs"><use href="#ic-pin"/></svg><b>52.5031, 13.4699</b></span>
+                    </div>
+                    <div class="actions" style="margin-top:0">
+                      <button class="btn ghost sm" type="button">Copy position</button>
+                      <button class="btn sm" type="button">Measure</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mate">
+                  <span class="av"><span class="tile sm" style="background:#D55E00" aria-hidden="true">🦊</span><span class="pip" style="background:var(--live)"></span></span>
+                  <span class="who"><span class="n">Jonas</span><span class="s">2 min ago · ±30 m</span></span>
+                  <span class="d"><b class="mn">410 m</b><span>from you</span></span>
+                  <svg class="i sm exp"><use href="#ic-caret-right"/></svg>
+                </div>
+                <div class="mate gone">
+                  <span class="av"><span class="tile sm" style="background:#D55E00;filter:grayscale(.75)" aria-hidden="true">🦊</span><span class="pip" style="background:var(--offline)"></span></span>
+                  <span class="who"><span class="n">Ines</span><span class="s">offline since 17:01</span></span>
+                  <span class="d"><b class="mn">43 min</b><span>ago, 1.4 km</span></span>
+                  <svg class="i sm exp"><use href="#ic-caret-right"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- yours -->
+          <div class="st" data-st="yours">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:26</span><span>GPS · 64%</span></div>
+            <div class="sheet tall">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#D55E00" aria-hidden="true">🦊</span>
+                <span class="tt"><span class="nm">Vulpes</span><span class="tm">Hiders · <b>you and 2 others</b></span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="spread" style="padding:0 2px"><svg class="i sm" style="color:var(--ink-faint)"><use href="#ic-users"/></svg><span>You and Jonas are <b>180 m</b> apart</span></div>
+                <div class="sectrule"><span class="t">Your team</span><span class="hr"></span></div>
+                <div class="mate-open">
+                  <div class="mate">
+                    <span class="av"><span class="tile sm" style="background:#D55E00" aria-hidden="true">🦊</span><span class="pip" style="background:var(--live)"></span></span>
+                    <span class="who"><span class="n">Lennard <span class="selfpill" style="margin-left:4px">You</span></span><span class="s">your phone · ±12 m · facing NE</span></span>
+                  </div>
+                  <div class="inner">
+                    <div class="chips">
+                      <span class="chip2"><svg class="i xs"><use href="#ic-battery"/></svg><b>64%</b></span>
+                      <span class="chip2"><svg class="i xs"><use href="#ic-pin"/></svg><b>52.5219, 13.4132</b></span>
+                    </div>
+                    <div class="quietrow" style="min-height:40px"><svg class="i sm"><use href="#ic-broadcast"/></svg>OsmAnd is reporting · 6 s ago<svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
+                  </div>
+                </div>
+                <div class="mate">
+                  <span class="av"><span class="tile sm" style="background:#D55E00" aria-hidden="true">🦊</span><span class="pip" style="background:var(--live)"></span></span>
+                  <span class="who"><span class="n">Jonas</span><span class="s">2 min ago · ±30 m</span></span>
+                  <span class="d"><b class="mn">180 m</b><span>from you</span></span>
+                  <svg class="i sm exp"><use href="#ic-caret-right"/></svg>
+                </div>
+                <div class="mate gone">
+                  <span class="av"><span class="tile sm" style="background:#D55E00;filter:grayscale(.75)" aria-hidden="true">🦊</span><span class="pip" style="background:var(--offline)"></span></span>
+                  <span class="who"><span class="n">Ines</span><span class="s">offline since 17:01</span></span>
+                  <span class="d"><b class="mn">43 min</b><span>ago, 1.4 km</span></span>
+                  <svg class="i sm exp"><use href="#ic-caret-right"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- no team -->
+          <div class="st" data-st="none">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:58</span><span>GPS · 70%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="cardhead">
+                <span class="tile" style="background:#6b7280" aria-hidden="true">·</span>
+                <span class="tt"><span class="nm">No team</span><span class="tm">Not assigned yet</span></span>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="noteam"><span><b>Ola has not been put on a team.</b> Until the host assigns one, they are on nobody's side and their marker is grey.</span></div>
+                <div class="mate-open">
+                  <div class="mate">
+                    <span class="av"><span class="tile sm" style="background:#6b7280" aria-hidden="true">·</span><span class="pip" style="background:var(--live)"></span></span>
+                    <span class="who"><span class="n">Ola</span><span class="s">reporting now · ±18 m</span></span>
+                    <span class="d"><b class="mn">620 m</b><span>from you</span></span>
+                  </div>
+                  <div class="inner">
+                    <div class="chips">
+                      <span class="chip2"><svg class="i xs"><use href="#ic-clock"/></svg>seen <b>16:58</b></span>
+                      <span class="chip2"><svg class="i xs"><use href="#ic-pin"/></svg><b>52.5164, 13.3777</b></span>
+                    </div>
+                    <div class="actions" style="margin-top:0">
+                      <button class="btn ghost sm" type="button">Copy position</button>
+                      <button class="btn sm" type="button">Measure</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn ghost sm" type="button" style="margin-top:auto">Open the lobby</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Object</dt><dd>A team, with the tapped player opened in place. One row per member: emoji tile, name, freshness, distance</dd>
+        <dt>Header</dt><dd>Side and headcount, plus the one number a team has that a player does not — how spread out they are</dd>
+        <dt>Contains A</dt><dd>An opened row <i>is</i> proposal A's readout, inline. The two are compatible: A is C with a team of one</dd>
+        <dt>Degenerate</dt><dd>A player on no team gets a card of one, headed "No team", which is also the only place that state is currently explained</dd>
+      </dl>
+      <p class="why"><b>Why.</b> It matches what the game is about — a hider trio moves as one, and a seeker converging on one of them is converging on all three. It is the same shape the hider map's bottom card already settled on. And it is the first thing on this map that begins to answer the crowding that m2-spec §12 knowingly deferred: five markers in one concourse are usually one team.</p>
+      <p class="cost"><b>What it costs.</b> Two taps to a fact A gives in zero, and the card you get is not the card you asked for — you tapped a person. A team of one is a header and a row. And a team whose positions are withheld is a card of names with no numbers at all, which is either honest or useless depending on who you ask.</p>
+    </div>
+  </article>
+
+  </div>
+</section>
+
+<!-- ═══ what all three change ═══════════════════════════════════════════ -->
+<section class="band" id="shared">
+  <div class="band-head">
+    <span class="kicker">All three</span>
+    <h2>Seven changes that are not about the layout</h2>
+    <p>These hold whichever shape wins. Three of them are small enough to land on their own before a shape is picked.</p>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>One card, and you are in it</h4>
+      <p><code>PlayerSheet</code> and <code>OwnPositionSheet</code> become one component. You are a player with <code>isSelf</code>, and the differences — your accuracy ring, your compass, your tracker, no distance-from-yourself — are branches inside one card rather than a second, poorer one. Two components rendering one idea drift; the kit already makes this argument about <code>TeamBadge</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag ship">Settled elsewhere</span>
+      <h4>It becomes a Sheet</h4>
+      <p>Grabber, scrim, drag-to-dismiss, and <code>useHeldValue</code> so it animates out with the content it had. The <b>Close</b> button goes: the gesture is the dismiss, and every other card on this map already knows that.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Distance from you, like every other map sheet</h4>
+      <p><code>DistanceToYou</code> is on the stop sheet and the amenity sheet. It is missing from the one card about a person, and <code>fromYou</code> is already in scope at the call site. This is a one-line fix worth making today whichever shape wins.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The labels go</h4>
+      <p><b>Connection</b> becomes a dot and a word. <b>Accuracy</b> becomes <span class="mn">±22 m</span> beside the age, where the marker already puts it. <b>Role</b> becomes the side, next to the team, where it means something. And <code>fix.source</code> stops being printed raw — <span class="mn">fused</span> is a word this codebase uses, not a word a player does.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Needs your call</span>
+      <h4>"No position" stops meaning two things</h4>
+      <p>Fan-out sends a withheld position as <code>fix: null, fixAgeMs: null</code> — byte-identical to a phone that has never reported. The card currently prints <b>no position</b> for both. "Their phone is off" and "you are not allowed to know" are different facts, and one of them is a rule of the game worth stating out loud.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Needs your call</span>
+      <h4>The card opens from a name, not only from a pin</h4>
+      <p>m2-spec §12 says a player with no position "appears in the roster panel instead". There is no roster panel, so every player you may not locate — and every player whose phone is off — is currently unreachable. Whichever card wins needs a second way in.</p>
+    </div>
+    <div class="card">
+      <span class="tag ship">Settled elsewhere</span>
+      <h4>Battery keeps its three states</h4>
+      <p>Shown while fresh, dropped the moment the marker greys out or the player goes offline, and never a fourth "we knew once" state. m2-spec §7 settled this and none of the three touches it — a chip that is absent is the same rule as a row that is absent.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ questions ═══════════════════════════════════════════════════════ -->
+<section class="band" id="questions">
+  <div class="band-head">
+    <span class="kicker">Needs your call</span>
+    <h2>Four things I could not settle from the specs</h2>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Does the card carry a bearing?</h4>
+      <p>A distance with no direction can send a seeker the wrong way down a platform. The compass is already watched for your own marker, and a bearing between two points is trivial. But m2-spec §8 was emphatic that <b>only your own marker has an orientation</b> — that argument was about broadcasting a phone's <i>facing</i>, which an arrow pointing <i>at somebody</i> is not. I think §8 permits it. It is your call whether it meant to.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Does a card about a person belong to a person at all?</h4>
+      <p>C is the only one that says no, and it is the one that matches the game. But it answers a question you did not ask — you tapped Mara and got Vulpes. A and B keep the tap honest and leave the team a chevron away. This is the choice that decides the other two.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Is a readable trail a balance change?</h4>
+      <p>B turns a scribble on the map into a sentence a seeker can act on. The trail is already drawn and already synced, so nothing new is revealed — but making it <i>legible</i> is not nothing. If hiders should be harder to read than that, B is the wrong deck and the trail layer is the thing to revisit.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>What happens to Measure?</h4>
+      <p>All three end in <b>Measure to here</b>, which would seed the existing measure tool with a player's position as one end — a moving end, that goes stale while the ruler is open. Either the measurement freezes at the position it was taken from, or it tracks and the card has quietly invented a live pursuit readout. The second is more useful and much more of a decision.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+
+  /* theme */
+  const bar = document.getElementById("themebar");
+  const thumb = bar.querySelector(".thumb");
+  const moveThumb = (btn) => {
+    thumb.style.width = btn.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + (btn.offsetLeft - 3) + "px)";
+  };
+  bar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-theme-set]");
+    if (!btn) return;
+    for (const b of bar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+    const mode = btn.dataset.themeSet;
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    moveThumb(btn);
+  });
+  const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
+  settle();
+  window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+  /* stage states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+  }
+  for (const strip of document.querySelectorAll(".statebar[data-states]")) {
+    strip.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-state]");
+      if (btn) show(strip.dataset.states, btn.dataset.state);
+    });
+  }
+
+  /* copy buttons answer, per button, the way the real ones do */
+  for (const cp of document.querySelectorAll(".coordrow .cp")) {
+    cp.addEventListener("click", () => {
+      cp.style.color = "var(--live)";
+      cp.innerHTML = '<svg class="i xs"><use href="#ic-check"/></svg>Copied';
+    });
+  }
+})();
+</script>

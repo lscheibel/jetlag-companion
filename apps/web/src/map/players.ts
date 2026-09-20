@@ -5,7 +5,7 @@ import type {
 } from "@zero-lag/schema";
 import type { TeamIdentity } from "@zero-lag/ui/components/team-badge";
 import type { PresenceEntry } from "../ephemeral";
-import { ageOf, type Staleness } from "./staleness";
+import { ageOf, type Staleness, stalenessOf } from "./staleness";
 
 /**
  * One marker's worth of truth, assembled from the two sources that are allowed
@@ -29,6 +29,34 @@ export interface MapPlayer {
 	readonly online: boolean;
 	readonly battery: BatteryState | null;
 	readonly isSelf: boolean;
+}
+
+/**
+ * Your own row, seen through this device's own watch rather than through the
+ * copy of it that came back around. m2-spec §4.
+ *
+ * Presence is where everybody else's position comes from, and for yourself it
+ * is a round trip with a fan-out interval in it — one that is not there at all
+ * with the socket down. The marker and the trail head are already drawn from
+ * the local fix for exactly that reason; the card that opens on tapping that
+ * marker has to agree with it.
+ *
+ * The age is this clock minus this device's own capture, which is one clock and
+ * therefore legal where the general case is not. m0-spec §7.
+ */
+export function withLocalFix(
+	player: MapPlayer,
+	fix: PositionSnapshot | null,
+	now: number,
+): MapPlayer {
+	const usable = fix && fix.source !== "unavailable" ? fix : null;
+	const ageMs = usable ? Math.max(0, now - usable.capturedAt) : null;
+	return {
+		...player,
+		fix: usable,
+		ageMs,
+		staleness: stalenessOf(ageMs),
+	};
 }
 
 /** A player with no team still gets a marker and a trail, in a neutral grey. */

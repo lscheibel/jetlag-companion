@@ -1,8 +1,6 @@
 import { circleLngLat } from "@zero-lag/geo";
 import type { PositionSnapshot } from "@zero-lag/schema";
-import { Sheet, useHeldValue } from "@zero-lag/ui/components/sheet";
 import { useMemo } from "react";
-import { CoordinateCopy } from "./coordinate-copy";
 import { multiPolygonFeature } from "./geojson";
 import { MapMarker } from "./map-canvas";
 import { formatAccuracy } from "./staleness";
@@ -132,39 +130,5 @@ export function OwnPositionReadout({ fix }: { fix: PositionSnapshot | null }) {
 			{formatCoordinates([fix.lng, fix.lat])}
 			{accuracy === null ? null : ` · ${accuracy}`}
 		</p>
-	);
-}
-
-interface OwnPositionSheetProps {
-	readonly fix: PositionSnapshot | null;
-	readonly open: boolean;
-	readonly onClose: () => void;
-}
-
-/** Tap your own marker. The numbers live here rather than over the map. */
-export function OwnPositionSheet({
-	fix,
-	open,
-	onClose,
-}: OwnPositionSheetProps) {
-	const shown = useHeldValue(open, fix);
-
-	return (
-		<Sheet
-			onClose={onClose}
-			open={open}
-			testId="own-position-sheet"
-			title="Your position"
-		>
-			{shown && shown.source !== "unavailable" && (
-				<div className="space-y-2 text-sm">
-					<OwnPositionReadout fix={shown} />
-					<CoordinateCopy
-						point={[shown.lng, shown.lat]}
-						testId="own-position-coordinates"
-					/>
-				</div>
-			)}
-		</Sheet>
 	);
 }

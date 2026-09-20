@@ -187,13 +187,3 @@ function NoTeamPin({ initial, hollow, rim }: NoTeamPinProps) {
 		</span>
 	);
 }
-
-/**
- * The same player, in a list, so that a team is rendered by the one component
- * that renders teams. m1-spec §4 — and this is the screen that promise was
- * written for.
- */
-export function PlayerTeamBadge({ player }: { player: MapPlayer }) {
-	if (!player.team) return <span>No team</span>;
-	return <TeamBadge team={player.team} />;
-}

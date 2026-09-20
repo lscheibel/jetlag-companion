@@ -390,7 +390,13 @@ test("5. one accuracy ring, and it is your own", async ({ browser }) => {
 		timeout: 30_000,
 	});
 	await ana.page.getByTestId("own-marker").click();
-	await expect(ana.page.getByTestId("own-readout")).toContainText("±");
+	/*
+	 * Your own marker opens the one player card, and its headline is the number
+	 * only your own card has: how well this phone is fixed. Deck 13 A.
+	 */
+	await expect(ana.page.getByTestId("card-you")).toBeVisible();
+	await expect(ana.page.getByTestId("card-headline")).toContainText("±");
+	await ana.page.getByTestId("player-card-scrim").click();
 
 	/**
 	 * Everybody else's accuracy is six characters of text in the sheet — never a
@@ -586,7 +592,9 @@ test("9. battery is three states, and never a remembered one", async ({
 	await expect(ana.page.getByTestId("sheet-battery")).toHaveText(
 		"battery unavailable",
 	);
-	await ana.page.getByTestId("close-player-sheet").click();
+	// The card is a sheet: the scrim is the dismiss, and there is no third button
+	// in the header saying so. Deck 13 A.
+	await ana.page.getByTestId("player-card-scrim").click();
 
 	/**
 	 * Ben goes into a tunnel. His position stays and keeps ageing — he was at
@@ -606,8 +614,14 @@ test("9. battery is three states, and never a remembered one", async ({
 	});
 	await ana.page.getByTestId("marker-Ben").click();
 	await expect(ana.page.getByTestId("sheet-battery")).toHaveCount(0);
-	await expect(ana.page.getByTestId("sheet-last-seen")).not.toHaveText(
-		"no position",
+	/*
+	 * Offline is a state and not an absence: the card says so in words, and the
+	 * headline still carries where he was, because that is a fact about the
+	 * world Ana can act on. m2-spec §6, drawn as deck 13 A.
+	 */
+	await expect(ana.page.getByTestId("sheet-last-seen")).toHaveText("Offline");
+	await expect(ana.page.getByTestId("card-headline")).not.toHaveText(
+		"No position",
 	);
 
 	for (const phone of [ana, ben]) await phone.close();
