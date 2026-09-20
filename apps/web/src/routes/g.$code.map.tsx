@@ -350,6 +350,13 @@ function MapScreen() {
 	);
 	const others = shown.filter((player) => !player.isSelf);
 	/**
+	 * Your own marker wears your team's colour, so it comes off the same roster
+	 * row everybody else's does rather than out of a constant — it used to be
+	 * cobalt, which is one of the team colours a board can hand out.
+	 */
+	const ownColor =
+		mapPlayers.find((player) => player.isSelf)?.team?.color ?? NO_TEAM_COLOR;
+	/**
 	 * The trail set is the marker set, so blindness is one switch rather than
 	 * two: a hider who stops seeing a rival's marker stops seeing where it came
 	 * from in the same tap. m2-spec §9.
@@ -1510,6 +1517,7 @@ function MapScreen() {
 						rows={positionLog}
 					/>
 					<OwnPosition
+						color={ownColor}
 						fix={ownFix}
 						headingDeg={headingDeg}
 						onSelect={() => {

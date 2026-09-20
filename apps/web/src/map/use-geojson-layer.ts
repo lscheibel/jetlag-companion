@@ -110,7 +110,7 @@ const LAYER_ORDER = [
 	"split-bisector",
 	"split-vertices",
 	"own-accuracy-fill",
-	"own-accuracy-outline",
+	"own-pulse",
 	"draw-fill",
 	"draw-line-case",
 	"draw-line",
