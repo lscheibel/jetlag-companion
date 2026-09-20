@@ -330,7 +330,8 @@ The search area is a pure left fold of M0's constraint engine over an ordered, e
 **Features**
 
 - Offline queueing across every action, with clear pending/synced state and clear superseded state
-- Background location and reliable push notifications for questions, answers, curses and deadlines. **Neither is deliverable in a browser**: geolocation stops when the screen locks and web push is best-effort at both ends, so this item is what a Capacitor build exists for. Until it lands, the honest fallback is foreground-only tracking, a wake-lock during active rounds, and M2's staleness UI telling the truth about the gap
+- **Background location, by outsourcing it.** Neither background location nor push is deliverable in a browser, and this item used to be the whole case for a Capacitor build. Half of it turns out not to need one: the job is not "run our code in the background", it is "know where a phone is", and several free cross-platform apps — OwnTracks, OsmAnd, Traccar Client, GPSLogger — already do that and already offer to POST the result to a URL of the player's choosing. What they need from us is an endpoint. **Delivered, and optional:** the browser keeps its own foreground watch, the wake-lock and M2's honest staleness UI, and a player who sets nothing up loses nothing. See [m15-spec](m15-spec.md)
+- **Reliable push notifications** for questions, answers, curses and deadlines. This half is still waiting on a native shell — web push is best-effort at both ends and nothing about the tracking endpoint brings it closer
 - Low-power mode; battery warnings for yourself and your team
 - One-handed layout, large tap targets
 

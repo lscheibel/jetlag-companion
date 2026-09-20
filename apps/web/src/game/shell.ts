@@ -24,10 +24,10 @@ export interface GameShell {
 	/**
 	 * One watch, one queue, for the whole game session. m2-spec §10.
 	 *
-	 * It lives here rather than on a screen because its two gates disagree about
-	 * where they come from: broadcasting follows the screen and logging follows
-	 * the round, and a round runs whichever screen you happen to be looking at. A
-	 * second `usePositionTracking` on a child route would also mean a second
+	 * It lives here rather than on a screen because neither of its jobs belongs to
+	 * one: broadcasting runs for the whole session and logging follows the round,
+	 * and a round runs whichever screen you happen to be looking at. A second
+	 * `usePositionTracking` on a child route would also mean a second
 	 * `PositionLog` over the same `localStorage` key, which is one queue counted
 	 * twice.
 	 */

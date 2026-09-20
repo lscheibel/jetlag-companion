@@ -421,3 +421,28 @@ export async function eventPayloads(
 	);
 	return result.rows.map((row) => row.payload);
 }
+
+/**
+ * Push a token's last ping into the past. m15-spec §6, §7.
+ *
+ * The screen counts an age up from what the server measured, so the only way
+ * to test what it does with an old one is to make the server measure an old
+ * one. Nothing here touches a clock the browser can see.
+ */
+export async function agePing(token: string, ageMs: number): Promise<void> {
+	await db().query(
+		'UPDATE "trackingToken" SET "lastSeenAt" = $1 WHERE token = $2',
+		[Date.now() - ageMs, token],
+	);
+}
+
+/** Null while a token is live. m15-spec §3: revoked rows are kept, not deleted. */
+export async function trackingRevokedAt(token: string): Promise<number | null> {
+	const result = await db().query<{ revokedAt: string | null }>(
+		'SELECT "revokedAt" FROM "trackingToken" WHERE token = $1',
+		[token],
+	);
+	const row = result.rows[0];
+	if (!row) throw new Error(`no tracking token ${token}`);
+	return row.revokedAt === null ? null : Number(row.revokedAt);
+}

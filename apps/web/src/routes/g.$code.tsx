@@ -5,7 +5,7 @@ import {
 } from "@rocicorp/zero/react";
 import { queries } from "@zero-lag/schema";
 import { useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import type { GameShell } from "../game/shell";
 import { useBatteryBroadcast } from "../game/use-battery-broadcast";
 import { useEphemeralChannel } from "../game/use-ephemeral";
@@ -65,22 +65,20 @@ function Connected({ session }: { session: Session }) {
 	const positionIntervalMs = games[0]?.positionIntervalMs ?? 5_000;
 
 	const role = useMyRole(session.playerId);
-	const location = useLocation();
 
 	/**
-	 * The tracking gate, in one place. m2-spec §10.
+	 * The tracking gate, in one place. m2-spec §10, amended.
 	 *
-	 * | Lobby, map closed              | no broadcast | no log |
-	 * | Map open, round pending        | broadcast    | no log |
-	 * | Round hiding/seeking, any screen | broadcast  | log    |
+	 * | Lobby, map closed                | broadcast | no log |
+	 * | Map open, round pending          | broadcast | no log |
+	 * | Round hiding/seeking, any screen | broadcast | log    |
 	 *
-	 * Which screen is open is read off the pathname rather than reported upward
-	 * by a child, because the route that owns the session already knows. The M0
-	 * debug harness counts as a screen that is asking where everyone is — it has
-	 * a presence panel — so it broadcasts on the same terms as the map.
+	 * Broadcasting used to follow the screen, on the grounds that a player not
+	 * looking at the map is not asking where anyone is. That reads the direction
+	 * of the question backwards: a position is published for everyone *else*, and
+	 * a hider who has locked their phone and put it in a pocket is exactly the
+	 * player whose position the table most wants. Logging still follows the round.
 	 */
-	const onPositionScreen =
-		location.pathname.endsWith("/map") || location.pathname.endsWith("/debug");
 	const roundRunning =
 		role.roundStatus === "hiding" || role.roundStatus === "seeking";
 
@@ -90,7 +88,6 @@ function Connected({ session }: { session: Session }) {
 		roundId: role.roundId,
 		intervalMs: positionIntervalMs,
 		channel,
-		broadcast: onPositionScreen || roundRunning,
 		logging: roundRunning,
 	});
 

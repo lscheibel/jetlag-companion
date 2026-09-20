@@ -417,7 +417,22 @@ test("6. follow, drag to free, recenter", async ({ browser }) => {
 	const control = ana.page.getByTestId("cycle-camera");
 	await expect(control).toHaveAttribute("data-camera-mode", "free");
 
-	await control.click();
+	/**
+	 * The locate control opens the position sheet and the cycle is its primary
+	 * action, since m15-spec §6 — two sources can report a position and the
+	 * control has to be able to say which of them is. Cycling is a tap deeper
+	 * than it was; everything below this is unchanged.
+	 */
+	const recenter = async () => {
+		await control.click();
+		await ana.page.getByTestId("position-recenter").click();
+		// The sheet's scrim covers the canvas until it has finished leaving, so
+		// anything that touches the map next has to wait for it — including the
+		// drag below, which is otherwise swallowed and proves nothing.
+		await expect(ana.page.getByTestId("position-sheet")).toHaveCount(0);
+	};
+
+	await recenter();
 	await expect(control).toHaveAttribute("data-camera-mode", "follow");
 
 	// A drag is an unambiguous statement about what you want to look at.
@@ -434,7 +449,7 @@ test("6. follow, drag to free, recenter", async ({ browser }) => {
 
 	await expect(control).toHaveAttribute("data-camera-mode", "free");
 
-	await control.click();
+	await recenter();
 	await expect(control).toHaveAttribute("data-camera-mode", "follow");
 
 	await ana.close();
@@ -460,9 +475,14 @@ test("7. with no compass, no orientation is rendered anywhere", async ({
 	 * equivalent to it. m2-spec §8.
 	 */
 	const control = ana.page.getByTestId("cycle-camera");
-	await control.click();
+	const recenter = async () => {
+		await control.click();
+		await ana.page.getByTestId("position-recenter").click();
+	};
+
+	await recenter();
 	await expect(control).toHaveAttribute("data-camera-mode", "follow");
-	await control.click();
+	await recenter();
 	await expect(control).toHaveAttribute("data-camera-mode", "free");
 
 	// And the map is otherwise fully usable.

@@ -197,6 +197,45 @@ export const mapTemplate = pgTable(
 	(table) => [uniqueIndex("mapTemplate_code_idx").on(table.code)],
 );
 
+/**
+ * A device's standing permission to report its own position. m15-spec §3.
+ *
+ * Keyed on the device rather than on a player or a game, because that is what
+ * the thing actually is: a phone running OsmAnd is sharing where *it* is, and
+ * that fact is equally true of every game the phone is currently in. Scoping
+ * the token to one game would mean re-pasting a URL into a tracker app at the
+ * start of every game, which is the friction most likely to make an optional
+ * feature go unused.
+ *
+ * It is deliberately not a `GameToken`. That one is the bearer for Zero and the
+ * ephemeral socket, lives ninety days, and would be travelling in a query
+ * string through every proxy log between a player's phone and here. This grants
+ * exactly one verb — write a position for this device — and is a row, so it can
+ * be revoked, which a stateless JWT cannot.
+ */
+export const trackingToken = pgTable(
+	"trackingToken",
+	{
+		/** The secret, and the key: a ping arrives carrying nothing else. */
+		token: text("token").primaryKey(),
+		deviceId: text("deviceId").notNull(),
+		createdAt: epochMs("createdAt").notNull(),
+		/**
+		 * Kept rather than deleted when a player regenerates. A revoked row lets
+		 * a stale tracker be told it was turned off, which is a different problem
+		 * from a URL that was never valid and has a different fix.
+		 */
+		revokedAt: epochMs("revokedAt"),
+		/**
+		 * When a ping last arrived on this token. The setup screen's only honest
+		 * confirmation that a player's tracker app is actually configured — the
+		 * alternative is a URL and a shrug.
+		 */
+		lastSeenAt: epochMs("lastSeenAt"),
+	},
+	(table) => [index("trackingToken_device_idx").on(table.deviceId)],
+);
+
 export const player = pgTable(
 	"player",
 	{
@@ -598,4 +637,5 @@ export const drizzleSchema = {
 	searchZone,
 	positionSnapshot,
 	event,
+	trackingToken,
 };

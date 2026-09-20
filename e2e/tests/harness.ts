@@ -255,7 +255,18 @@ export type PhoneOptions = {
 	noBattery?: boolean;
 	/** Defaults to the host. Tests that name a style pin this. */
 	colorScheme?: "light" | "dark";
+	/**
+	 * Claim to be a different phone. The only thing in the app that reads the
+	 * user agent is `device.platform()`, which picks which tracker apps to
+	 * offer — and half that catalogue is an app that cannot work on an iPhone,
+	 * so it is worth being able to be one. m15-spec §6.
+	 */
+	userAgent?: string;
 };
+
+/** Safari on an iPhone, as of iOS 17. Only the substrings matter. */
+export const IPHONE_AGENT =
+	"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 
 export async function openPhone(
 	browser: Browser,
@@ -270,6 +281,7 @@ export async function openPhone(
 			latitude: 52.5219,
 		},
 		...(options.colorScheme ? { colorScheme: options.colorScheme } : {}),
+		...(options.userAgent ? { userAgent: options.userAgent } : {}),
 	});
 	const page = await context.newPage();
 

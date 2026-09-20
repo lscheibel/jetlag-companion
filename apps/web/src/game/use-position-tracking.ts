@@ -17,16 +17,6 @@ interface PositionTrackingInput {
 	intervalMs: number;
 	channel: EphemeralChannel | null;
 	/**
-	 * Broadcasting follows the screen. m2-spec §10.
-	 *
-	 * A player who opens the map is asking where everyone is, and the answer is
-	 * worthless if their own phone is not part of it. A player sitting in the
-	 * lobby is not asking, and their phone stays quiet — a lobby that drains 8%
-	 * of everyone's battery while the group argues about team names is a bad
-	 * first impression and an avoidable one. m1-spec §9.
-	 */
-	broadcast: boolean;
-	/**
 	 * Logging follows the round. m2-spec §10.
 	 *
 	 * The durable log is M14's replay artifact, and it does not want twenty
@@ -52,6 +42,12 @@ const DRAIN_INTERVAL_MS = 3_000;
  * It is broadcast on the ephemeral channel, where it is dropped if it cannot be
  * delivered — and it is appended to a local queue on the configured interval,
  * where it waits for a connection however long that takes.
+ *
+ * Broadcasting is not gated on anything. m2-spec §10, amended: the people who
+ * need a player's position are the *other* players, and they need it whether or
+ * not that player happens to be looking at their own map. Logging still follows
+ * the round, because the durable log is a replay artifact and replays do not
+ * want the lobby.
  */
 export function usePositionTracking({
 	gameId,
@@ -59,7 +55,6 @@ export function usePositionTracking({
 	roundId,
 	intervalMs,
 	channel,
-	broadcast,
 	logging,
 }: PositionTrackingInput): PositionTracking {
 	const zero = useZero();
@@ -119,7 +114,6 @@ export function usePositionTracking({
 
 	// Live position: straight to the lossy channel, never queued.
 	useEffect(() => {
-		if (!broadcast) return;
 		let live = true;
 		const receive = (fix: PositionSnapshot) => {
 			if (!live) return;
@@ -146,7 +140,7 @@ export function usePositionTracking({
 			live = false;
 			stop();
 		};
-	}, [channel, broadcast]);
+	}, [channel]);
 
 	// The durable log's cadence. Configurable, because it sets replay resolution.
 	useEffect(() => {

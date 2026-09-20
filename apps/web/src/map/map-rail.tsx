@@ -7,7 +7,12 @@ import type { MapTool } from "./toolkit";
 
 interface MapHudProps {
 	readonly camera: Camera;
-	readonly onCycleCamera: () => void;
+	/**
+	 * Opens the position sheet, which carries the camera cycle as its primary
+	 * action. m15-spec §6 — the control no longer cycles on its own, because
+	 * what it reports on can now fail in two independent ways.
+	 */
+	readonly onLocate: () => void;
 	readonly hasFix: boolean;
 	readonly blindness: { readonly blind: boolean; toggle(): void } | null;
 	readonly bounds: BBox | null;
@@ -26,7 +31,7 @@ interface MapHudProps {
  */
 export function MapHud({
 	camera,
-	onCycleCamera,
+	onLocate,
 	hasFix,
 	blindness,
 	bounds,
@@ -45,12 +50,14 @@ export function MapHud({
 			>
 				<MapFitSelection bounds={bounds} />
 				<IconButton
-					aria-label={hasFix ? cameraLabel(camera) : "How to get a GPS fix"}
+					aria-label={
+						hasFix ? `Your position · ${cameraLabel(camera)}` : "Your position"
+					}
 					// The locate control wears a `?` until there is a fix: the one
 					// thing on the map that says why it is not doing anything yet.
 					badge={hasFix ? undefined : "?"}
 					data-camera-mode={camera.mode}
-					onClick={onCycleCamera}
+					onClick={onLocate}
 					pressed={camera.mode !== "free"}
 					testId="cycle-camera"
 				>

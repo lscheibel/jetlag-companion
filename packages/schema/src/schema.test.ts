@@ -13,11 +13,16 @@ import { schema } from "./zero/schema";
  */
 
 /**
- * The one table Drizzle owns and Zero does not mirror. A template belongs to no
- * game and Zero's query context is a game, so it is read over plain HTTP.
- * m4-spec §7. Anything else missing from the Zero schema is drift, not design.
+ * The tables Drizzle owns and Zero does not mirror. Zero's query context is a
+ * game, and neither of these belongs to one: a template belongs to nobody
+ * (m4-spec §7) and a tracking token belongs to a device, which outlives every
+ * game it plays (m15-spec §3). Both are read over plain HTTP. A token is also a
+ * secret whose whole point is that it is not the sync bearer, so putting it on
+ * the sync stream would be an odd way to keep it out of one.
+ *
+ * Anything else missing from the Zero schema is drift, not design.
  */
-const DRIZZLE_ONLY_TABLES = ["mapTemplate"];
+const DRIZZLE_ONLY_TABLES = ["mapTemplate", "trackingToken"];
 
 const drizzleTables = Object.values(drizzleSchema).map((table) => {
 	const config = getTableConfig(table);

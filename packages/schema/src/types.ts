@@ -45,7 +45,19 @@ export type GameContext = {
 
 // --- position ---------------------------------------------------------------
 
-export type PositionSource = "gps" | "network" | "manual" | "unavailable";
+/**
+ * `external` is a fix this device did not take itself: it arrived over the
+ * tracking webhook from OsmAnd, OwnTracks, Traccar or similar. It is a real
+ * position from the player's phone, but its physical provenance is unknown —
+ * the OsmAnd protocol family reports `hdop`, which is satellite geometry and
+ * not a distance, so `gps` and `network` cannot be told apart from it.
+ */
+export type PositionSource =
+	| "gps"
+	| "network"
+	| "manual"
+	| "external"
+	| "unavailable";
 
 /**
  * `source: 'unavailable'` is a first-class value — a hider with location
@@ -55,10 +67,24 @@ export type PositionSource = "gps" | "network" | "manual" | "unavailable";
 export type ClientFix = {
 	readonly lng: number;
 	readonly lat: number;
-	readonly accuracyMeters: number;
+	/**
+	 * Null when the sender could not say. External trackers speaking the OsmAnd
+	 * protocol report `hdop` and nothing else, and `hdop` is a unitless dilution
+	 * of precision rather than a radius — there is no conversion, so the honest
+	 * value is nothing at all. Read it through `formatAccuracy`, which renders
+	 * null as "accuracy unknown" rather than as a confident zero.
+	 */
+	readonly accuracyMeters: number | null;
 	readonly headingDeg: number | null;
 	readonly speedMps: number | null;
-	/** The sender's own clock — trusted, and the staleness reference. */
+	/**
+	 * The sender's own clock, trusted and propagated unchanged — what the durable
+	 * log orders and replays by.
+	 *
+	 * It is *not* the staleness reference: comparing it against a reader's clock,
+	 * or the server's, subtracts one device's clock from another's. Age travels
+	 * separately as an elapsed duration. m0-spec §7.
+	 */
 	readonly capturedAt: number;
 	readonly source: PositionSource;
 };

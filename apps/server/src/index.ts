@@ -16,6 +16,7 @@ import { mountDevRoutes } from "./routes/dev";
 import { games } from "./routes/games";
 import { gameMaps, maps } from "./routes/maps";
 import { createPhotosRoute } from "./routes/photos";
+import { trackIngest, tracking } from "./routes/tracking";
 import { zero } from "./routes/zero";
 
 const app = new Hono();
@@ -26,7 +27,12 @@ app.use(
 	cors({
 		origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
 		allowHeaders: ["Content-Type", "Authorization"],
-		allowMethods: ["GET", "POST", "OPTIONS"],
+		// DELETE is here for one route — revoking a tracking token — and it is
+		// worth naming why: a method missing from this list fails in the browser's
+		// preflight, so the fetch never reaches the handler and the only symptom
+		// is a rejected promise. The e2e suite cannot catch it either, because it
+		// runs behind the Vite proxy where these calls are same-origin.
+		allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
 	}),
 );
 
@@ -50,6 +56,12 @@ app.route(
 	}),
 );
 app.route("/api/zero", zero);
+app.route("/api/tracking", tracking);
+/**
+ * Short and unversioned on purpose: this path is typed by hand into a tracker
+ * app's settings screen, sometimes off a phone screen held next to a laptop.
+ */
+app.route("/api/track", trackIngest);
 mountDevRoutes(app, env.NODE_ENV);
 
 // Read once, at startup rather than on the first request, so a missing

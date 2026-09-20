@@ -382,7 +382,12 @@ function PointSheet({
 					<div className="flex flex-col gap-2">
 						{sources.fix && (
 							<SourceRow
-								hint={`${formatAccuracy(sources.fix.accuracyMeters)} · ${relativeAge(Math.max(0, Date.now() - sources.fix.capturedAt))}`}
+								hint={[
+									formatAccuracy(sources.fix.accuracyMeters),
+									relativeAge(Math.max(0, Date.now() - sources.fix.capturedAt)),
+								]
+									.filter((part) => part !== null)
+									.join(" · ")}
 								icon="crosshair"
 								onClick={() => {
 									const fix = sources.fix;

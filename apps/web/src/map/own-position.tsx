@@ -110,8 +110,9 @@ export function OwnPosition({ fix, headingDeg, onSelect }: OwnPositionProps) {
  */
 function AccuracyRing({ fix }: { fix: PositionSnapshot | null }) {
 	const ring = useMemo(() => {
-		if (!fix || fix.accuracyMeters <= 0) return null;
-		return circleLngLat([fix.lng, fix.lat], fix.accuracyMeters);
+		const radius = fix?.accuracyMeters ?? 0;
+		if (!fix || radius <= 0) return null;
+		return circleLngLat([fix.lng, fix.lat], radius);
 	}, [fix]);
 	const data = useMemo(() => multiPolygonFeature(ring), [ring]);
 	useGeoJsonLayer("own-accuracy", data, ACCURACY_LAYERS);
@@ -125,10 +126,11 @@ function AccuracyRing({ fix }: { fix: PositionSnapshot | null }) {
  */
 export function OwnPositionReadout({ fix }: { fix: PositionSnapshot | null }) {
 	if (!fix || fix.source === "unavailable") return null;
+	const accuracy = formatAccuracy(fix.accuracyMeters);
 	return (
 		<p data-testid="own-readout">
-			{formatCoordinates([fix.lng, fix.lat])} ·{" "}
-			{formatAccuracy(fix.accuracyMeters)}
+			{formatCoordinates([fix.lng, fix.lat])}
+			{accuracy === null ? null : ` · ${accuracy}`}
 		</p>
 	);
 }

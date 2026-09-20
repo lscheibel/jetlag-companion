@@ -22,6 +22,13 @@
       "when": 1788122218404,
       "tag": "0002_lower_position_interval",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788711314240,
+      "tag": "0003_add_tracking_token",
+      "breakpoints": true
     }
   ]
 }

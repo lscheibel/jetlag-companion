@@ -1,5 +1,4 @@
 import type { LngLat, MultiPolygon } from "@zero-lag/geo";
-import type { LocationIssue } from "@zero-lag/platform";
 import { ActionButton } from "@zero-lag/ui/components/action-button";
 import { Field } from "@zero-lag/ui/components/field";
 import { Icon, type IconName } from "@zero-lag/ui/components/icon";
@@ -31,51 +30,6 @@ import {
 	type MapTool,
 	pathSegments,
 } from "./toolkit";
-
-interface GpsHelpSheetProps {
-	readonly open: boolean;
-	readonly issue: LocationIssue | null;
-	readonly onClose: () => void;
-}
-
-export function GpsHelpSheet({ open, issue, onClose }: GpsHelpSheetProps) {
-	const lead =
-		issue === "denied"
-			? "Location is blocked for this page."
-			: issue === "insecure_context"
-				? "Location needs a secure page (https)."
-				: issue === "unsupported"
-					? "This browser cannot read a location."
-					: "No fix yet — the phone has not seen satellites.";
-
-	return (
-		<Sheet
-			onClose={onClose}
-			open={open}
-			testId="gps-help-sheet"
-			title="Where is this phone?"
-		>
-			<p className="text-sm leading-snug">{lead}</p>
-			{issue === "denied" ? (
-				<p className="text-ink-dim text-sm leading-snug">
-					In the browser or system settings, allow location for this site, then
-					come back and tap locate again. A denial is remembered until you
-					change it.
-				</p>
-			) : issue === "insecure_context" || issue === "unsupported" ? (
-				<p className="text-ink-dim text-sm leading-snug">
-					Open the game over https on a phone that has a GPS, rather than a
-					plain http address or a desktop without a receiver.
-				</p>
-			) : (
-				<p className="text-ink-dim text-sm leading-snug">
-					Stand near a window or go outside and wait a few seconds. Indoors, a
-					first fix can take a while even when permission is already granted.
-				</p>
-			)}
-		</Sheet>
-	);
-}
 
 interface MeasureCardProps {
 	readonly tool: Extract<MapTool, { kind: "measure" }>;

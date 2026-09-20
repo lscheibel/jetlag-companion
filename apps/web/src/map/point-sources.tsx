@@ -7,7 +7,8 @@ import type { PoiTypeId } from "./poi-type";
 /** A fix worth offering as a source: where, how sure, and when. */
 export interface PointFix {
 	readonly point: LngLat;
-	readonly accuracyMeters: number;
+	/** Null when the source could not say — see `ClientFix.accuracyMeters`. */
+	readonly accuracyMeters: number | null;
 	/** The phone's own clock, so the age is arithmetic at render time. */
 	readonly capturedAt: number;
 }

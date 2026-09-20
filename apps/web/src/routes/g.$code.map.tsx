@@ -59,7 +59,6 @@ import {
 import {
 	ConstraintsPickerSheet,
 	CutsCard,
-	GpsHelpSheet,
 	MeasureCard,
 	PinCard,
 } from "../map/map-overlay";
@@ -95,6 +94,7 @@ import { PoiPickerSheet } from "../map/poi-picker-sheet";
 import { type PoiConstraintKind, PoiSheet } from "../map/poi-sheet";
 import { type PoiTypeId, poiTypeLabel } from "../map/poi-type";
 import { type PointSources, PointSourcesProvider } from "../map/point-sources";
+import { PositionSheet } from "../map/position-sheet";
 import { remainingStopCount } from "../map/remaining-stops";
 import { SearchZoneLayer } from "../map/search-zone-layer";
 import { SplitDraftLayer } from "../map/split-draft-layer";
@@ -121,6 +121,7 @@ import { useNow } from "../map/use-now";
 import { usePois } from "../map/use-pois";
 import { useWakeLock } from "../map/use-wake-lock";
 import { stepZoneMeters } from "../setup/game-size";
+import { useTracking } from "../tracking/use-tracking";
 
 /** Berlin, for a map that has nothing else to go on. */
 const FALLBACK_CENTER = [13.4132, 52.5219] as const;
@@ -280,7 +281,16 @@ function MapScreen() {
 	const [editingConstraintId, setEditingConstraintId] = useState<string | null>(
 		null,
 	);
-	const [gpsHelpOpen, setGpsHelpOpen] = useState(false);
+	/**
+	 * The locate control's sheet: where this phone is, and who can see it.
+	 *
+	 * Background tracking is the same question asked about the next ten minutes,
+	 * and it leaves the map for a flow of its own — three decisions with an
+	 * order do not fit under a sheet. m15-spec §6.
+	 */
+	const [positionSheetOpen, setPositionSheetOpen] = useState(false);
+	// Polls only while the sheet is up; nothing else on the map reads it.
+	const backgroundTracking = useTracking(session, positionSheetOpen);
 	const [constraintPickerOpen, setConstraintPickerOpen] = useState(false);
 	const [seekerOverlay, setSeekerOverlay] = useState<
 		"none" | "actions" | "found"
@@ -1511,13 +1521,7 @@ function MapScreen() {
 						camera={camera}
 						hasFix={Boolean(ownFix && ownFix.source !== "unavailable")}
 						onCancel={cancelTool}
-						onCycleCamera={() => {
-							if (!ownFix || ownFix.source === "unavailable") {
-								setGpsHelpOpen(true);
-								return;
-							}
-							setCamera((current) => nextCamera(current, hasCompass));
-						}}
+						onLocate={() => setPositionSheetOpen(true)}
 						onPoiPicker={() => {
 							setPoiPickerOpen((open) => !open);
 							setSelectedStopId(null);
@@ -1788,10 +1792,25 @@ function MapScreen() {
 				fromYou={fromYou !== null}
 				tool={tool}
 			/>
-			<GpsHelpSheet
+			<PositionSheet
+				camera={camera}
+				fix={ownFix}
 				issue={tracking.locationIssue}
-				onClose={() => setGpsHelpOpen(false)}
-				open={gpsHelpOpen}
+				onBackgroundTracking={() =>
+					void navigate(`/g/${session.code}/tracking`)
+				}
+				onClose={() => setPositionSheetOpen(false)}
+				onCycleCamera={() =>
+					setCamera((current) => nextCamera(current, hasCompass))
+				}
+				open={positionSheetOpen}
+				trackerAgeMs={
+					backgroundTracking.state.kind === "on"
+						? backgroundTracking.state.identity.lastSeenAgeMs
+						: null
+				}
+				trackerConfigured={backgroundTracking.state.kind === "on"}
+				trackerReadAt={backgroundTracking.readAt}
 			/>
 
 			<HiderTeamSheet

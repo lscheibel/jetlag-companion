@@ -64,9 +64,16 @@ export function relativeAge(ageMs: number): string {
 	return `${hours} h ago`;
 }
 
-/** `±50 m`. Six characters that a district-sized ring says badly. m2-spec §5. */
-export function formatAccuracy(accuracyMeters: number): string {
-	return `±${Math.round(accuracyMeters)} m`;
+/**
+ * `±50 m`. Six characters that a district-sized ring says badly. m2-spec §5.
+ *
+ * Null in, null out — and every caller drops the segment rather than printing a
+ * placeholder. An external tracker speaking the OsmAnd protocol reports `hdop`
+ * and no radius, and the choice there is between saying nothing about accuracy
+ * and saying something false; §7 already made that choice for battery.
+ */
+export function formatAccuracy(accuracyMeters: number | null): string | null {
+	return accuracyMeters === null ? null : `±${Math.round(accuracyMeters)} m`;
 }
 
 export type PositionLabelInput = {

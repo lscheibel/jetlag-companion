@@ -361,6 +361,33 @@ const share: PlatformAdapter["share"] = {
 	},
 };
 
+/**
+ * Which phone this is. m15-spec §6.
+ *
+ * Deliberately a coarse read of two substrings, because that is all the
+ * question needs: the answer picks a list of apps to offer, and being wrong
+ * costs a player one irrelevant entry rather than anything they cannot recover
+ * from. Anything more — version parsing, brand sniffing, feature inference —
+ * would be more machinery aimed at more ways to be wrong.
+ *
+ * iPadOS reports itself as a Mac and is caught by the touch test, which is the
+ * one special case worth carrying: an iPad is an iPhone for this purpose, and a
+ * desktop Safari that somehow matched it would simply be shown both lists.
+ */
+const device: PlatformAdapter["device"] = {
+	platform() {
+		if (typeof navigator === "undefined") return "unknown";
+
+		const agent = navigator.userAgent;
+		if (/android/i.test(agent)) return "android";
+		if (/iphone|ipad|ipod/i.test(agent)) return "ios";
+		// iPadOS 13+ claims to be a Mac; a Mac with a touchscreen does not exist.
+		if (/macintosh/i.test(agent) && navigator.maxTouchPoints > 1) return "ios";
+
+		return "unknown";
+	},
+};
+
 export const webPlatform: PlatformAdapter = {
 	location,
 	orientation,
@@ -370,4 +397,5 @@ export const webPlatform: PlatformAdapter = {
 	battery,
 	clipboard,
 	share,
+	device,
 };

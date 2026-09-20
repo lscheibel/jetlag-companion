@@ -1,0 +1,1017 @@
+<title>Zero Lag Background Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* ═══ Deck 11 · Background tracking ═════════════════════════════════
+   Same page chrome as decks 07–10: neutral paper, the app's own role
+   tokens on every stage, three theme states.                           */
+
+:root{
+  --paper:#EFF2F7; --paper-2:#FFFFFF; --paper-3:#E3E9F1;
+  --text:#0B111A; --text-2:#3D4A5C; --text-3:#6B7A8E;
+  --rule:#C5D0DE; --rule-2:#E1E8F1;
+  --yellow:#F5D400; --yellow-ink:#12160B;
+  --blue:#0F5FC2; --green:#00794A; --red:#C7300F;
+  --lift:0 24px 44px -32px rgba(6,14,26,.55);
+
+  /* app role tokens — verbatim from packages/ui/src/styles/tokens.css */
+  --ground:#f0f3f7; --surface:#ffffff; --surface-raised:#e6ecf3;
+  --surface-sunken:#dbe3ec; --scrim:rgb(8 17 28 / .45);
+  --ink:#08111c; --ink-dim:#4a5869; --ink-faint:#6b7a8e;
+  --hairline:rgb(8 17 28 / .14); --hairline-strong:rgb(8 17 28 / .26);
+  --action:#f5d400; --action-ink:#12160b; --action-press:#b39b00; --focus:#0f5fc2;
+  --live:#00794a; --stale:#9a6100; --offline:#c7300f; --danger:#c7300f;
+  --transit-u:#0f5fc2; --transit-s:#00794a;
+  --map-land:#e9eff5; --map-block:#dae3ec; --map-water:#b6d4ee; --map-park:#c7e4c6;
+  --map-station:#08111c;
+  --edge-danger:#A62A15; --edge-live:#11784b;
+  --sheet-fill:#f0f3f7;
+
+  /* motion, from styles/motion.css */
+  --ease-pop:linear(0 0%,.24 5%,.88 16%,1.02 23%,1.03 29%,1 40%,.999 52%,1 100%);
+  --ease-out-soft:cubic-bezier(.2,.9,.25,1);
+  --ease-travel:cubic-bezier(.32,.72,.28,1);
+  --dur-press:120ms; --dur-tap:160ms; --dur-move:240ms; --dur-enter:320ms;
+  --dur-sheet:420ms; --dur-breathe:1900ms;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+    --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+    --rule:#242E3C; --rule-2:#1A2230;
+    --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+    --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+    --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+    --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+    --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+    --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+    --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+    --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+    --transit-u:#3e88e8; --transit-s:#22c179;
+    --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+    --map-station:#e7edf6;
+    --sheet-fill:#141b26;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070A10; --paper-2:#101620; --paper-3:#19212D;
+  --text:#EDF1F7; --text-2:#AEBBCC; --text-3:#7A8798;
+  --rule:#242E3C; --rule-2:#1A2230;
+  --yellow:#FFE01F; --blue:#4F94F0; --green:#22C179; --red:#FF5A3C;
+  --lift:0 24px 44px -30px rgba(0,0,0,.8);
+
+  --ground:#0a0d14; --surface:#141b26; --surface-raised:#1d2634;
+  --surface-sunken:#05070c; --scrim:rgb(5 8 14 / .62);
+  --ink:#f3f6fa; --ink-dim:#93a1b6; --ink-faint:#7a8798;
+  --hairline:rgb(255 255 255 / .09); --hairline-strong:rgb(255 255 255 / .2);
+  --action:#ffe01f; --action-press:#b39b00; --focus:#3e88e8;
+  --live:#22c179; --stale:#ffa426; --offline:#ff5a3c; --danger:#ff5a3c;
+  --transit-u:#3e88e8; --transit-s:#22c179;
+  --map-land:#000000; --map-block:#131c29; --map-water:#153450; --map-park:#123020;
+  --map-station:#e7edf6;
+  --sheet-fill:#141b26;
+}
+
+*{box-sizing:border-box}
+figure,ul,ol,dl,dd,table,p,h1,h2,h3,h4,h5{margin:0}
+ul,ol{padding:0;list-style:none}
+button{background:transparent;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--text);
+  font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,h5{font-family:"Bricolage Grotesque","Archivo",sans-serif;font-weight:800;letter-spacing:-.022em;line-height:1.05;text-wrap:balance}
+.mono,.eyebrow,.spec dt,.tag,.lbl{font-family:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.i{display:inline-block;flex:0 0 auto;width:20px;height:20px;vertical-align:-.18em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i.xs{width:13px;height:13px}.i.sm{width:16px;height:16px}.i.lg{width:24px;height:24px}
+.i.fill{fill:currentColor;stroke:none}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:1340px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 120px}
+.eyebrow{font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── masthead ────────────────────────────────────────────────────────── */
+.masthead{padding:56px 0 34px;border-bottom:3px solid var(--text)}
+.mast-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:24px}
+.mast-top .u{background:var(--blue);color:#fff;width:23px;height:23px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Azeret Mono",monospace}
+.mast-top b{color:var(--text);font-weight:700}
+.masthead h1{font-size:clamp(38px,6.2vw,74px);max-width:17ch}
+.masthead h1 em{font-style:normal;background:var(--yellow);color:var(--yellow-ink);padding:0 .1em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.deck{margin-top:22px;max-width:66ch;font-size:18.5px;color:var(--text-2)}
+.mast-foot{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-top:32px}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:500;letter-spacing:.07em;border:1.5px solid var(--rule);border-radius:999px;padding:5px 12px;color:var(--text-2);background:var(--paper-2);white-space:nowrap;font-family:"Azeret Mono",monospace}
+.tag.ship{border-color:var(--green);color:var(--green)}
+.tag.new{border-color:var(--yellow);color:var(--text);background:color-mix(in oklab,var(--yellow) 22%,var(--paper-2))}
+.tag.ask{border-color:var(--red);color:var(--red)}
+.tag.now{border-color:var(--rule);color:var(--text-3)}
+
+.stagectl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stagectl .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);font-family:"Azeret Mono",monospace}
+.segbar{display:flex;flex:0 0 auto;gap:2px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;position:relative}
+.segbar button{position:relative;white-space:nowrap;flex:0 0 auto;z-index:1;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;color:var(--text-2);transition:color var(--dur-tap)}
+.segbar button[aria-pressed="true"]{color:var(--yellow-ink)}
+.segbar .thumb{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--yellow);transition:transform var(--dur-move) var(--ease-pop),width var(--dur-move) var(--ease-pop);z-index:0}
+
+/* ── bands & plates ──────────────────────────────────────────────────── */
+.band{padding:64px 0 12px;border-bottom:1px solid var(--rule-2)}
+.band:last-of-type{border-bottom:0}
+.band-head{max-width:76ch;margin-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.kicker::before{content:"";width:26px;height:6px;border-radius:3px;background:var(--yellow)}
+.band-head h2{font-size:clamp(27px,3.4vw,40px)}
+.band-head p{color:var(--text-2);font-size:16.5px}
+.band-head p+p{margin-top:2px}
+
+.plates{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr))}
+.plate{background:var(--paper-2);border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--lift)}
+.plate-head{padding:18px 20px 14px;border-bottom:1px solid var(--rule-2);display:flex;flex-direction:column;gap:9px}
+.plate-title{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.plate-title h3{font-size:21px}
+.plate-title .as{display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;border-radius:9px;background:var(--text);color:var(--paper);font-family:"Azeret Mono",monospace;font-size:12.5px;font-weight:700}
+.plate-head p{font-size:14px;color:var(--text-2);line-height:1.5;max-width:58ch}
+.plate-ctl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--rule-2)}
+.plate-ctl .lab{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.statebar{display:flex;gap:3px;background:var(--paper-3);border:1px solid var(--rule);border-radius:999px;padding:3px;flex-wrap:wrap}
+.statebar button{font-family:"Azeret Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 11px;border-radius:999px;color:var(--text-2);transition:background var(--dur-tap),color var(--dur-tap)}
+.statebar button[aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink);font-weight:700}
+.stand{flex:1 1 auto;display:grid;place-items:center;padding:26px 20px 30px;background:
+  radial-gradient(120% 80% at 50% 0%,color-mix(in oklab,var(--paper-3) 70%,transparent),transparent 70%)}
+.notes{padding:16px 20px 20px;border-top:1px solid var(--rule-2);background:var(--paper-2)}
+.spec{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:13.5px}
+.spec dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding-top:3px;white-space:nowrap;font-family:"Azeret Mono",monospace}
+.spec dd{color:var(--text-2);line-height:1.5}
+.spec code,code{font-family:"Azeret Mono",monospace;font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:5px;color:var(--text)}
+.why{margin-top:13px;padding-left:12px;border-left:3px solid var(--yellow);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.cost{margin-top:9px;padding-left:12px;border-left:3px solid var(--red);font-size:13.5px;color:var(--text-2);line-height:1.55}
+.why b,.cost b{color:var(--text);font-weight:600}
+
+/* ── the fault list beside the current screen ────────────────────────── */
+.split{display:grid;gap:30px;grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}
+@media (max-width:880px){.split{grid-template-columns:1fr}}
+.faults{display:flex;flex-direction:column;gap:2px}
+.fault{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;padding:14px 0;border-top:1px solid var(--rule-2)}
+.fault:first-child{border-top:0}
+.fault .n{font-family:"Azeret Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--red);padding-top:4px}
+.fault h4{font-size:16.5px;letter-spacing:-.01em}
+.fault p{grid-column:2;color:var(--text-2);font-size:14.5px;line-height:1.5}
+
+/* ── shared-decision cards ───────────────────────────────────────────── */
+.cards-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:16px;padding:18px 19px;display:flex;flex-direction:column;gap:8px}
+.card h4{font-size:17px}
+.card p{font-size:14px;color:var(--text-2);line-height:1.5}
+.card .tag{align-self:flex-start;margin-bottom:2px}
+</style>
+<style>
+/* ═══ the phone ══════════════════════════════════════════════════════════ */
+.device{
+  width:100%;max-width:330px;aspect-ratio:390/844;background:var(--ground);
+  border:9px solid #05070C;border-radius:46px;position:relative;overflow:hidden;
+  box-shadow:0 2px 0 2px #232B38,0 34px 60px -30px rgba(4,8,16,.75);
+  color:var(--ink);font-size:13.5px;line-height:1.4;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:24px;border-radius:14px;background:#05070C;z-index:9}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.statusbar{height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;z-index:6;
+  padding:0 20px;font-family:"Azeret Mono",monospace;font-size:10.5px;color:var(--ink);letter-spacing:.02em}
+.mn{font-family:"Azeret Mono",monospace;font-variant-numeric:tabular-nums}
+.dim{color:var(--ink-dim)}.faint{color:var(--ink-faint)}
+.row{display:flex;align-items:center;gap:9px}
+.grow{flex:1 1 auto;min-width:0}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbl{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* the map behind a sheet */
+.map{position:absolute;inset:0;background:var(--map-land);overflow:hidden}
+.map span{position:absolute;display:block}
+.map::before{content:"";position:absolute;left:-10%;top:54%;width:130%;height:7px;background:var(--surface);opacity:.6;transform:rotate(-6deg)}
+.map::after{content:"";position:absolute;left:30%;top:-10%;width:7px;height:130%;background:var(--surface);opacity:.45;transform:rotate(9deg)}
+.map .water{left:-18%;top:9%;width:56%;height:17%;background:var(--map-water);border-radius:40% 60% 50% 45%;transform:rotate(-8deg)}
+.map .park{right:-8%;top:30%;width:45%;height:18%;background:var(--map-park);border-radius:46% 54% 40% 60%}
+.map .blk{background:var(--map-block);border-radius:4px}
+.map .road{background:var(--surface);opacity:.85}
+.map .me{left:50%;top:44%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--transit-u);box-shadow:0 0 0 3px color-mix(in oklab,var(--transit-u) 26%,transparent),0 0 0 7px color-mix(in oklab,var(--transit-u) 12%,transparent)}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+
+/* the sheet itself */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet-fill);
+  border-radius:26px 26px 0 0;border-top:1px solid var(--hairline);
+  padding:8px 14px 14px;display:flex;flex-direction:column;gap:9px;max-height:84%;min-height:0}
+.sheet.tall{max-height:93%}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--hairline-strong);margin:0 auto 3px;flex:0 0 auto}
+.sheet-head{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.sheet-head h5{font-size:17.5px;letter-spacing:-.02em;flex:1 1 auto}
+.sheet-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden}
+.sheet-body.cut::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;pointer-events:none;
+  background:linear-gradient(to top,var(--sheet-fill),transparent)}
+.iconbtn{display:grid;place-items:center;width:32px;height:32px;flex:0 0 auto;border-radius:11px;
+  background:var(--surface);border:1px solid var(--hairline);color:var(--ink-dim)}
+
+/* full screen (proposal B) */
+.appbar{flex:0 0 auto;padding:2px 14px 8px;display:flex;align-items:center;gap:10px}
+.appbar .back{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border-radius:12px;background:var(--surface);color:var(--ink-dim);border:1px solid var(--hairline)}
+.appbar .tt{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.appbar h4{font-size:17px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar .sub{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+.track{display:flex;gap:4px;padding:0 14px 8px;flex:0 0 auto}
+.track i{display:block;height:4px;flex:1 1 0;border-radius:2px;background:var(--hairline)}
+.track i.on{background:var(--action)}
+.scr{flex:1 1 auto;min-height:0;padding:0 14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:21px;letter-spacing:-.02em;line-height:1.1}
+.lead{font-size:12px;line-height:1.45;color:var(--ink-dim)}
+
+/* buttons */
+.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;border-radius:16px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:16px;min-height:52px;flex:0 0 auto;
+  background:var(--action);color:var(--action-ink);box-shadow:0 4px 0 var(--action-press);position:relative;overflow:hidden}
+.btn.tall{min-height:60px;font-size:17px;border-radius:19px}
+.btn small{display:block;font-family:"Azeret Mono",monospace;font-weight:500;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;line-height:1.3}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--hairline-strong);box-shadow:none}
+.btn.off{background:var(--surface-raised);color:var(--ink-faint);box-shadow:none;border:1px solid var(--hairline)}
+.btn.sm{min-height:44px;font-size:14.5px;border-radius:14px}
+.btn.beacon::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite}
+@keyframes sheen{0%,74%{transform:translateX(-120%)}94%,100%{transform:translateX(120%)}}
+
+/* status dot, shared by every proposal */
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:0 0 auto}
+.dot.live{background:var(--live);animation:breathe var(--dur-breathe) var(--ease-out-soft) infinite}
+.dot.wait{background:var(--stale);animation:breathe var(--dur-breathe) var(--ease-out-soft) infinite}
+@keyframes breathe{0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){
+  .btn.beacon::after{animation:none;opacity:0}
+  .dot.live,.dot.wait,.ring i{animation:none}
+}
+
+/* the address row — the token truncated, whole on the clipboard */
+.addr{display:flex;align-items:center;gap:9px;min-height:46px;padding:8px 8px 8px 12px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--hairline);flex:0 0 auto}
+.addr .u{flex:1 1 auto;min-width:0;font-family:"Azeret Mono",monospace;font-size:10px;line-height:1.35;color:var(--ink-dim);overflow-wrap:anywhere}
+.addr .u b{color:var(--ink);font-weight:500}
+.addr .cp{display:flex;align-items:center;gap:5px;flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:11px;
+  background:var(--surface-raised);border:1px solid var(--hairline);font-size:11.5px;font-weight:600}
+.addr .cp.done{background:color-mix(in oklab,var(--live) 16%,var(--surface-raised));border-color:color-mix(in oklab,var(--live) 42%,var(--hairline));color:var(--live)}
+.where{font-family:"Azeret Mono",monospace;font-size:10px;line-height:1.45;color:var(--ink-dim);
+  padding:8px 11px;border-radius:12px;background:var(--surface-sunken);flex:0 0 auto}
+.where b{color:var(--ink);font-weight:500}
+.warnbox{display:flex;gap:8px;padding:9px 11px;border-radius:12px;background:var(--surface-sunken);
+  border-left:3px solid var(--danger);font-size:11px;line-height:1.4;color:var(--ink-dim);flex:0 0 auto}
+.warnbox b{color:var(--ink);font-weight:600}
+.warnbox .i{color:var(--danger);margin-top:1px}
+</style>
+<style>
+/* ═══ A · the checklist ══════════════════════════════════════════════════ */
+.steps{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0}
+.step{border-radius:16px;background:var(--surface);border:1px solid var(--hairline);
+  padding:11px 12px;display:flex;flex-direction:column;gap:9px;flex:0 0 auto}
+.step-top{display:flex;align-items:center;gap:10px}
+.step .num{display:grid;place-items:center;width:23px;height:23px;flex:0 0 auto;border-radius:50%;
+  border:1.5px solid var(--hairline-strong);color:var(--ink-faint);
+  font-family:"Azeret Mono",monospace;font-size:10.5px;font-weight:700}
+.step h6{margin:0;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:14.5px;letter-spacing:-.01em;flex:1 1 auto}
+.step .said{font-family:"Azeret Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.step.done{background:transparent;border-style:solid;border-color:var(--hairline);padding-top:9px;padding-bottom:9px}
+.step.done .num{border-color:var(--live);background:var(--live);color:#fff}
+.step.done h6{font-weight:600;font-size:13.5px;color:var(--ink-dim)}
+.step.now{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in oklab,var(--action) 26%,transparent)}
+.step.now .num{border-color:var(--ink);color:var(--ink)}
+.step.todo{opacity:.62}
+.step-body{display:flex;flex-direction:column;gap:8px}
+.approw{display:flex;align-items:center;gap:9px;min-height:44px;padding:7px 10px;border-radius:13px;
+  background:var(--surface-raised);border:1px solid var(--hairline)}
+.approw .glyph{display:grid;place-items:center;width:28px;height:28px;flex:0 0 auto;border-radius:10px;background:var(--surface);color:var(--ink-dim);border:1px solid var(--hairline)}
+.approw .nm{font-size:13px;font-weight:600;line-height:1.2}
+.approw .note{font-size:10px;color:var(--ink-faint);line-height:1.3}
+.approw.pick{border-color:var(--action);background:color-mix(in oklab,var(--action) 14%,var(--surface-raised))}
+.statline{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.statline .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px;letter-spacing:-.01em}
+
+/* the collapsed standing card, once it has ever worked */
+.livecard{border-radius:18px;padding:14px;background:var(--surface);border:1px solid var(--hairline);
+  display:flex;flex-direction:column;gap:6px;flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--live) 22%,transparent)}
+.livecard .hd{display:flex;align-items:center;gap:8px}
+.livecard .hd h6{margin:0;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;letter-spacing:-.02em;flex:1 1 auto}
+.livecard .age{font-family:"Azeret Mono",monospace;font-size:11px;color:var(--ink-dim)}
+.quietrow{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 12px;border-radius:13px;
+  background:var(--surface);border:1px solid var(--hairline);font-size:13px;flex:0 0 auto}
+.quietrow .i{color:var(--ink-faint)}
+.quietrow .chev{margin-left:auto;color:var(--ink-faint)}
+
+/* ═══ B · the wizard ═════════════════════════════════════════════════════ */
+.door{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--hairline);text-align:left;flex:0 0 auto;position:relative;overflow:hidden}
+.door .glyph{display:grid;place-items:center;width:38px;height:38px;flex:0 0 auto;border-radius:13px;
+  background:var(--surface-raised);color:var(--ink);border:1px solid var(--hairline)}
+.door .tt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.door .nm{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15.5px;letter-spacing:-.01em}
+.door .hint{font-size:11px;color:var(--ink-dim);line-height:1.35}
+.door .chev{color:var(--ink-faint);flex:0 0 auto}
+.door.lead{background:var(--action);color:var(--action-ink);border-color:transparent;box-shadow:0 4px 0 var(--action-press)}
+.door.lead .glyph{background:rgba(0,0,0,.12);border-color:rgba(0,0,0,.14);color:var(--action-ink)}
+.door.lead .hint{color:rgba(18,22,11,.72)}
+.door.lead .chev{color:rgba(18,22,11,.55)}
+.door.lead::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.5) 50%,transparent 62%);transform:translateX(-120%);animation:sheen 3.8s ease-in-out infinite;pointer-events:none}
+
+/* the listening screen */
+.listen{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:0 6px}
+.ring{position:relative;width:126px;height:126px;display:grid;place-items:center;flex:0 0 auto}
+.ring i{position:absolute;inset:0;border-radius:50%;border:2px solid var(--stale);opacity:0;
+  animation:pulse 2600ms var(--ease-out-soft) infinite}
+.ring i:nth-child(2){animation-delay:870ms}
+.ring i:nth-child(3){animation-delay:1740ms}
+.ring .core{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);border:1px solid var(--hairline);color:var(--stale);z-index:1}
+@keyframes pulse{0%{transform:scale(.46);opacity:.85}100%{transform:scale(1);opacity:0}}
+.ring.done i{display:none}
+.ring.done .core{width:78px;height:78px;background:var(--live);border-color:transparent;color:#fff;
+  box-shadow:0 0 0 8px color-mix(in oklab,var(--live) 16%,transparent);animation:landpop 420ms var(--ease-pop)}
+@keyframes landpop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+.listen h6{margin:0;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.listen p{font-size:12px;color:var(--ink-dim);line-height:1.45;max-width:26ch}
+.listen .mnbig{font-family:"Azeret Mono",monospace;font-size:12px;color:var(--live);letter-spacing:.04em}
+.textlink{font-size:11.5px;color:var(--ink-dim);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--hairline-strong)}
+.foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;padding-top:8px}
+
+/* ═══ C · the connection ═════════════════════════════════════════════════ */
+.hero{border-radius:18px;padding:14px 15px;background:var(--surface);border:1px solid var(--hairline);
+  display:flex;flex-direction:column;gap:3px;flex:0 0 auto}
+.hero .st1{display:flex;align-items:center;gap:9px}
+.hero h6{margin:0;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;letter-spacing:-.025em}
+.hero .sub{font-family:"Azeret Mono",monospace;font-size:10.5px;letter-spacing:.06em;color:var(--ink-dim)}
+.hero .say{font-size:11.5px;color:var(--ink-dim);line-height:1.4;margin-top:5px}
+.hero.on{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--live) 28%,transparent)}
+.hero.on h6{color:var(--live)}
+.sect{display:flex;align-items:center;gap:8px;padding:6px 2px 0;flex:0 0 auto}
+.sect .t{font-family:"Azeret Mono",monospace;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint)}
+.sect .hr{flex:1 1 auto;height:1px;background:var(--hairline)}
+.selrow{display:flex;align-items:center;gap:6px;align-self:flex-start;padding:5px 10px;border-radius:999px;
+  background:var(--surface-raised);border:1px solid var(--hairline);font-size:12px;font-weight:600;flex:0 0 auto}
+.selrow .i{color:var(--ink-faint)}
+.instrow{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 12px;border-radius:13px;
+  background:transparent;border:1px dashed var(--hairline-strong);font-size:12.5px;color:var(--ink-dim);flex:0 0 auto}
+.instrow .i{color:var(--ink-faint)}
+
+/* the app select, opened (shared by C) */
+.overlay{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end;z-index:8}
+.picksheet{width:100%;background:var(--sheet-fill);border-radius:26px 26px 0 0;padding:8px 14px 16px;
+  display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--hairline)}
+.picksheet h6{margin:2px 0 4px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:17px;letter-spacing:-.02em}
+
+/* ═══ today ══════════════════════════════════════════════════════════════ */
+.oldseg{display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--surface-sunken);border:1px solid var(--hairline);flex:0 0 auto;overflow:hidden}
+.oldseg span{flex:1 1 0;min-width:0;text-align:center;padding:7px 2px;border-radius:999px;font-size:10.5px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-dim)}
+.oldseg span.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.oldurl{border-radius:18px;background:var(--surface-sunken);padding:11px;font-family:"Azeret Mono",monospace;
+  font-size:10px;line-height:1.5;word-break:break-all;color:var(--ink);flex:0 0 auto}
+.oldlink{text-align:center;font-size:12px;text-decoration:underline;text-underline-offset:3px;flex:0 0 auto}
+.oldp{font-size:12px;line-height:1.45;color:var(--ink-dim);flex:0 0 auto}
+.mark{position:absolute;z-index:7;width:19px;height:19px;border-radius:50%;background:var(--danger);color:#fff;
+  display:grid;place-items:center;font-family:"Azeret Mono",monospace;font-size:10px;font-weight:700;
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--danger) 26%,transparent)}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></symbol>
+  <symbol id="ic-caret-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="ic-caret-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="3"/><path d="M5 15h-.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
+  <symbol id="ic-broadcast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4"/><path d="M16.2 16.2a6 6 0 0 0 0-8.4"/><path d="M4.9 4.9a10 10 0 0 0 0 14.2"/><path d="M19.1 19.1a10 10 0 0 0 0-14.2"/></symbol>
+  <symbol id="ic-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="ic-warning" viewBox="0 0 24 24"><path d="M12 4.5l8.5 15h-17z"/><path d="M12 10.5v3.6"/><path d="M12 17.2h.01"/></symbol>
+  <symbol id="ic-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-phone" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></symbol>
+  <symbol id="ic-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></symbol>
+  <symbol id="ic-tap" viewBox="0 0 24 24"><path d="M9 11V5.5a2 2 0 0 1 4 0V13"/><path d="M13 9.5a2 2 0 0 1 4 0V11"/><path d="M17 10.5a2 2 0 0 1 4 0v4a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-4.6-2.15L4 14.5a2 2 0 0 1 3-2.6L9 14"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 3.5v11"/><path d="M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></symbol>
+</svg>
+
+<div class="shell">
+
+<header class="masthead">
+  <div class="mast-top mono" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">
+    <span class="u">U</span><b>Zero Lag</b><span>·</span><span>Deck 11</span><span>·</span><span>Background tracking</span><span>·</span><span>19 Sep 2026</span>
+  </div>
+  <h1>One sheet is doing <em>two different jobs</em></h1>
+  <p class="deck">The tracking sheet asks a player to install a second app, during a game, for a benefit they cannot see yet — and then it asks the same player, an hour later, one much smaller question: <b>is it still working?</b> Today both live in one stack of eleven things with no order and no ending. Three proposals, each separating those two jobs a different way: a <b>checklist</b> that visibly completes, a <b>wizard</b> that matches every other setup path in the app, and a <b>connection card</b> that keeps the sheet and inverts what it leads with. Every one of them keeps m15-spec §6: optional first, one app at a time, a per-app address, no QR.</p>
+  <div class="mast-foot">
+    <div class="legend">
+      <span class="tag now">Today</span>
+      <span class="tag new">Proposed</span>
+      <span class="tag ask">Needs your call</span>
+      <span class="tag ship">Settled elsewhere</span>
+    </div>
+    <div class="stagectl">
+      <span class="lab">Theme</span>
+      <div class="segbar" id="themebar" role="group" aria-label="Theme">
+        <span class="thumb" aria-hidden="true"></span>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">System</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ today ═══════════════════════════════════════════════════════════ -->
+<section class="band" id="today">
+  <div class="band-head">
+    <span class="kicker">Today</span>
+    <h2>Eleven things in one column, in the order they were written</h2>
+    <p>Drawn from <code>apps/web/src/tracking/tracking-sheet.tsx</code> as it stands, in the worst honest case: an unknown platform, so all four apps apply. Nothing here is wrong — every piece earns its place in the spec. What it lacks is an order, a hierarchy and an ending.</p>
+  </div>
+  <div class="split">
+    <div class="device" style="max-width:340px">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+        <div class="scrim"></div>
+        <div class="statusbar" style="position:relative"><span>16:04</span><span>GPS · 71%</span></div>
+        <span class="mark" style="top:211px;right:12px">1</span>
+        <span class="mark" style="top:281px;right:12px">2</span>
+        <span class="mark" style="top:325px;right:12px">3</span>
+        <span class="mark" style="top:404px;right:12px">4</span>
+        <span class="mark" style="top:552px;right:12px">5</span>
+        <span class="mark" style="top:672px;right:12px">6</span>
+        <div class="sheet tall">
+          <div class="grab"></div>
+          <div class="sheet-head"><h5>Background tracking</h5></div>
+          <div class="sheet-body cut">
+            <p class="oldp">Optional. This app already shares your position while it is open — but browsers stop when the screen locks. Pointing a tracker app at the link below keeps your team's map up to date with your phone in your pocket.</p>
+            <p class="row" style="font-size:12px;gap:7px"><span class="dot"></span><span class="dim">Waiting for the first ping. Finish setup in your tracker app.</span></p>
+            <div class="oldseg">
+              <span class="on">OwnTracks</span><span>Overland</span><span>OsmAnd</span><span>GPSLogger</span>
+            </div>
+            <p class="oldp">Sets itself up from one tap. The simplest on either phone.</p>
+            <p class="oldlink">Get OwnTracks</p>
+            <button class="btn" type="button">Open in OwnTracks</button>
+            <p class="oldp">Paste this address under Preferences → Connection → Host.</p>
+            <div class="oldurl">https://zerolag.app/api/track/9f2c71ab4e0d83c6b15a2f7e</div>
+            <button class="btn ghost sm" type="button">Copy address</button>
+            <button class="btn ghost sm" type="button" style="margin-top:10px">Turn off background tracking</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="faults">
+      <div class="fault">
+        <span class="n">1</span><h4>The lead paragraph is four lines of argument</h4>
+        <p>It makes the spec's case — optional, the browser already works, here is what you gain — but it makes it before the player has any reason to read it, and it is the first thing they see every subsequent visit too.</p>
+      </div>
+      <div class="fault">
+        <span class="n">2</span><h4>The one fact that matters is the smallest thing on screen</h4>
+        <p>Whether a ping has ever arrived is the entire answer to "did that work", and it is a grey 12 px line wedged between a paragraph and a picker. Nothing below it changes when the ping lands, so setup never visibly finishes.</p>
+      </div>
+      <div class="fault">
+        <span class="n">3</span><h4>A four-option segmented control on a 390 px phone</h4>
+        <p>An unknown platform shows all four apps, and "OwnTracks / Overland / OsmAnd / GPSLogger" does not fit across a phone. The names truncate, which is the one thing a picker of proper nouns must not do.</p>
+      </div>
+      <div class="fault">
+        <span class="n">4</span><h4>A centred underlined link in a stack of blocks</h4>
+        <p>"Get OwnTracks" is the only centred, the only underlined and the only non-block control on the screen. The kit has <code>Door</code> and <code>ActionButton</code>; this is neither.</p>
+      </div>
+      <div class="fault">
+        <span class="n">5</span><h4>Forty characters of entropy, at full size</h4>
+        <p>The address block is the largest element on the sheet and the only part of it nobody reads. The token is there to be copied, not to be looked at — and printing it whole is also the one place the screen hands the credential to a shoulder.</p>
+      </div>
+      <div class="fault">
+        <span class="n">6</span><h4>Turn off sits in the same stack as copy</h4>
+        <p>One <code>tone="secondary"</code> apart from the button above it, and it revokes a URL already pasted into another app. The lobby settled this shape already: leaving lives behind a <code>⋯</code>, in a sheet, with a red button.</p>
+      </div>
+      <div class="fault">
+        <span class="n">·</span><h4>And underneath all six: two jobs, one surface</h4>
+        <p>Setting this up is a sequence with an end. Checking on it is a glance. The screen that has to do both is currently the one that does neither — a returning player gets the full install walkthrough to find a timestamp, and a first-timer gets a status line about a thing they have not configured yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.st{display:none}
+.st.on{display:flex;flex-direction:column;position:absolute;inset:0}
+.statusbar{position:relative}
+</style>
+
+<!-- ═══ three proposals ═════════════════════════════════════════════════ -->
+<section class="band" id="proposals">
+  <div class="band-head">
+    <span class="kicker">Three ways out</span>
+    <h2>A task, a flow, or an object</h2>
+    <p>The three differ in what they think the screen <b>is</b>. <b>A</b> treats it as a task with an order and an end. <b>B</b> treats it as a flow, which is what every other setup path in this app already is. <b>C</b> treats it as a thing you check on, and puts the setup material underneath.</p>
+    <p>All three: the token is truncated on screen and whole on the clipboard, the address carries the app's own placeholders, the install link is a control rather than centred underlined text, and turning it off is not in the main stack. Details in the last band.</p>
+  </div>
+  <div class="plates">
+
+  <!-- ── A · the checklist ─────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">A</span><h3>The checklist</h3><span class="tag new">Proposed</span></div>
+      <p>Three numbered steps that complete one at a time. The last step is the ping itself, so the thing you were waiting to find out is the thing that finishes the list. Once it has ever worked, the steps fold away and the sheet is a status card.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="a">
+        <button type="button" data-state="new" aria-pressed="true">First open</button>
+        <button type="button" data-state="paste" aria-pressed="false">Step 2</button>
+        <button type="button" data-state="live" aria-pressed="false">Working</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="a">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="new">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head">
+                <h5>Background tracking</h5>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <p class="lead">Optional. Your position is already shared while this app is open — this keeps it going with the screen locked.</p>
+                <div class="steps">
+                  <div class="step now">
+                    <div class="step-top"><span class="num">1</span><h6>Pick a tracker app</h6></div>
+                    <div class="step-body">
+                      <div class="approw pick">
+                        <span class="glyph"><svg class="i sm"><use href="#ic-tap"/></svg></span>
+                        <span class="grow"><span class="nm" style="display:block">OwnTracks</span><span class="note">Sets itself up from one tap</span></span>
+                        <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+                      </div>
+                      <div class="approw">
+                        <span class="glyph"><svg class="i sm"><use href="#ic-target"/></svg></span>
+                        <span class="grow"><span class="nm" style="display:block">OsmAnd</span><span class="note">Worth it if you already use it for maps</span></span>
+                        <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+                      </div>
+                      <div class="approw">
+                        <span class="glyph"><svg class="i sm"><use href="#ic-broadcast"/></svg></span>
+                        <span class="grow"><span class="nm" style="display:block">GPSLogger</span><span class="note">Small, does one thing. From F-Droid</span></span>
+                        <svg class="i sm chev" style="color:var(--ink-faint)"><use href="#ic-caret-right"/></svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="step todo"><div class="step-top"><span class="num">2</span><h6>Point it at this game</h6></div></div>
+                  <div class="step todo"><div class="step-top"><span class="num">3</span><h6>Check it arrived</h6></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="paste">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:05</span><span>GPS · 71%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head">
+                <h5>Background tracking</h5>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="steps">
+                  <div class="step done"><div class="step-top"><span class="num"><svg class="i xs"><use href="#ic-check"/></svg></span><h6>Pick a tracker app</h6><span class="said">OsmAnd</span></div></div>
+                  <div class="step now">
+                    <div class="step-top"><span class="num">2</span><h6>Point OsmAnd at this game</h6></div>
+                    <div class="step-body">
+                      <p class="where">Plugins → Trip Recording → Settings → <b>Online tracking → Web address</b></p>
+                      <div class="addr">
+                        <span class="u">zerolag.app/api/track/<b>9f2c…83c6</b>?lat={0}&amp;lon={1}&amp;…</span>
+                        <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+                      </div>
+                      <div class="warnbox">
+                        <svg class="i sm"><use href="#ic-warning"/></svg>
+                        <span><b>This link names this computer.</b> On the phone running the tracker, <span class="mn">localhost</span> is the phone. Open the game on the network address instead.</span>
+                      </div>
+                      <div class="instrow"><svg class="i sm"><use href="#ic-download"/></svg>Get OsmAnd on Google Play<svg class="i sm" style="margin-left:auto"><use href="#ic-external"/></svg></div>
+                    </div>
+                  </div>
+                  <div class="step todo"><div class="step-top"><span class="num">3</span><h6>Check it arrived</h6></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="live">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:22</span><span>GPS · 64%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head">
+                <h5>Background tracking</h5>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="livecard">
+                  <div class="hd"><span class="dot live"></span><h6>Reporting</h6><span class="age">6 s ago</span></div>
+                  <p class="lead">Your phone is reporting on its own. Locking the screen changes nothing.</p>
+                </div>
+                <div class="quietrow"><svg class="i sm"><use href="#ic-target"/></svg>OsmAnd · address copied<svg class="i sm chev"><use href="#ic-caret-right"/></svg></div>
+                <button class="btn" type="button" style="margin-top:auto">Done</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Shape</dt><dd>Three steps: pick an app, point it here, wait for the ping. Only the current one is open; a finished one collapses to its answer</dd>
+        <dt>Ending</dt><dd>Step 3 <i>is</i> the ping. It goes green on arrival, and that is the whole feedback loop the current screen is missing</dd>
+        <dt>Return</dt><dd>Once it has ever worked the sheet opens as the status card, with the steps one tap behind it</dd>
+        <dt>Off</dt><dd>Behind the <code>⋯</code>, as the lobby settled for leaving</dd>
+      </dl>
+      <p class="why"><b>Why.</b> Setup is a sequence and the current screen shows it as a pile. Numbering it costs nothing, and it makes the one question a first-timer actually has — <i>am I done?</i> — answerable by looking rather than by guessing. It also gives the loopback warning and the install link a place to sit: inside the step that needs them, rather than floating near the top.</p>
+      <p class="cost"><b>What it costs.</b> Three collapsing sections is real machinery for what is often a thirty-second job, and a numbered checklist is a slightly officious way to talk to somebody standing on a platform. A player who only wants the address has to open a completed step to find it.</p>
+    </div>
+  </article>
+
+  <!-- ── B · the wizard ────────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">B</span><h3>The wizard</h3><span class="tag new">Proposed</span></div>
+      <p>It leaves the sheet. One decision per screen, a back control, a track across the top — the shape every other setup path in this app already has. The third screen is nothing but listening, which is the only screen that can make a player believe it worked.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="b">
+        <button type="button" data-state="app" aria-pressed="true">Which app</button>
+        <button type="button" data-state="addr" aria-pressed="false">The address</button>
+        <button type="button" data-state="wait" aria-pressed="false">Listening</button>
+        <button type="button" data-state="done" aria-pressed="false">It landed</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="b">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="app">
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <span class="tt"><h4>Background tracking</h4><span class="sub">Step 1 of 3</span></span>
+            </div>
+            <div class="track"><i class="on"></i><i></i><i></i></div>
+            <div class="scr">
+              <h3 class="title">Which app do you use?</h3>
+              <p class="lead">Optional — nothing here is needed to play. It keeps your position going with the screen locked, which is where a hider's phone spends most of a round.</p>
+              <button class="door lead" type="button">
+                <span class="glyph"><svg class="i"><use href="#ic-tap"/></svg></span>
+                <span class="tt"><span class="nm">OwnTracks</span><span class="hint">Sets itself up from one tap. Nothing to paste.</span></span>
+                <svg class="i sm chev"><use href="#ic-caret-right"/></svg>
+              </button>
+              <button class="door" type="button">
+                <span class="glyph"><svg class="i"><use href="#ic-broadcast"/></svg></span>
+                <span class="tt"><span class="nm">Overland</span><span class="hint">Runs all day and uploads in batches, so a tunnel costs nothing.</span></span>
+                <svg class="i sm chev"><use href="#ic-caret-right"/></svg>
+              </button>
+              <p class="lead faint" style="margin-top:2px">Only apps that can do this on an iPhone are listed. On Android the list is OwnTracks, OsmAnd and GPSLogger.</p>
+            </div>
+          </div>
+
+          <div class="st" data-st="addr">
+            <div class="statusbar"><span>16:05</span><span>GPS · 71%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <span class="tt"><h4>OwnTracks</h4><span class="sub">Step 2 of 3</span></span>
+            </div>
+            <div class="track"><i class="on"></i><i class="on"></i><i></i></div>
+            <div class="scr">
+              <h3 class="title">Point OwnTracks here</h3>
+              <p class="lead">One tap sets the whole thing — the address, the device name and HTTP mode. Or paste it yourself if you would rather see what it does.</p>
+              <p class="where">Preferences → Connection → <b>Host</b></p>
+              <div class="addr">
+                <span class="u">zerolag.app/api/track/<b>9f2c…83c6</b></span>
+                <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+              </div>
+              <div class="instrow"><svg class="i sm"><use href="#ic-download"/></svg>Get OwnTracks<svg class="i sm" style="margin-left:auto"><use href="#ic-external"/></svg></div>
+              <div class="foot">
+                <button class="btn tall beacon" type="button">Open in OwnTracks<small>one tap · nothing to paste</small></button>
+                <button class="btn ghost sm" type="button">I have pasted it</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="wait">
+            <div class="statusbar"><span>16:06</span><span>GPS · 70%</span></div>
+            <div class="appbar">
+              <button class="back" type="button" aria-label="Back"><svg class="i sm"><use href="#ic-arrow-left"/></svg></button>
+              <span class="tt"><h4>OwnTracks</h4><span class="sub">Step 3 of 3</span></span>
+            </div>
+            <div class="track"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="scr">
+              <div class="listen">
+                <div class="ring"><i></i><i></i><i></i><span class="core"><svg class="i lg"><use href="#ic-broadcast"/></svg></span></div>
+                <h6>Waiting for the first ping</h6>
+                <p>Finish in OwnTracks and it lands here by itself. You can leave — it keeps listening either way.</p>
+                <span class="textlink">Copy the address again</span>
+              </div>
+              <div class="foot"><button class="btn ghost" type="button">Do this later</button></div>
+            </div>
+          </div>
+
+          <div class="st" data-st="done">
+            <div class="statusbar"><span>16:06</span><span>GPS · 70%</span></div>
+            <div class="appbar">
+              <span class="tt" style="padding-left:4px"><h4>OwnTracks</h4><span class="sub">Step 3 of 3</span></span>
+            </div>
+            <div class="track"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="scr">
+              <div class="listen">
+                <div class="ring done"><span class="core"><svg class="i lg"><use href="#ic-check"/></svg></span></div>
+                <h6>It's working</h6>
+                <span class="mnbig">last ping 3 s ago</span>
+                <p>Your team can see you with the screen locked. Turn it off any time from the locate control.</p>
+              </div>
+              <div class="foot"><button class="btn tall" type="button">Done</button></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Frame</dt><dd><code>Screen</code> / <code>ScreenHeader</code> / <code>Stepper</code> — the same three the create wizard and the briefing are built on</dd>
+        <dt>Step 1</dt><dd><code>Door</code> per app: the name, and the reason to pick that one. OwnTracks carries the beacon because it is the one-tap path</dd>
+        <dt>Step 3</dt><dd>The whole screen is the wait. It resolves itself into the done state when a ping lands — no button, no refresh</dd>
+        <dt>Return</dt><dd>Coming back later opens a one-screen status, not step 1. That screen is a fourth thing to draw</dd>
+      </dl>
+      <p class="why"><b>Why.</b> The house rule is already this: most actions open a multi-step flow and every step carries a back control. Setting up background tracking is a flow with three decisions and is currently the one that is not. The full screen also buys the two things the sheet cannot afford — an address block that is legible at a glance, and a listening state big enough to be believed.</p>
+      <p class="cost"><b>What it costs.</b> A whole screen over a live map for an optional job, and a route or a screen stack where there is now a sheet. It breaks the position sheet's nesting — the sheet must close and hand over — and it needs a fourth screen for the returning player, because landing them on "which app do you use?" would be absurd.</p>
+    </div>
+  </article>
+
+  <!-- ── C · the connection ────────────────────────────────────────────── -->
+  <article class="plate">
+    <div class="plate-head">
+      <div class="plate-title"><span class="as">C</span><h3>The connection</h3><span class="tag new">Proposed</span></div>
+      <p>Stays a sheet and changes what it is about. The subject is the connection, at hero size, and the setup material sits under it in three labelled blocks. The app is a word with a caret — deck 10's select, reused — rather than a four-wide segmented control.</p>
+    </div>
+    <div class="plate-ctl">
+      <span class="lab">State</span>
+      <div class="statebar" data-states="c">
+        <button type="button" data-state="off" aria-pressed="true">Not set up</button>
+        <button type="button" data-state="wait" aria-pressed="false">Waiting</button>
+        <button type="button" data-state="on" aria-pressed="false">Reporting</button>
+        <button type="button" data-state="pick" aria-pressed="false">Choosing</button>
+      </div>
+    </div>
+    <div class="stand">
+      <div class="device" data-group="c">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="st on" data-st="off">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:04</span><span>GPS · 71%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head"><h5>Background tracking</h5></div>
+              <div class="sheet-body">
+                <div class="hero">
+                  <div class="st1"><span class="dot"></span><h6>Not set up</h6></div>
+                  <span class="sub">nothing is reporting from this phone</span>
+                  <p class="say">Optional. Your position is already shared while this app is open — this is what keeps it going once the screen locks.</p>
+                </div>
+                <div class="foot">
+                  <button class="btn tall beacon" type="button">Get the address<small>a link for this phone</small></button>
+                  <p class="lead faint" style="text-align:center">Nothing is sent until you paste it into a tracker app.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="wait">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:05</span><span>GPS · 71%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head">
+                <h5>Background tracking</h5>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="hero">
+                  <div class="st1"><span class="dot wait"></span><h6>Waiting</h6></div>
+                  <span class="sub">no ping yet</span>
+                  <p class="say">Finish in your tracker app. This updates by itself.</p>
+                </div>
+                <div class="sect"><span class="t">The address</span><span class="hr"></span></div>
+                <button class="selrow" type="button">for OsmAnd<svg class="i xs"><use href="#ic-caret-down"/></svg></button>
+                <div class="addr">
+                  <span class="u">zerolag.app/api/track/<b>9f2c…83c6</b>?lat={0}&amp;…</span>
+                  <button class="cp done" type="button"><svg class="i xs"><use href="#ic-check"/></svg>Copied</button>
+                </div>
+                <p class="where">Plugins → Trip Recording → Settings → <b>Online tracking → Web address</b></p>
+                <div class="instrow"><svg class="i sm"><use href="#ic-download"/></svg>Get OsmAnd on Google Play<svg class="i sm" style="margin-left:auto"><use href="#ic-external"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="on">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>17:22</span><span>GPS · 64%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head">
+                <h5>Background tracking</h5>
+                <button class="iconbtn" type="button" aria-label="More"><svg class="i sm"><use href="#ic-dots"/></svg></button>
+              </div>
+              <div class="sheet-body">
+                <div class="hero on">
+                  <div class="st1"><span class="dot live"></span><h6>Reporting</h6></div>
+                  <span class="sub">last ping 4 s ago</span>
+                  <p class="say">Your phone is reporting on its own. Locking the screen changes nothing.</p>
+                </div>
+                <div class="sect"><span class="t">The address</span><span class="hr"></span></div>
+                <button class="selrow" type="button">for OsmAnd<svg class="i xs"><use href="#ic-caret-down"/></svg></button>
+                <div class="addr">
+                  <span class="u">zerolag.app/api/track/<b>9f2c…83c6</b>?lat={0}&amp;…</span>
+                  <button class="cp" type="button"><svg class="i xs"><use href="#ic-copy"/></svg>Copy</button>
+                </div>
+                <p class="where">Plugins → Trip Recording → Settings → <b>Online tracking → Web address</b></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="st" data-st="pick">
+            <div class="map" aria-hidden="true"><span class="water"></span><span class="park"></span><span class="me"></span></div>
+            <div class="scrim"></div>
+            <div class="statusbar"><span>16:05</span><span>GPS · 71%</span></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-head"><h5>Background tracking</h5></div>
+              <div class="sheet-body">
+                <div class="hero">
+                  <div class="st1"><span class="dot wait"></span><h6>Waiting</h6></div>
+                  <span class="sub">no ping yet</span>
+                </div>
+              </div>
+            </div>
+            <div class="overlay">
+              <div class="picksheet">
+                <div class="grab"></div>
+                <h6>Which tracker app?</h6>
+                <div class="approw pick"><span class="glyph"><svg class="i sm"><use href="#ic-tap"/></svg></span><span class="grow"><span class="nm" style="display:block">OwnTracks</span><span class="note">One tap, nothing to paste · iPhone and Android</span></span><svg class="i sm"><use href="#ic-check"/></svg></div>
+                <div class="approw"><span class="glyph"><svg class="i sm"><use href="#ic-broadcast"/></svg></span><span class="grow"><span class="nm" style="display:block">Overland</span><span class="note">Uploads in batches · iPhone</span></span></div>
+                <div class="approw"><span class="glyph"><svg class="i sm"><use href="#ic-target"/></svg></span><span class="grow"><span class="nm" style="display:block">OsmAnd</span><span class="note">If you already use it for maps · Android</span></span></div>
+                <div class="approw"><span class="glyph"><svg class="i sm"><use href="#ic-phone"/></svg></span><span class="grow"><span class="nm" style="display:block">GPSLogger</span><span class="note">Small, from F-Droid · Android</span></span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <dl class="spec">
+        <dt>Hero</dt><dd>One of three states at 22 px — not set up, waiting, reporting — with the age underneath. The returning player's whole question, answered on open</dd>
+        <dt>App</dt><dd>A word with a caret opening a sheet of all of them, the control deck 10 settled for question families. Four proper nouns never have to fit across a phone</dd>
+        <dt>Token</dt><dd>Issued by <b>Get the address</b>, which says what it produces. Today's button issues one and shows a wall</dd>
+        <dt>Off</dt><dd>Behind the <code>⋯</code>. It only appears once there is something to turn off</dd>
+      </dl>
+      <p class="why"><b>Why.</b> The smallest change of the three, and the only one that keeps the sheet-inside-a-sheet the locate control already opens. It reuses two controls this deck has already settled rather than inventing any, and it fixes the ordering fault directly: the one thing a player comes back for is at the top, at hero size, instead of being a grey line in the middle.</p>
+      <p class="cost"><b>What it costs.</b> It never makes setup <i>finishable</i> — there is no moment of completion, just a hero that changes word. A first-timer still reads a status about a thing they have not configured before reaching what they came for, and the four-app case is now one tap further away rather than one truncated segment.</p>
+    </div>
+  </article>
+
+  </div>
+</section>
+
+<!-- ═══ what all three change ═══════════════════════════════════════════ -->
+<section class="band" id="shared">
+  <div class="band-head">
+    <span class="kicker">All three</span>
+    <h2>Six changes that are not about the layout</h2>
+    <p>These hold whichever shape wins. Two of them are small enough to land on their own before a shape is picked.</p>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The token is truncated on screen, whole on the clipboard</h4>
+      <p>Forty characters of entropy is the biggest element on the sheet and the only part nobody reads. Enough of it to tell two addresses apart, and no more — which also stops the screen printing a credential at full size in a crowded carriage.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>Nothing is issued behind a button that shows nothing</h4>
+      <p>Today "Set up background tracking" POSTs a token and re-renders into a wall of instructions. In all three the button that issues names what it produces — <i>Get the address</i>, or the step that needs it — so the tap has a visible result.</p>
+    </div>
+    <div class="card">
+      <span class="tag ship">Settled elsewhere</span>
+      <h4>Turning it off leaves the main stack</h4>
+      <p>It revokes a URL already pasted into another app, and it currently sits one <code>tone</code> away from Copy. Behind the <code>⋯</code>, in a sheet, with a red button — exactly the shape the lobby settled for leaving a game.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The install link is a control</h4>
+      <p>A centred underlined line is the only one of its kind in the kit. It becomes a row with the app's own label — "Get GPSLogger on F-Droid" — because m15-spec §6 already refuses to infer a store from the platform.</p>
+    </div>
+    <div class="card">
+      <span class="tag new">Proposed</span>
+      <h4>The loopback warning attaches to the address</h4>
+      <p>It is about that string, so it sits with it rather than floating near the top of the sheet. It is also the one thing on this screen every developer sees on every run, so it should not be the thing that pushes the address off the fold.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Needs your call</span>
+      <h4>Does the phone remember which app it uses?</h4>
+      <p>A device picks its tracker once and keeps it for good. Storing that in <code>localStorage</code> would mean a returning player never re-picks — the same argument as the briefing-seen flag: which app you use is not game state. It would also let the status screen say <i>OsmAnd</i> without asking.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ questions ═══════════════════════════════════════════════════════ -->
+<section class="band" id="questions">
+  <div class="band-head">
+    <span class="kicker">Needs your call</span>
+    <h2>Three things I could not settle from the spec</h2>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Sheet, or screen?</h4>
+      <p>B is the only one that leaves the sheet, and it is the only one that matches the house rule about flows. But the locate control opens a sheet, and this would be a sheet handing off to a full screen over a live map, mid-round. A and C keep the nesting; B trades it for the frame every other setup path uses.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Does "waiting" deserve the primary slot?</h4>
+      <p>B gives the wait an entire screen because that is what makes the feature trustworthy. A gives it a step. C gives it a word in the hero. The more room it gets, the more the screen is honest about the fact that the real work happens in another app — and the longer the player stares at a map they could be using.</p>
+    </div>
+    <div class="card">
+      <span class="tag ask">Question</span>
+      <h4>Should the position sheet carry the age, or the link?</h4>
+      <p>The position sheet already reports the tracker as a source with its own age. If it does that well, this screen's hero is a second opinion on the same fact, and C's case weakens while A's and B's — which are about <i>doing the setup</i> — get stronger. Worth deciding before the shape.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+
+  /* theme */
+  const bar = document.getElementById("themebar");
+  const thumb = bar.querySelector(".thumb");
+  const moveThumb = (btn) => {
+    thumb.style.width = btn.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + (btn.offsetLeft - 3) + "px)";
+  };
+  bar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-theme-set]");
+    if (!btn) return;
+    for (const b of bar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+    const mode = btn.dataset.themeSet;
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    moveThumb(btn);
+  });
+  const settle = () => moveThumb(bar.querySelector('button[aria-pressed="true"]'));
+  settle();
+  window.addEventListener("load", settle);
+  window.addEventListener("resize", settle);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+  /* stage states */
+  function show(group, want) {
+    const scope = document.querySelector('[data-group="' + group + '"]');
+    if (!scope) return;
+    for (const el of scope.querySelectorAll(".st")) el.classList.toggle("on", el.dataset.st === want);
+    const strip = document.querySelector('.statebar[data-states="' + group + '"]');
+    if (strip) for (const b of strip.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.state === want));
+  }
+  for (const strip of document.querySelectorAll(".statebar[data-states]")) {
+    strip.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-state]");
+      if (btn) show(strip.dataset.states, btn.dataset.state);
+    });
+  }
+
+  /* copy buttons answer, per button, the way the real ones do */
+  for (const cp of document.querySelectorAll(".addr .cp")) {
+    cp.addEventListener("click", () => {
+      cp.classList.add("done");
+      cp.innerHTML = '<svg class="i xs"><use href="#ic-check"/></svg>Copied';
+    });
+  }
+})();
+</script>

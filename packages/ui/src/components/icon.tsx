@@ -28,6 +28,7 @@ import {
 	LineSegmentIcon,
 	ListBulletsIcon,
 	MagnifyingGlassIcon,
+	MapPinAreaIcon,
 	MapPinIcon,
 	MapPinSimpleAreaIcon,
 	MapTrifoldIcon,
@@ -109,6 +110,7 @@ const ICONS = {
 	"list-bullets": ListBulletsIcon,
 	"magnifying-glass": MagnifyingGlassIcon,
 	"map-pin": MapPinIcon,
+	"map-pin-area": MapPinAreaIcon,
 	"map-pin-simple-area": MapPinSimpleAreaIcon,
 	"map-trifold": MapTrifoldIcon,
 	minus: MinusIcon,
@@ -148,7 +150,12 @@ export type IconName = keyof typeof ICONS;
  */
 export type IconSize = "xs" | "sm" | "md" | "lg";
 
-const PX: Record<IconSize, number> = { xs: 14, sm: 17, md: 20, lg: 24 };
+export const ICON_PX: Record<IconSize, number> = {
+	xs: 14,
+	sm: 17,
+	md: 20,
+	lg: 24,
+};
 
 interface IconProps {
 	name: IconName;
@@ -173,7 +180,7 @@ export function Icon({
 			// in, which is what lets one glyph work on the action yellow and on a
 			// dark surface.
 			color="currentColor"
-			size={PX[size]}
+			size={ICON_PX[size]}
 			weight={weight}
 		/>
 	);

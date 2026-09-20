@@ -142,6 +142,13 @@ export function LobbyMenu({
 				</ActionButton>
 			)}
 
+			{/*
+			 * Background tracking is deliberately *not* here. It sits behind the
+			 * map's locate control instead, next to the live answer to the question
+			 * it changes — "who can see where I am" — rather than in a menu of
+			 * things the game has. m15-spec §6.
+			 */}
+
 			<div className="flex flex-col gap-2">
 				<p className="eyebrow">Appearance</p>
 				<ThemeToggle className="w-full max-w-none" />

@@ -79,7 +79,9 @@ export function PlayerSheet({ player, onClose }: PlayerSheetProps) {
 
 						<dt>Accuracy</dt>
 						<dd data-testid="sheet-accuracy">
-							{formatAccuracy(fix.accuracyMeters)} · {fix.source}
+							{[formatAccuracy(fix.accuracyMeters), fix.source]
+								.filter((part) => part !== null)
+								.join(" · ")}
 						</dd>
 					</>
 				)}

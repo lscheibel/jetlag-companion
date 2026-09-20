@@ -50,6 +50,22 @@ export type LocalNotification = {
  */
 export type PermissionOutcome = "default" | "denied" | "granted";
 
+/**
+ * Which phone this is, to the extent a browser will say. m15-spec §6.
+ *
+ * Read for exactly one purpose: choosing which tracker apps to offer. OsmAnd's
+ * online tracking is Android-only and GPSLogger has no iOS build at all, so
+ * offering either to an iPhone is offering an app that cannot do the job. That
+ * is a real question about the device, not about the viewport, and it is the
+ * reason this is not a media query.
+ *
+ * `unknown` is a first-class answer and the honest one on a desktop browser or
+ * behind a user agent that has been rewritten. Callers show everything rather
+ * than nothing when they get it: a list with one inapplicable entry is a
+ * smaller failure than an empty screen.
+ */
+export type DevicePlatform = "ios" | "android" | "unknown";
+
 export type LocationIssue =
 	| "denied"
 	| "no_fix"
@@ -126,6 +142,18 @@ export interface PlatformAdapter {
 		capability(): Capability;
 		open(input: { url: string; title?: string }): Promise<boolean>;
 	};
+	/**
+	 * The operating system, guessed from the user agent. m15-spec §6.
+	 *
+	 * Guessed is the right word and the reason this lives behind the adapter
+	 * rather than in a component: it is a string parse of a field that lies by
+	 * design, and the one place allowed to read `navigator` is the only place it
+	 * should be done. A Capacitor build would answer from the platform itself
+	 * and every caller would be unchanged.
+	 */
+	readonly device: {
+		platform(): DevicePlatform;
+	};
 }
 
 /**
@@ -141,7 +169,7 @@ export function unavailableFix(capturedAt = Date.now()): PositionSnapshot {
 	return {
 		lng: 0,
 		lat: 0,
-		accuracyMeters: 0,
+		accuracyMeters: null,
 		headingDeg: null,
 		speedMps: null,
 		capturedAt,

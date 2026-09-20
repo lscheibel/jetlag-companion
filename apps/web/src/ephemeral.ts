@@ -77,6 +77,24 @@ const FORCE_SEND_AFTER_MS = 10_000;
  */
 const HEARTBEAT_MS = 2_000;
 
+/**
+ * How old this fix is, right now, on the clock that captured it. m0-spec §7.
+ *
+ * Computed at the moment of sending rather than carried on the fix, because the
+ * heartbeat re-offers the same fix every two seconds and each offer is a
+ * different age. `capturedAt` and `Date.now()` are both this device's clock, so
+ * the subtraction is one clock against itself — the only kind m0-spec §7
+ * allows. Everything downstream adds elapsed time to this and never recomputes
+ * it from a timestamp.
+ *
+ * Clamped at zero: a phone whose system clock is corrected between the fix and
+ * the frame can produce a negative reading, and "arrived from the future" is
+ * worse than "arrived just now".
+ */
+function capturedAgeOf(fix: ClientFix): number {
+	return Math.max(0, Date.now() - fix.capturedAt);
+}
+
 export class EphemeralChannel {
 	readonly #token: string;
 	#socket: WebSocket | null = null;
@@ -213,7 +231,9 @@ export class EphemeralChannel {
 		if (now - this.#lastSentAt < MIN_SEND_INTERVAL_MS) return false;
 		if (this.#lastSent && !this.#worthSending(fix, now)) return false;
 
-		this.#socket.send(JSON.stringify({ t: "pos", fix }));
+		this.#socket.send(
+			JSON.stringify({ t: "pos", fix, capturedAgeMs: capturedAgeOf(fix) }),
+		);
 		this.#lastSent = fix;
 		this.#lastSentAt = now;
 		return true;
@@ -241,7 +261,13 @@ export class EphemeralChannel {
 		if (socket?.readyState !== WebSocket.OPEN) return;
 
 		if (this.#current) {
-			socket.send(JSON.stringify({ t: "pos", fix: this.#current }));
+			socket.send(
+				JSON.stringify({
+					t: "pos",
+					fix: this.#current,
+					capturedAgeMs: capturedAgeOf(this.#current),
+				}),
+			);
 			this.#lastSent = this.#current;
 			this.#lastSentAt = Date.now();
 		}

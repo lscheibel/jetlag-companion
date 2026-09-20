@@ -52,12 +52,18 @@ function now(): number {
  */
 const CLOCK_CORRECTION_TOLERANCE_MS = 60_000;
 
-const positionSource = z.enum(["gps", "network", "manual", "unavailable"]);
+const positionSource = z.enum([
+	"gps",
+	"network",
+	"manual",
+	"external",
+	"unavailable",
+]);
 
 const clientFix = z.object({
 	lng: z.number(),
 	lat: z.number(),
-	accuracyMeters: z.number(),
+	accuracyMeters: z.number().nullable(),
 	headingDeg: z.number().nullable(),
 	speedMps: z.number().nullable(),
 	capturedAt: z.number(),
