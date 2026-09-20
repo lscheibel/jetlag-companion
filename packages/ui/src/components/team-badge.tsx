@@ -21,6 +21,13 @@ interface TeamBadgeProps {
 	team: TeamIdentity;
 	/** `mark` is the emoji tile alone, for map markers and dense rows. */
 	variant?: "full" | "mark";
+	/**
+	 * The mark drawn as an outline: the team's colour in the border and nothing
+	 * in the fill. A filled shape says somebody is there; an outline says
+	 * somebody was, which is what a map marker needs once its fix is old enough
+	 * to be history rather than a position. m2-spec §5.
+	 */
+	hollow?: boolean;
 	size?: "sm" | "md" | "lg";
 	className?: string;
 }
@@ -28,6 +35,7 @@ interface TeamBadgeProps {
 export function TeamBadge({
 	team,
 	variant = "full",
+	hollow = false,
 	size = "md",
 	className,
 }: TeamBadgeProps) {
@@ -35,7 +43,10 @@ export function TeamBadge({
 		return (
 			<span
 				className={cn(
-					"grid shrink-0 place-items-center rounded-[11px] shadow-[inset_0_0_0_2px_rgb(255_255_255/0.18)]",
+					"grid shrink-0 place-items-center rounded-[11px]",
+					hollow
+						? "border-2 bg-transparent"
+						: "shadow-[inset_0_0_0_2px_rgb(255_255_255/0.18)]",
 					size === "sm"
 						? "size-7 text-sm"
 						: size === "lg"
@@ -44,10 +55,14 @@ export function TeamBadge({
 					className,
 				)}
 				data-team-color={team.color}
-				style={{ backgroundColor: team.color }}
+				style={
+					hollow ? { borderColor: team.color } : { backgroundColor: team.color }
+				}
 				title={team.name}
 			>
-				<span aria-hidden>{team.emoji}</span>
+				<span aria-hidden className={hollow ? "opacity-70" : undefined}>
+					{team.emoji}
+				</span>
 				<span className="sr-only">{team.name}</span>
 			</span>
 		);

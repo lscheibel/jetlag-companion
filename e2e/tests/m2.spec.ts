@@ -351,7 +351,14 @@ test("4. a reader whose clock is ten minutes fast still reads staleness right", 
 		"fresh",
 		{ timeout: 30_000 },
 	);
-	await expect(ana.page.getByTestId("marker-age-Ben")).not.toContainText("ago");
+	/**
+	 * The marker prints nothing on the map, so what a skewed clock could get
+	 * wrong is the pin's own label — the line a screen reader gets, and the one
+	 * place the age is still stated in words.
+	 */
+	await expect(ana.page.getByTestId("marker-label-Ben")).not.toContainText(
+		"ago",
+	);
 
 	for (const phone of [ana, ben]) await phone.close();
 });
@@ -386,8 +393,10 @@ test("5. one accuracy ring, and it is your own", async ({ browser }) => {
 	await expect(ana.page.getByTestId("own-readout")).toContainText("±");
 
 	/**
-	 * Everybody else's accuracy is six characters of text next to their name,
-	 * both under the marker and in the sheet — never a circle. m2-spec §5.
+	 * Everybody else's accuracy is six characters of text in the sheet — never a
+	 * circle, and since deck 12's marker, never on the map either: the pin says
+	 * who and how old, and a number nobody acts on while it is good is not a
+	 * thing to print under it. m2-spec §5.
 	 *
 	 * That there is exactly one ring is structural rather than pixel-asserted:
 	 * `AccuracyRing` has one caller, `OwnPosition`, and `PlayerMarker` draws no
@@ -397,7 +406,7 @@ test("5. one accuracy ring, and it is your own", async ({ browser }) => {
 	await expect(ana.page.getByTestId("marker-Ben")).toBeVisible({
 		timeout: 45_000,
 	});
-	await expect(ana.page.getByTestId("marker-age-Ben")).toContainText("±");
+	await expect(ana.page.getByTestId("marker-label-Ben")).not.toContainText("±");
 
 	await ana.page.getByTestId("marker-Ben").click();
 	await expect(ana.page.getByTestId("sheet-accuracy")).toContainText("±");
